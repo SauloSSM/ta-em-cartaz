@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: elitedevticket
+      POSTGRES_USER: elitedevticket
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elitedevticket -d elitedevticket"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DATABASE_URL: jdbc:postgresql://postgres:5432/elitedevticket
+      DATABASE_USERNAME: elitedevticket
+      DATABASE_PASSWORD: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8080
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:5173:5173"

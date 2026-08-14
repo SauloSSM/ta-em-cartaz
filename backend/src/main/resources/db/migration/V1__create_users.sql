@@ -1,0 +1,6 @@
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    email VARCHAR(320) NOT NULL UNIQUE,
+    role VARCHAR(16) NOT NULL CHECK (role IN ('ORGANIZER', 'CUSTOMER', 'GATE')),
+    password_hash VARCHAR(60) NOT NULL
+);

@@ -1,0 +1,25 @@
+# Revisão editorial — estrutura
+
+Este conjunto documental existe para ajudar avaliadores e responsáveis por UX, arquitetura e implementação a compreender rapidamente o recorte do MVP, verificar seus requisitos e executar a entrega sem reinterpretar decisões de produto.
+
+**Modelo aplicado:** Strategic/Context (Pyramid), com leitura humana e Microsoft Writing Style Guide. O PRD tem 4.414 palavras e o addendum, 648 (5.062 no total). As contagens por seção foram obtidas com a mesma regra do `word_metrics.py`; o script não pôde ser executado porque o runtime Python/uv não estava disponível no ambiente.
+
+| Pass | Original Text | Revised Text | Changes |
+| --- | --- | --- | --- |
+| structure | PRD §§5–6 — “Limites operacionais do MVP” e “Regras complementares de escopo” (~1.025 palavras, incluindo o glossário) | **CONDENSE** §§5.1–6.3 em uma única seção curta, “Decisões operacionais do MVP”, preservando somente o resumo necessário antes dos requisitos e apontando cada grupo para §8; manter o glossário separado | Os detalhes de acesso, reserva, Gate, pagamento, publicação, Ticketmaster e compartilhamento reaparecem quase integralmente nos FRs. Preserva o mapa mental humano, mas estabelece §8 como fonte de verdade. Economia estimada: ~430 palavras. |
+| structure | PRD §6.4 — “Glossário de domínio” (211 palavras), após jornadas e regras que já usam `Event`, `TicketSector`, `Reservation`, `HOLDING` e `serverNow` | **MOVE** para imediatamente antes das jornadas (ou, no mínimo, antes do primeiro uso intensivo dos termos) | Define o vocabulário antes de exigir que o leitor interprete regras e jornadas. Sem impacto de palavras. |
+| structure | PRD §4 — jornadas UJ-01 a UJ-03 (358 palavras), especialmente os parágrafos de regras pós-publicação, expiração e transições | **CONDENSE** as jornadas ao percurso, pontos de decisão e resultado emocional; remeter as regras detalhadas aos respectivos grupos de FRs | As jornadas devem sustentar empatia e sequência; políticas já formalizadas em §8 interrompem a narrativa e criam manutenção duplicada. Economia estimada: ~70 palavras, sem remover o contexto emocional. |
+| structure | PRD §3 — métricas e critérios de sucesso (304 palavras) e §7 — NFRs (457 palavras) | **PRESERVE** como blocos distintos | A aparente repetição é funcional: §3 define evidência de sucesso; §7 define qualidades e restrições verificáveis. A separação favorece avaliação e rastreabilidade. Sem impacto de palavras. |
+| structure | PRD §8 — 53 FRs agrupados, cada grupo precedido por rastreabilidade | **PRESERVE** o agrupamento e a numeração estável; considerar apenas uma mini-lista de links para §§8.1–8.9 no início da seção | A seção é uma referência de consulta aleatória dentro de um documento estratégico. Os grupos são MECE e a numeração torna requisitos citáveis. A mini-lista melhora navegação sem duplicar conteúdo (~15 palavras adicionais). |
+| structure | PRD §11 — “Questões abertas não bloqueantes” (56 palavras), no encerramento | **PRESERVE** no final | O posicionamento impede que decisões de UX ainda abertas diluam visão, escopo e requisitos aprovados. Sem impacto de palavras. |
+| structure | Addendum — começa por “Stack e forma da solução”, antes de “Consistência e concorrência” e “Segurança dos ingressos” | **MOVE** “Consistência e concorrência” e “Segurança dos ingressos” para antes de “Stack e forma da solução”; ordem sugerida: invariantes → solução → integrações → testes → alternativas → entrega | Para uma passagem à arquitetura, os riscos e invariantes devem explicar as escolhas técnicas, em vez de a stack aparecer como premissa sem motivação. Sem impacto de palavras. |
+| structure | Addendum — “Decisões consideradas e excluídas do MVP” (94 palavras) | **PRESERVE** | Embora os itens também apareçam no fora de escopo do PRD, aqui há racional de alternativa descartada, conteúdo apropriado ao addendum e necessário para explicar autoria. Sem impacto de palavras. |
+| structure | PRD §10 — “Restrições da avaliação” (121 palavras) e Addendum — “Entrega e uso de IA” (171 palavras) | **MERGE** a fonte normativa no PRD §10; no addendum, manter somente implicações técnicas/processuais e uma referência explícita ao PRD | Os dois blocos repetem prazo, repositório, README, artefatos de IA e deploy. Centralizar as obrigações reduz risco de divergência. Economia estimada: ~75 palavras. |
+
+## Resumo
+
+- 9 recomendações: 3 de preservação e 6 mudanças estruturais propostas.
+- Redução líquida estimada se todas as mudanças forem aceitas: aproximadamente 560 palavras (11,1% das 5.062 palavras), considerando a mini-lista opcional de navegação.
+- Não foi fornecida meta de comprimento; o resultado projetado seria de aproximadamente 4.502 palavras entre os dois documentos.
+- Trade-off de compreensão: condensar §§5–6 agressivamente removeria uma camada útil de orientação. A recomendação preserva um resumo operacional curto e corta apenas a duplicação detalhada.
+- Nenhuma decisão de produto ou implementação foi contestada; as sugestões tratam somente de ordem, navegação e duplicação estrutural.

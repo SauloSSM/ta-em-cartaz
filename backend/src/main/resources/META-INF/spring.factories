@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+br.com.elitedevticket.shared.configuration.RequiredDatasourceEnvironmentPostProcessor
