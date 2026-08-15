@@ -30,7 +30,7 @@
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 
 generated: 08-13-2026 17:41
-last_updated: 08-13-2026 17:41
+last_updated: 08-14-2026
 project: EliteDevTicket
 project_key: NOKEY
 tracking_system: file-system
@@ -39,7 +39,7 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   epic-1: in-progress
   1-1-disponibilizar-a-fundação-executável-e-contas-provisionadas: done
-  1-2-autenticar-e-encerrar-sessão-de-contas-provisionadas: backlog
+  1-2-autenticar-e-encerrar-sessão-de-contas-provisionadas: review
   1-3-aplicar-rbac-e-contratos-http-de-autenticação: backlog
   1-4-estabelecer-fronteiras-modulares-verificáveis: backlog
   epic-1-retrospective: optional

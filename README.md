@@ -1,6 +1,6 @@
 # EliteDevTicket
 
-Base executável do MVP: uma SPA React, API Spring Boot e PostgreSQL. Esta Story cria apenas a fundação e as contas provisionadas; login, sessão, RBAC e endpoints de negócio ainda não existem.
+Base executável do MVP: uma SPA React, API Spring Boot e PostgreSQL. Contas provisionadas já podem iniciar e encerrar sessão; RBAC e endpoints de negócio pertencem às próximas Stories.
 
 ## Pré-requisitos
 
@@ -29,6 +29,12 @@ npm --prefix frontend run build
 Para iniciar a API localmente, configure `SPRING_PROFILES_ACTIVE=local` e `DATABASE_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD` conforme necessário. `DATABASE_PASSWORD` é uma credencial e não deve ser versionada quando o banco exigir senha.
 
 O profile padrão é `prod`. Ele exige explicitamente `DATABASE_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD` externos, falhando na inicialização se algum estiver ausente. O profile `prod` aplica apenas a migration comum: não usa defaults de conexão, seeds, contas demo ou segredos versionados.
+
+## Autenticação e sessão
+
+A SPA inicializa a sessão em `GET /api/v1/auth/session` e usa o cookie CSRF `XSRF-TOKEN` com o header `X-XSRF-TOKEN` no login e logout. O JWT fica somente no cookie HttpOnly `EDT_SESSION`; não o copie para código ou armazenamento do navegador.
+
+`local` e `test` geram uma chave JWT efêmera quando nenhuma é informada. `demo`, `prod` e o profile padrão exigem `AUTH_JWT_SECRET` externo em Base64 com pelo menos 32 bytes e usam cookies `Secure`, proteção que não pode ser desativada nesses profiles por `AUTH_COOKIES_SECURE`. O TTL padrão é `PT8H` (`AUTH_JWT_TTL`), o custo BCrypt padrão é 10 (`AUTH_BCRYPT_COST`) e origens CORS adicionais, quando necessárias, são configuradas em `AUTH_CORS_ALLOWED_ORIGINS`.
 
 ## Perfis e dados de demonstração
 

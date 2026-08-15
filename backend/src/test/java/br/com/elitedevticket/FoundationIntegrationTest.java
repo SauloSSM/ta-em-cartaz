@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @ActiveProfiles("local")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class FoundationIntegrationTest {
+    private static final String TEST_JWT_SECRET = Base64.getEncoder().encodeToString(new byte[32]);
+
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
 
@@ -206,6 +209,7 @@ class FoundationIntegrationTest {
         settings.put("DATABASE_URL", databaseUrlFor(schema));
         settings.put("DATABASE_USERNAME", POSTGRES.getUsername());
         settings.put("DATABASE_PASSWORD", POSTGRES.getPassword());
+        settings.put("AUTH_JWT_SECRET", TEST_JWT_SECRET);
         return settings;
     }
 

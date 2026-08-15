@@ -3,6 +3,7 @@
 !.env.example
 
 backend/target/
+.m2-codex/
 backend/.mvn/wrapper/apache-maven-*/
 backend/.mvn/wrapper/apache-maven-*-bin.zip
 frontend/node_modules/

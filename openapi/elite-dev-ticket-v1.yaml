@@ -1,0 +1,200 @@
+openapi: 3.1.0
+info:
+  title: EliteDevTicket API
+  version: 1.0.0
+  description: Contrato mínimo de autenticação da Story 1.2.
+servers:
+  - url: /
+paths:
+  /api/v1/auth/session:
+    get:
+      operationId: getAuthSession
+      summary: Inicializa ou consulta a sessão atual
+      description: Um JWT ausente, expirado ou inválido é tratado como sessão anônima. A resposta nunca expõe o JWT e emite o cookie CSRF quando necessário.
+      security:
+        - SessionCookie: []
+        - {}
+      responses:
+        '200':
+          description: Estado atual da sessão.
+          headers:
+            Set-Cookie:
+              description: XSRF-TOKEN legível pela SPA, SameSite=Lax, Path=/ e Secure em demo/prod.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      summary: Autentica uma conta provisionada
+      description: Exige o header X-XSRF-TOKEN correspondente ao cookie XSRF-TOKEN. Renova sessão e CSRF em caso de sucesso.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Conta autenticada.
+          headers:
+            Set-Cookie:
+              description: EDT_SESSION HttpOnly e XSRF-TOKEN renovado; SameSite=Lax, Path=/, Secure em demo/prod. EDT_SESSION expira junto com o JWT (TTL padrão PT8H).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedSessionResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthInvalidCredentials'
+        '403':
+          $ref: '#/components/responses/AuthInvalidCsrf'
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Encerra a sessão atual
+      description: Idempotente para sessão autenticada ou anônima. Expira EDT_SESSION e renova XSRF-TOKEN.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      responses:
+        '204':
+          description: Sessão encerrada.
+          headers:
+            Set-Cookie:
+              description: EDT_SESSION expirado e XSRF-TOKEN renovado, com os atributos do ambiente.
+              schema:
+                type: string
+        '403':
+          $ref: '#/components/responses/AuthInvalidCsrf'
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: EDT_SESSION
+      description: JWT HS256 stateless; HttpOnly, SameSite=Lax, Path=/ e Secure em demo/prod.
+    CsrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Valor do cookie XSRF-TOKEN, que não é HttpOnly e é rotacionado após login/logout.
+    CsrfCookie:
+      type: apiKey
+      in: cookie
+      name: XSRF-TOKEN
+      description: Cookie legível pela SPA cujo valor deve acompanhar o header X-XSRF-TOKEN.
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        password:
+          type: string
+          format: password
+    Role:
+      type: string
+      enum: [ORGANIZER, CUSTOMER, GATE]
+    AuthErrorCode:
+      type: string
+      enum: [AUTH_INVALID_REQUEST, AUTH_INVALID_CREDENTIALS, AUTH_CSRF_INVALID]
+    SessionUser:
+      type: object
+      additionalProperties: false
+      required: [id, email, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+    SessionResponse:
+      oneOf:
+        - $ref: '#/components/schemas/AnonymousSessionResponse'
+        - $ref: '#/components/schemas/AuthenticatedSessionResponse'
+    AnonymousSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [authenticated]
+      properties:
+        authenticated:
+          type: boolean
+          const: false
+    AuthenticatedSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [authenticated, user]
+      properties:
+        authenticated:
+          type: boolean
+          const: true
+        user:
+          $ref: '#/components/schemas/SessionUser'
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId, timestamp]
+      properties:
+        code:
+          $ref: '#/components/schemas/AuthErrorCode'
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        traceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+  responses:
+    AuthInvalidRequest:
+      description: Corpo ausente ou inválido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    AuthInvalidCredentials:
+      headers:
+        Set-Cookie:
+          description: EDT_SESSION expirado para eliminar uma sessao existente; HttpOnly, SameSite=Lax, Path=/ e Secure em demo/prod.
+          schema:
+            type: string
+      description: Credenciais inválidas sem revelar se o e-mail existe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    AuthInvalidCsrf:
+      description: Cookie/header CSRF ausente ou divergente; nenhuma mutação é aplicada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

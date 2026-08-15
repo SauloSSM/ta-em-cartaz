@@ -27,4 +27,20 @@ public class UserEntity {
 
     protected UserEntity() {
     }
+
+    public UUID id() {
+        return id;
+    }
+
+    public String email() {
+        return email;
+    }
+
+    public Role role() {
+        return role;
+    }
+
+    public String passwordHash() {
+        return passwordHash;
+    }
 }
