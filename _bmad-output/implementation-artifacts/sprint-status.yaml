@@ -41,7 +41,7 @@ development_status:
   1-1-disponibilizar-a-fundação-executável-e-contas-provisionadas: done
   1-2-autenticar-e-encerrar-sessão-de-contas-provisionadas: done
   1-3-aplicar-rbac-e-contratos-http-de-autenticação: done
-  1-4-estabelecer-fronteiras-modulares-verificáveis: backlog
+  1-4-estabelecer-fronteiras-modulares-verificáveis: done
   epic-1-retrospective: optional
 
   epic-2: backlog
