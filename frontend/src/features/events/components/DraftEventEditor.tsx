@@ -1,6 +1,7 @@
 import { useState, useTransition, type FormEvent } from 'react';
 import { updateDraftEvent, deleteDraftEvent, type EventResponse, type UpdateDraftEventRequest } from '../api/eventsApi';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { SectorManager } from './SectorManager';
 
 type DraftEventEditorProps = {
   event: EventResponse;
@@ -274,6 +275,8 @@ export function DraftEventEditor({
           </div>
         </form>
       </div>
+
+      <SectorManager eventId={currentEvent.id} isDraft={isDraft} />
 
       <DeleteConfirmDialog
         isOpen={showDeleteDialog}

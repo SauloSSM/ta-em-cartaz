@@ -242,6 +242,151 @@ paths:
           $ref: '#/components/responses/EventNotFound'
         '409':
           $ref: '#/components/responses/EventConflict'
+  /api/v1/events/{eventId}/sectors:
+    get:
+      operationId: listTicketSectors
+      summary: Lista os setores de um evento
+      description: Requer sessão autenticada. Se o evento estiver em DRAFT, somente o Organizer proprietário pode acessá-lo.
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+      responses:
+        '200':
+          description: Lista de setores do evento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketSectorListResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
+    post:
+      operationId: createTicketSector
+      summary: Adiciona um novo setor ao evento em rascunho (DRAFT)
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Permite adicionar um setor a um evento DRAFT pertencente ao organizador.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketSectorRequest'
+      responses:
+        '201':
+          description: Setor criado com sucesso no evento em rascunho.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketSectorResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
+        '409':
+          $ref: '#/components/responses/EventConflict'
+  /api/v1/events/{eventId}/sectors/{sectorId}:
+    put:
+      operationId: updateTicketSector
+      summary: Atualiza os dados de um setor de um evento em rascunho (DRAFT)
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Permite alterar campos de um setor de um evento em DRAFT pertencente ao organizador.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+        - name: sectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do setor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketSectorRequest'
+      responses:
+        '200':
+          description: Setor atualizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketSectorResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
+        '409':
+          $ref: '#/components/responses/EventConflict'
+    delete:
+      operationId: deleteTicketSector
+      summary: Exclui um setor de um evento em rascunho (DRAFT)
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Exclui um setor de um evento DRAFT pertencente ao organizador.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+        - name: sectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do setor.
+      responses:
+        '204':
+          description: Setor excluído com sucesso do evento em rascunho.
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
+        '409':
+          $ref: '#/components/responses/EventConflict'
 components:
   securitySchemes:
     SessionCookie:
@@ -464,6 +609,68 @@ components:
         startsAt:
           type: string
           format: date-time
+    TicketSectorResponse:
+      type: object
+      additionalProperties: false
+      required: [id, eventId, name, capacity, availableQuantity, price, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        capacity:
+          type: integer
+        availableQuantity:
+          type: integer
+        price:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TicketSectorListResponse:
+      type: object
+      additionalProperties: false
+      required: [sectors]
+      properties:
+        sectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketSectorResponse'
+    CreateTicketSectorRequest:
+      type: object
+      additionalProperties: false
+      required: [name, capacity, price]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        capacity:
+          type: integer
+        price:
+          type: number
+    UpdateTicketSectorRequest:
+      type: object
+      additionalProperties: false
+      required: [name, capacity, price]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        capacity:
+          type: integer
+        price:
+          type: number
     EventErrorCode:
       type: string
       enum: [EVENT_NOT_FOUND, EVENT_FORBIDDEN, EVENT_INVALID_REQUEST, EVENT_CANNOT_BE_DELETED, EVENT_CANNOT_BE_MODIFIED]

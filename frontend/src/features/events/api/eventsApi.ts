@@ -36,6 +36,36 @@ export type EventListResponse = {
   events: EventResponse[];
 };
 
+export type TicketSectorResponse = {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string;
+  capacity: number;
+  availableQuantity: number;
+  price: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TicketSectorListResponse = {
+  sectors: TicketSectorResponse[];
+};
+
+export type CreateTicketSectorRequest = {
+  name: string;
+  description?: string;
+  capacity: number;
+  price: number;
+};
+
+export type UpdateTicketSectorRequest = {
+  name: string;
+  description?: string;
+  capacity: number;
+  price: number;
+};
+
 export type EventErrorCode =
   | 'EVENT_NOT_FOUND'
   | 'EVENT_FORBIDDEN'
@@ -155,6 +185,79 @@ export async function deleteDraftEvent(id: string): Promise<void> {
   }
 }
 
+export async function listTicketSectors(eventId: string): Promise<TicketSectorListResponse> {
+  const payload = await requestJson(`/api/v1/events/${encodeURIComponent(eventId)}/sectors`, {
+    method: 'GET',
+  });
+  if (!isTicketSectorListResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
+}
+
+export async function createTicketSector(
+  eventId: string,
+  data: CreateTicketSectorRequest,
+): Promise<TicketSectorResponse> {
+  const request: CreateTicketSectorRequest = {
+    name: data.name,
+    ...(data.description === undefined ? {} : { description: data.description }),
+    capacity: data.capacity,
+    price: data.price,
+  };
+  const payload = await requestJson(`/api/v1/events/${encodeURIComponent(eventId)}/sectors`, {
+    method: 'POST',
+    headers: csrfHeaders(),
+    body: JSON.stringify(request),
+  });
+  if (!isTicketSectorResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
+}
+
+export async function updateTicketSector(
+  eventId: string,
+  sectorId: string,
+  data: UpdateTicketSectorRequest,
+): Promise<TicketSectorResponse> {
+  const request: UpdateTicketSectorRequest = {
+    name: data.name,
+    ...(data.description === undefined ? {} : { description: data.description }),
+    capacity: data.capacity,
+    price: data.price,
+  };
+  const payload = await requestJson(
+    `/api/v1/events/${encodeURIComponent(eventId)}/sectors/${encodeURIComponent(sectorId)}`,
+    {
+      method: 'PUT',
+      headers: csrfHeaders(),
+      body: JSON.stringify(request),
+    },
+  );
+  if (!isTicketSectorResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
+}
+
+export async function deleteTicketSector(eventId: string, sectorId: string): Promise<void> {
+  const response = await fetch(
+    `/api/v1/events/${encodeURIComponent(eventId)}/sectors/${encodeURIComponent(sectorId)}`,
+    {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        ...csrfHeaders(),
+      },
+    },
+  );
+  if (response.status !== 204) {
+    throw await toApiError(response);
+  }
+}
+
 async function requestJson(path: string, init: RequestInit): Promise<unknown> {
   const response = await fetch(path, {
     ...init,
@@ -252,6 +355,38 @@ function isEventListResponse(value: unknown): value is EventListResponse {
     return false;
   }
   return Array.isArray(value.events) && value.events.every(isEventResponse);
+}
+
+function isTicketSectorResponse(value: unknown): value is TicketSectorResponse {
+  if (!isRecord(value) || !hasOnlyKeys(value, [
+    'id',
+    'eventId',
+    'name',
+    'description',
+    'capacity',
+    'availableQuantity',
+    'price',
+    'createdAt',
+    'updatedAt',
+  ])) {
+    return false;
+  }
+  return typeof value.id === 'string'
+    && typeof value.eventId === 'string'
+    && typeof value.name === 'string'
+    && (value.description === undefined || typeof value.description === 'string')
+    && typeof value.capacity === 'number'
+    && typeof value.availableQuantity === 'number'
+    && typeof value.price === 'number'
+    && typeof value.createdAt === 'string'
+    && typeof value.updatedAt === 'string';
+}
+
+function isTicketSectorListResponse(value: unknown): value is TicketSectorListResponse {
+  if (!isRecord(value) || !hasExactKeys(value, ['sectors'])) {
+    return false;
+  }
+  return Array.isArray(value.sectors) && value.sectors.every(isTicketSectorResponse);
 }
 
 function isEventApiError(value: unknown): value is EventApiError {

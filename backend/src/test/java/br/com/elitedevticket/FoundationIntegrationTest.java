@@ -254,7 +254,7 @@ class FoundationIntegrationTest {
                         + "AND table_name <> 'flyway_schema_history'",
                 String.class,
                 schema);
-        assertThat(tables).containsExactlyInAnyOrder("users", "events");
+        assertThat(tables).containsExactlyInAnyOrder("users", "events", "ticket_sectors");
     }
 
     private String databaseUrlFor(String schema) {

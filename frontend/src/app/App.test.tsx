@@ -340,7 +340,9 @@ describe('App session flow', () => {
         },
         201,
       ))
-      // 5. Update draft
+      // 5. Load sectors on entering editor
+      .mockResolvedValueOnce(jsonResponse({ sectors: [] }))
+      // 6. Update draft
       .mockResolvedValueOnce(jsonResponse(
         {
           id: '99999999-9999-9999-9999-999999999999',
@@ -356,7 +358,7 @@ describe('App session flow', () => {
         },
         200,
       ))
-      // 6. Reload my events on returning
+      // 7. Reload my events on returning
       .mockResolvedValueOnce(jsonResponse({
         events: [
           {

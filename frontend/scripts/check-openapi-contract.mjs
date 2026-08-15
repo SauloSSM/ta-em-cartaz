@@ -261,7 +261,7 @@ function assertClientOperation(operation, functions, responses) {
   if (declaration === undefined) {
     fail(`operationId ${operation.operationId} não possui função cliente correspondente`);
   }
-  const callName = (functionName === 'logout' || functionName === 'deleteDraftEvent') ? 'fetch' : 'requestJson';
+  const callName = (functionName === 'logout' || functionName === 'deleteDraftEvent' || functionName === 'deleteTicketSector') ? 'fetch' : 'requestJson';
   const call = findCall(declaration, callName);
   const pathArgument = call?.arguments[0];
   const initArgument = call?.arguments[1];
@@ -525,6 +525,9 @@ function openApiType(block) {
   if (type === 'string') {
     return 'string';
   }
+  if (type === 'integer' || type === 'number') {
+    return 'number';
+  }
   fail(`tipo OpenAPI não suportado: ${block.trim()}`);
 }
 
@@ -567,6 +570,7 @@ function normalizeType(type, sourceFile) {
   }
   if (type.kind === ts.SyntaxKind.StringKeyword) return 'string';
   if (type.kind === ts.SyntaxKind.BooleanKeyword) return 'boolean';
+  if (type.kind === ts.SyntaxKind.NumberKeyword) return 'number';
   if (ts.isTypeReferenceNode(type)) return type.typeName.getText(sourceFile);
   if (ts.isArrayTypeNode(type)) return `${normalizeType(type.elementType, sourceFile)}[]`;
   if (ts.isLiteralTypeNode(type)) return type.literal.getText(sourceFile).replaceAll("'", '');

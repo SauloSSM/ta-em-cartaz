@@ -5,6 +5,10 @@ import {
   listMyEvents,
   updateDraftEvent,
   deleteDraftEvent,
+  listTicketSectors,
+  createTicketSector,
+  updateTicketSector,
+  deleteTicketSector,
   EventClientError,
 } from './eventsApi';
 
@@ -316,6 +320,162 @@ describe('eventsApi', () => {
       }));
 
       await expect(deleteDraftEvent('123')).rejects.toThrow(EventClientError);
+    });
+  });
+
+  describe('listTicketSectors', () => {
+    it('sends GET request and parses ticket sector list', async () => {
+      const mockResponse = {
+        sectors: [
+          {
+            id: 'sec-1',
+            eventId: 'ev-1',
+            name: 'Pista',
+            description: 'Geral',
+            capacity: 500,
+            availableQuantity: 500,
+            price: 120.0,
+            createdAt: '2026-08-15T12:00:00Z',
+            updatedAt: '2026-08-15T12:00:00Z',
+          },
+        ],
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockResponse),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await listTicketSectors('ev-1');
+
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/ev-1/sectors', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('createTicketSector', () => {
+    it('sends POST request with CSRF and parses created sector', async () => {
+      document.cookie = 'XSRF-TOKEN=csrf-create-sec; Path=/';
+
+      const mockResponse = {
+        id: 'sec-2',
+        eventId: 'ev-1',
+        name: 'Camarote VIP',
+        description: 'Open bar',
+        capacity: 100,
+        availableQuantity: 100,
+        price: 350.0,
+        createdAt: '2026-08-15T12:00:00Z',
+        updatedAt: '2026-08-15T12:00:00Z',
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve(mockResponse),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await createTicketSector('ev-1', {
+        name: 'Camarote VIP',
+        description: 'Open bar',
+        capacity: 100,
+        price: 350.0,
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/ev-1/sectors', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': 'csrf-create-sec',
+        },
+        body: JSON.stringify({
+          name: 'Camarote VIP',
+          description: 'Open bar',
+          capacity: 100,
+          price: 350.0,
+        }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('updateTicketSector', () => {
+    it('sends PUT request with CSRF and parses updated sector', async () => {
+      document.cookie = 'XSRF-TOKEN=csrf-update-sec; Path=/';
+
+      const mockResponse = {
+        id: 'sec-2',
+        eventId: 'ev-1',
+        name: 'Camarote Premium',
+        capacity: 120,
+        availableQuantity: 120,
+        price: 400.0,
+        createdAt: '2026-08-15T12:00:00Z',
+        updatedAt: '2026-08-15T13:00:00Z',
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockResponse),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await updateTicketSector('ev-1', 'sec-2', {
+        name: 'Camarote Premium',
+        capacity: 120,
+        price: 400.0,
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/ev-1/sectors/sec-2', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': 'csrf-update-sec',
+        },
+        body: JSON.stringify({
+          name: 'Camarote Premium',
+          capacity: 120,
+          price: 400.0,
+        }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('deleteTicketSector', () => {
+    it('sends DELETE request with CSRF and resolves on 204', async () => {
+      document.cookie = 'XSRF-TOKEN=csrf-delete-sec; Path=/';
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 204,
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await deleteTicketSector('ev-1', 'sec-2');
+
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/ev-1/sectors/sec-2', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'X-XSRF-TOKEN': 'csrf-delete-sec',
+        },
+      });
     });
   });
 });

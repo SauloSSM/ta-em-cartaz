@@ -1,14 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DraftEventEditor } from '../DraftEventEditor';
 import type { EventResponse } from '../../api/eventsApi';
 
 const originalFetch = globalThis.fetch;
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-});
 
 describe('DraftEventEditor', () => {
   const mockDraftEvent: EventResponse = {
@@ -31,7 +27,32 @@ describe('DraftEventEditor', () => {
     status: 'PUBLISHED',
   };
 
-  it('renders draft event in editable form with fields populated', () => {
+  beforeEach(() => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string | URL | Request) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+      if (urlString.includes('/sectors')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ sectors: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(mockDraftEvent), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    });
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('renders draft event in editable form with fields populated and sector manager', () => {
     render(<DraftEventEditor event={mockDraftEvent} />);
 
     expect(screen.getByRole('heading', { name: 'Editor de Evento', level: 2 })).toBeDefined();
@@ -44,6 +65,7 @@ describe('DraftEventEditor', () => {
     const descInput = screen.getByLabelText('Descrição do Evento') as HTMLTextAreaElement;
     expect(descInput.value).toBe('Grande festival de música');
 
+    expect(screen.getByRole('heading', { name: 'Setores de Ingressos' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Excluir rascunho de Rock in Rio 2026' })).toBeDefined();
   });
@@ -52,16 +74,35 @@ describe('DraftEventEditor', () => {
     const user = userEvent.setup();
     const handleUpdate = vi.fn();
 
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          ...mockDraftEvent,
-          title: 'Rock in Rio 2026 - Edição Especial',
-          updatedAt: '2026-08-15T12:30:00Z',
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((url: string | URL | Request, init?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+      if (urlString.includes('/sectors')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ sectors: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (init?.method === 'PUT') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ...mockDraftEvent,
+              title: 'Rock in Rio 2026 - Edição Especial',
+              updatedAt: '2026-08-15T12:30:00Z',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(mockDraftEvent), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      ),
-    );
+      );
+    });
     globalThis.fetch = fetchMock;
 
     render(<DraftEventEditor event={mockDraftEvent} onEventUpdated={handleUpdate} />);
@@ -91,9 +132,26 @@ describe('DraftEventEditor', () => {
     const user = userEvent.setup();
     const handleDelete = vi.fn();
 
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(null, { status: 204 }),
-    );
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((url: string | URL | Request, init?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+      if (urlString.includes('/sectors')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ sectors: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (init?.method === 'DELETE') {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(mockDraftEvent), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    });
     globalThis.fetch = fetchMock;
 
     render(<DraftEventEditor event={mockDraftEvent} onEventDeleted={handleDelete} />);

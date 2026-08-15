@@ -5,16 +5,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.elitedevticket.auth.http.FieldErrorResponse;
 import br.com.elitedevticket.events.domain.EventStatus;
 import br.com.elitedevticket.events.http.CreateDraftEventRequest;
+import br.com.elitedevticket.events.http.CreateTicketSectorRequest;
 import br.com.elitedevticket.events.http.EventApiErrorResponse;
 import br.com.elitedevticket.events.http.EventErrorCode;
 import br.com.elitedevticket.events.http.EventListResponse;
 import br.com.elitedevticket.events.http.EventResponse;
 import br.com.elitedevticket.events.http.EventsController;
+import br.com.elitedevticket.events.http.TicketSectorListResponse;
+import br.com.elitedevticket.events.http.TicketSectorResponse;
 import br.com.elitedevticket.events.http.UpdateDraftEventRequest;
+import br.com.elitedevticket.events.http.UpdateTicketSectorRequest;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -33,15 +38,19 @@ import org.yaml.snakeyaml.Yaml;
 
 class EventsOpenApiContractTest {
 
-    private static final Map<String, Class<?>> REFERENCED_TYPES = Map.of(
-            "EventStatus", EventStatus.class,
-            "CreateDraftEventRequest", CreateDraftEventRequest.class,
-            "UpdateDraftEventRequest", UpdateDraftEventRequest.class,
-            "EventResponse", EventResponse.class,
-            "EventListResponse", EventListResponse.class,
-            "EventErrorCode", EventErrorCode.class,
-            "EventApiError", EventApiErrorResponse.class,
-            "FieldError", FieldErrorResponse.class);
+    private static final Map<String, Class<?>> REFERENCED_TYPES = Map.ofEntries(
+            Map.entry("EventStatus", EventStatus.class),
+            Map.entry("CreateDraftEventRequest", CreateDraftEventRequest.class),
+            Map.entry("UpdateDraftEventRequest", UpdateDraftEventRequest.class),
+            Map.entry("EventResponse", EventResponse.class),
+            Map.entry("EventListResponse", EventListResponse.class),
+            Map.entry("TicketSectorResponse", TicketSectorResponse.class),
+            Map.entry("TicketSectorListResponse", TicketSectorListResponse.class),
+            Map.entry("CreateTicketSectorRequest", CreateTicketSectorRequest.class),
+            Map.entry("UpdateTicketSectorRequest", UpdateTicketSectorRequest.class),
+            Map.entry("EventErrorCode", EventErrorCode.class),
+            Map.entry("EventApiError", EventApiErrorResponse.class),
+            Map.entry("FieldError", FieldErrorResponse.class));
 
     @Test
     void javaEventsDtosAndOperationsRemainStructurallyAlignedWithTheVersionedOpenApi() throws IOException {
@@ -100,6 +109,50 @@ class EventsOpenApiContractTest {
         assertResponseReference(deleteDraft, "404", "EventNotFound");
         assertResponseReference(deleteDraft, "409", "EventConflict");
 
+        // GET /api/v1/events/{eventId}/sectors
+        Map<String, Object> listSectors = assertOperation(
+                paths, "/api/v1/events/{eventId}/sectors", "get", "listTicketSectors", Set.of("200", "401", "403", "404"));
+        assertThat(listSectors).doesNotContainKey("requestBody");
+        assertSecurity(listSectors, Set.of(Set.of("SessionCookie")));
+        assertResponseSchema(listSectors, "200", "TicketSectorListResponse");
+        assertResponseReference(listSectors, "401", "AuthUnauthenticated");
+        assertResponseReference(listSectors, "403", "AuthForbidden");
+        assertResponseReference(listSectors, "404", "EventNotFound");
+
+        // POST /api/v1/events/{eventId}/sectors
+        Map<String, Object> createSector = assertOperation(
+                paths, "/api/v1/events/{eventId}/sectors", "post", "createTicketSector", Set.of("201", "400", "401", "403", "404", "409"));
+        assertRequestSchema(createSector, "CreateTicketSectorRequest");
+        assertSecurity(createSector, Set.of(Set.of("CsrfCookie", "CsrfHeader")));
+        assertResponseSchema(createSector, "201", "TicketSectorResponse");
+        assertResponseReference(createSector, "400", "AuthInvalidRequest");
+        assertResponseReference(createSector, "401", "AuthUnauthenticated");
+        assertResponseReference(createSector, "403", "AuthForbidden");
+        assertResponseReference(createSector, "404", "EventNotFound");
+        assertResponseReference(createSector, "409", "EventConflict");
+
+        // PUT /api/v1/events/{eventId}/sectors/{sectorId}
+        Map<String, Object> updateSector = assertOperation(
+                paths, "/api/v1/events/{eventId}/sectors/{sectorId}", "put", "updateTicketSector", Set.of("200", "400", "401", "403", "404", "409"));
+        assertRequestSchema(updateSector, "UpdateTicketSectorRequest");
+        assertSecurity(updateSector, Set.of(Set.of("CsrfCookie", "CsrfHeader")));
+        assertResponseSchema(updateSector, "200", "TicketSectorResponse");
+        assertResponseReference(updateSector, "400", "AuthInvalidRequest");
+        assertResponseReference(updateSector, "401", "AuthUnauthenticated");
+        assertResponseReference(updateSector, "403", "AuthForbidden");
+        assertResponseReference(updateSector, "404", "EventNotFound");
+        assertResponseReference(updateSector, "409", "EventConflict");
+
+        // DELETE /api/v1/events/{eventId}/sectors/{sectorId}
+        Map<String, Object> deleteSector = assertOperation(
+                paths, "/api/v1/events/{eventId}/sectors/{sectorId}", "delete", "deleteTicketSector", Set.of("204", "401", "403", "404", "409"));
+        assertThat(deleteSector).doesNotContainKey("requestBody");
+        assertSecurity(deleteSector, Set.of(Set.of("CsrfCookie", "CsrfHeader")));
+        assertResponseReference(deleteSector, "401", "AuthUnauthenticated");
+        assertResponseReference(deleteSector, "403", "AuthForbidden");
+        assertResponseReference(deleteSector, "404", "EventNotFound");
+        assertResponseReference(deleteSector, "409", "EventConflict");
+
         Map<String, Object> components = map(contract.get("components"));
         Map<String, Object> schemas = map(components.get("schemas"));
         assertEnumSchema(schemas, "EventStatus", EventStatus.class);
@@ -107,6 +160,10 @@ class EventsOpenApiContractTest {
         assertRecordSchema(schemas, "UpdateDraftEventRequest", UpdateDraftEventRequest.class);
         assertRecordSchema(schemas, "EventResponse", EventResponse.class);
         assertRecordSchema(schemas, "EventListResponse", EventListResponse.class);
+        assertRecordSchema(schemas, "TicketSectorResponse", TicketSectorResponse.class);
+        assertRecordSchema(schemas, "TicketSectorListResponse", TicketSectorListResponse.class);
+        assertRecordSchema(schemas, "CreateTicketSectorRequest", CreateTicketSectorRequest.class);
+        assertRecordSchema(schemas, "UpdateTicketSectorRequest", UpdateTicketSectorRequest.class);
         assertEnumSchema(schemas, "EventErrorCode", EventErrorCode.class);
         assertRecordSchema(schemas, "EventApiError", EventApiErrorResponse.class);
 
@@ -140,7 +197,11 @@ class EventsOpenApiContractTest {
                 "GET /mine -> listMyEvents",
                 "GET /{id} -> getEvent",
                 "PUT /{id} -> updateDraftEvent",
-                "DELETE /{id} -> deleteDraftEvent"
+                "DELETE /{id} -> deleteDraftEvent",
+                "GET /{eventId}/sectors -> listTicketSectors",
+                "POST /{eventId}/sectors -> createTicketSector",
+                "PUT /{eventId}/sectors/{sectorId} -> updateTicketSector",
+                "DELETE /{eventId}/sectors/{sectorId} -> deleteTicketSector"
         );
     }
 
@@ -245,18 +306,24 @@ class EventsOpenApiContractTest {
             return;
         }
 
-        Class<?> expected = referencedOrScalarType(property);
+        Class<?> expected = referencedOrScalarType(component, property);
         assertThat(component.getType())
                 .as("tipo de %s", component.getName())
                 .isEqualTo(expected);
     }
 
-    private Class<?> referencedOrScalarType(Map<String, Object> property) {
+    private Class<?> referencedOrScalarType(RecordComponent component, Map<String, Object> property) {
         if (property.containsKey("$ref")) {
             return REFERENCED_TYPES.get(referenceName(property));
         }
         if ("boolean".equals(property.get("type"))) {
             return boolean.class;
+        }
+        if ("integer".equals(property.get("type"))) {
+            return component.getType() == Integer.class ? Integer.class : int.class;
+        }
+        if ("number".equals(property.get("type"))) {
+            return BigDecimal.class;
         }
         if ("string".equals(property.get("type")) && "uuid".equals(property.get("format"))) {
             return UUID.class;

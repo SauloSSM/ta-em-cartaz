@@ -309,6 +309,221 @@ class EventsEndpointsIntegrationTest {
         assertThat(response.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
     }
 
+    @Test
+    void organizerCanCreateListUpdateAndDeleteTicketSectorsOnDraftEvent() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Cria evento rascunho
+        HttpResponse<String> eventResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Festival de Ingressos\"}"
+        );
+        assertThat(eventResponse.statusCode()).isEqualTo(201);
+        String eventId = extractJsonField(eventResponse.body(), "id");
+
+        // 2. Adiciona setor Pista
+        String createPistaPayload = """
+                {
+                  "name": "Pista Comum",
+                  "description": "Acesso à pista geral",
+                  "capacity": 500,
+                  "price": 120.50
+                }
+                """;
+        HttpResponse<String> pistaResponse = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                createPistaPayload
+        );
+        assertThat(pistaResponse.statusCode()).isEqualTo(201);
+        assertThat(pistaResponse.body())
+                .contains("\"name\":\"Pista Comum\"")
+                .contains("\"capacity\":500")
+                .contains("\"availableQuantity\":500")
+                .contains("\"price\":120.5");
+        String pistaId = extractJsonField(pistaResponse.body(), "id");
+
+        // 3. Adiciona setor Camarote
+        String createCamarotePayload = """
+                {
+                  "name": "Camarote VIP",
+                  "description": "Open bar e vista privilegiada",
+                  "capacity": 80,
+                  "price": 350.00
+                }
+                """;
+        HttpResponse<String> camaroteResponse = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                createCamarotePayload
+        );
+        assertThat(camaroteResponse.statusCode()).isEqualTo(201);
+        String camaroteId = extractJsonField(camaroteResponse.body(), "id");
+
+        // 4. Lista setores do evento
+        HttpResponse<String> listResponse = get(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession
+        );
+        assertThat(listResponse.statusCode()).isEqualTo(200);
+        assertThat(listResponse.body())
+                .contains("\"name\":\"Pista Comum\"")
+                .contains("\"name\":\"Camarote VIP\"")
+                .contains("\"capacity\":500")
+                .contains("\"capacity\":80");
+
+        // 5. Atualiza setor Pista
+        String updatePistaPayload = """
+                {
+                  "name": "Pista Premium",
+                  "description": "Pista com entrada prioritária",
+                  "capacity": 600,
+                  "price": 150.00
+                }
+                """;
+        HttpResponse<String> updateResponse = put(
+                "/api/v1/events/" + eventId + "/sectors/" + pistaId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                updatePistaPayload
+        );
+        assertThat(updateResponse.statusCode()).isEqualTo(200);
+        assertThat(updateResponse.body())
+                .contains("\"name\":\"Pista Premium\"")
+                .contains("\"capacity\":600")
+                .contains("\"availableQuantity\":600")
+                .contains("\"price\":150");
+
+        // 6. Exclui setor Camarote
+        HttpResponse<String> deleteResponse = delete(
+                "/api/v1/events/" + eventId + "/sectors/" + camaroteId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf
+        );
+        assertThat(deleteResponse.statusCode()).isEqualTo(204);
+
+        // 7. Lista novamente e confirma remoção
+        HttpResponse<String> listAfterDelete = get(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession
+        );
+        assertThat(listAfterDelete.statusCode()).isEqualTo(200);
+        assertThat(listAfterDelete.body()).contains("\"name\":\"Pista Premium\"");
+        assertThat(listAfterDelete.body()).doesNotContain("Camarote VIP");
+    }
+
+    @Test
+    void createSectorValidationRejectsInvalidCapacityAndPrice() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        HttpResponse<String> eventResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Evento para Teste de Validação\"}"
+        );
+        assertThat(eventResponse.statusCode()).isEqualTo(201);
+        String eventId = extractJsonField(eventResponse.body(), "id");
+
+        // Capacidade <= 0
+        HttpResponse<String> invalidCapacity = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Setor Inválido\",\"capacity\":0,\"price\":50.00}"
+        );
+        assertThat(invalidCapacity.statusCode()).isEqualTo(400);
+        assertThat(invalidCapacity.body())
+                .contains("\"code\":\"AUTH_INVALID_REQUEST\"")
+                .contains("\"field\":\"capacity\"");
+
+        // Preço negativo
+        HttpResponse<String> invalidPrice = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Setor Inválido\",\"capacity\":100,\"price\":-10.00}"
+        );
+        assertThat(invalidPrice.statusCode()).isEqualTo(400);
+        assertThat(invalidPrice.body())
+                .contains("\"code\":\"AUTH_INVALID_REQUEST\"")
+                .contains("\"field\":\"price\"");
+
+        // Nome em branco
+        HttpResponse<String> blankName = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"   \",\"capacity\":100,\"price\":50.00}"
+        );
+        assertThat(blankName.statusCode()).isEqualTo(400);
+        assertThat(blankName.body())
+                .contains("\"code\":\"AUTH_INVALID_REQUEST\"")
+                .contains("\"field\":\"name\"");
+    }
+
+    @Test
+    void sectorOperationsRequireAuthenticationAndOwnership() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        HttpResponse<String> eventResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Evento Restrito\"}"
+        );
+        String eventId = extractJsonField(eventResponse.body(), "id");
+
+        // Customer tentando criar setor -> 403
+        HttpResponse<String> customerCreate = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Setor do Cliente\",\"capacity\":100,\"price\":50.00}"
+        );
+        assertThat(customerCreate.statusCode()).isEqualTo(403);
+        assertThat(customerCreate.body()).contains("\"code\":\"AUTH_FORBIDDEN\"");
+
+        // Sem CSRF na criação -> 403 CSRF
+        HttpResponse<String> noCsrf = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession,
+                "",
+                "{\"name\":\"Setor Sem CSRF\",\"capacity\":100,\"price\":50.00}"
+        );
+        assertThat(noCsrf.statusCode()).isEqualTo(403);
+        assertThat(noCsrf.body()).contains("\"code\":\"AUTH_CSRF_INVALID\"");
+
+        // Evento inexistente -> 404
+        HttpResponse<String> notFoundEvent = post(
+                "/api/v1/events/" + UUID.randomUUID() + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Setor\",\"capacity\":100,\"price\":50.00}"
+        );
+        assertThat(notFoundEvent.statusCode()).isEqualTo(404);
+        assertThat(notFoundEvent.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
+    }
+
+    private String extractJsonField(String json, String field) {
+        String marker = "\"" + field + "\":\"";
+        int start = json.indexOf(marker);
+        if (start < 0) {
+            throw new IllegalArgumentException("Field " + field + " not found in: " + json);
+        }
+        int valueStart = start + marker.length();
+        int end = json.indexOf("\"", valueStart);
+        return json.substring(valueStart, end);
+    }
+
     private String loginSession(String email) throws Exception {
         String csrf = bootstrapCsrf();
         HttpResponse<String> login = post(

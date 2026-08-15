@@ -5,6 +5,7 @@ import br.com.elitedevticket.auth.http.AuthErrorCode;
 import br.com.elitedevticket.events.domain.EventConflictException;
 import br.com.elitedevticket.events.domain.EventForbiddenException;
 import br.com.elitedevticket.events.domain.EventNotFoundException;
+import br.com.elitedevticket.events.domain.TicketSectorNotFoundException;
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.core.Ordered;
@@ -38,6 +39,18 @@ public class EventsExceptionHandler {
 
     @ExceptionHandler(EventNotFoundException.class)
     public ResponseEntity<EventApiErrorResponse> handleNotFound(EventNotFoundException ex) {
+        EventApiErrorResponse body = new EventApiErrorResponse(
+                EventErrorCode.EVENT_NOT_FOUND,
+                ex.getMessage(),
+                null,
+                UUID.randomUUID().toString(),
+                clock.instant()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(TicketSectorNotFoundException.class)
+    public ResponseEntity<EventApiErrorResponse> handleTicketSectorNotFound(TicketSectorNotFoundException ex) {
         EventApiErrorResponse body = new EventApiErrorResponse(
                 EventErrorCode.EVENT_NOT_FOUND,
                 ex.getMessage(),
