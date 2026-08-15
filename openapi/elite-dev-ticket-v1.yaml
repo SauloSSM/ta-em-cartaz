@@ -132,6 +132,24 @@ paths:
           $ref: '#/components/responses/AuthUnauthenticated'
         '403':
           $ref: '#/components/responses/AuthForbidden'
+  /api/v1/events/mine:
+    get:
+      operationId: listMyEvents
+      summary: Lista os eventos do Organizer autenticado
+      description: Requer sessão autenticada com papel ORGANIZER. Retorna a lista de todos os eventos (DRAFT e PUBLISHED) pertencentes ao organizador.
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Lista de eventos do organizador.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
   /api/v1/events/{id}:
     get:
       operationId: getEvent
@@ -160,6 +178,70 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
         '404':
           $ref: '#/components/responses/EventNotFound'
+    put:
+      operationId: updateDraftEvent
+      summary: Atualiza os dados de um evento em rascunho (DRAFT)
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Permite alterar campos de um evento em DRAFT pertencente ao organizador.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDraftEventRequest'
+      responses:
+        '200':
+          description: Evento atualizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
+        '409':
+          $ref: '#/components/responses/EventConflict'
+    delete:
+      operationId: deleteDraftEvent
+      summary: Exclui um evento em rascunho (DRAFT)
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Exclui um evento DRAFT pertencente ao organizador. Eventos PUBLISHED não podem ser excluídos.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+      responses:
+        '204':
+          description: Evento em rascunho excluído com sucesso.
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
+        '409':
+          $ref: '#/components/responses/EventConflict'
 components:
   securitySchemes:
     SessionCookie:
@@ -355,9 +437,36 @@ components:
         updatedAt:
           type: string
           format: date-time
+    EventListResponse:
+      type: object
+      additionalProperties: false
+      required: [events]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventResponse'
+    UpdateDraftEventRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        category:
+          type: string
+        venue:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
     EventErrorCode:
       type: string
-      enum: [EVENT_NOT_FOUND, EVENT_FORBIDDEN, EVENT_INVALID_REQUEST]
+      enum: [EVENT_NOT_FOUND, EVENT_FORBIDDEN, EVENT_INVALID_REQUEST, EVENT_CANNOT_BE_DELETED, EVENT_CANNOT_BE_MODIFIED]
     EventApiError:
       type: object
       additionalProperties: false
@@ -420,6 +529,12 @@ components:
             $ref: '#/components/schemas/CatalogApiError'
     EventNotFound:
       description: Evento não encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EventApiError'
+    EventConflict:
+      description: Operação conflitante com o estado atual do evento (ex. tentar excluir ou alterar evento publicado).
       content:
         application/json:
           schema:

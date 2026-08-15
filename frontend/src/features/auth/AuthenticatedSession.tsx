@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SessionUser } from '../../app/api/authApi';
 import { TicketmasterSearch } from '../catalog';
-import { DraftEventEditor, type EventResponse } from '../events';
+import { DraftEventEditor, MyEventsList, type EventResponse } from '../events';
 
 type AuthenticatedSessionProps = {
   user: SessionUser;
@@ -10,6 +10,8 @@ type AuthenticatedSessionProps = {
   onLogout: () => Promise<void>;
 };
 
+type OrganizerView = 'my-events' | 'catalog' | 'editor';
+
 const roleLabels = {
   ORGANIZER: 'Organizador',
   CUSTOMER: 'Cliente',
@@ -17,7 +19,8 @@ const roleLabels = {
 } as const;
 
 export function AuthenticatedSession({ user, busy, error, onLogout }: AuthenticatedSessionProps) {
-  const [activeDraft, setActiveDraft] = useState<EventResponse | null>(null);
+  const [organizerView, setOrganizerView] = useState<OrganizerView>('my-events');
+  const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
 
   return (
     <div className="session-view">
@@ -40,14 +43,42 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
       </section>
 
       {user.role === 'ORGANIZER' ? (
-        activeDraft !== null ? (
+        organizerView === 'editor' && selectedEvent !== null ? (
           <DraftEventEditor
-            event={activeDraft}
-            onBack={() => setActiveDraft(null)}
+            event={selectedEvent}
+            onBack={() => {
+              setSelectedEvent(null);
+              setOrganizerView('my-events');
+            }}
+            onEventUpdated={(updated) => setSelectedEvent(updated)}
+            onEventDeleted={() => {
+              setSelectedEvent(null);
+              setOrganizerView('my-events');
+            }}
           />
+        ) : organizerView === 'catalog' ? (
+          <div className="catalog-search-wrapper">
+            <button
+              type="button"
+              className="catalog-back-to-list-btn"
+              onClick={() => setOrganizerView('my-events')}
+            >
+              ← Voltar para Meus Eventos
+            </button>
+            <TicketmasterSearch
+              onOpenDraft={(draft) => {
+                setSelectedEvent(draft);
+                setOrganizerView('editor');
+              }}
+            />
+          </div>
         ) : (
-          <TicketmasterSearch
-            onOpenDraft={(draft) => setActiveDraft(draft)}
+          <MyEventsList
+            onNewEvent={() => setOrganizerView('catalog')}
+            onSelectEvent={(event) => {
+              setSelectedEvent(event);
+              setOrganizerView('editor');
+            }}
           />
         )
       ) : null}

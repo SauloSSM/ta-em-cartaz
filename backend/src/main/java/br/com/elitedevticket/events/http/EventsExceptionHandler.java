@@ -2,6 +2,7 @@ package br.com.elitedevticket.events.http;
 
 import br.com.elitedevticket.auth.http.ApiErrorResponse;
 import br.com.elitedevticket.auth.http.AuthErrorCode;
+import br.com.elitedevticket.events.domain.EventConflictException;
 import br.com.elitedevticket.events.domain.EventForbiddenException;
 import br.com.elitedevticket.events.domain.EventNotFoundException;
 import java.time.Clock;
@@ -57,5 +58,23 @@ public class EventsExceptionHandler {
                 clock.instant()
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
+    @ExceptionHandler(EventConflictException.class)
+    public ResponseEntity<EventApiErrorResponse> handleConflict(EventConflictException ex) {
+        EventErrorCode code;
+        try {
+            code = EventErrorCode.valueOf(ex.getErrorCode());
+        } catch (Exception ignored) {
+            code = EventErrorCode.EVENT_INVALID_REQUEST;
+        }
+        EventApiErrorResponse body = new EventApiErrorResponse(
+                code,
+                ex.getMessage(),
+                null,
+                UUID.randomUUID().toString(),
+                clock.instant()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 }

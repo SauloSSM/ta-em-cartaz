@@ -8,6 +8,15 @@ export type CreateDraftEventRequest = {
   category?: string;
 };
 
+export type UpdateDraftEventRequest = {
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  category?: string;
+  venue?: string;
+  startsAt?: string;
+};
+
 export type EventResponse = {
   id: string;
   organizerId: string;
@@ -23,10 +32,16 @@ export type EventResponse = {
   updatedAt: string;
 };
 
+export type EventListResponse = {
+  events: EventResponse[];
+};
+
 export type EventErrorCode =
   | 'EVENT_NOT_FOUND'
   | 'EVENT_FORBIDDEN'
-  | 'EVENT_INVALID_REQUEST';
+  | 'EVENT_INVALID_REQUEST'
+  | 'EVENT_CANNOT_BE_DELETED'
+  | 'EVENT_CANNOT_BE_MODIFIED';
 
 export type EventApiError = {
   code: EventErrorCode;
@@ -83,6 +98,16 @@ export async function createDraftEvent(
   return payload;
 }
 
+export async function listMyEvents(): Promise<EventListResponse> {
+  const payload = await requestJson('/api/v1/events/mine', {
+    method: 'GET',
+  });
+  if (!isEventListResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
+}
+
 export async function getEvent(id: string): Promise<EventResponse> {
   const payload = await requestJson(`/api/v1/events/${encodeURIComponent(id)}`, {
     method: 'GET',
@@ -91,6 +116,43 @@ export async function getEvent(id: string): Promise<EventResponse> {
     throw invalidResponse();
   }
   return payload;
+}
+
+export async function updateDraftEvent(
+  id: string,
+  data: UpdateDraftEventRequest,
+): Promise<EventResponse> {
+  const request: UpdateDraftEventRequest = {
+    title: data.title,
+    ...(data.description === undefined ? {} : { description: data.description }),
+    ...(data.imageUrl === undefined ? {} : { imageUrl: data.imageUrl }),
+    ...(data.category === undefined ? {} : { category: data.category }),
+    ...(data.venue === undefined ? {} : { venue: data.venue }),
+    ...(data.startsAt === undefined ? {} : { startsAt: data.startsAt }),
+  };
+  const payload = await requestJson(`/api/v1/events/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: csrfHeaders(),
+    body: JSON.stringify(request),
+  });
+  if (!isEventResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
+}
+
+export async function deleteDraftEvent(id: string): Promise<void> {
+  const response = await fetch(`/api/v1/events/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json',
+      ...csrfHeaders(),
+    },
+  });
+  if (response.status !== 204) {
+    throw await toApiError(response);
+  }
 }
 
 async function requestJson(path: string, init: RequestInit): Promise<unknown> {
@@ -144,6 +206,9 @@ async function toApiError(response: Response): Promise<EventClientError> {
   if (response.status === 404) {
     return new EventClientError('EVENT_NOT_FOUND', 'Evento não encontrado.');
   }
+  if (response.status === 409) {
+    return new EventClientError('EVENT_CANNOT_BE_MODIFIED', 'Operação conflitante com o estado do evento.');
+  }
   return new EventClientError('EVENT_INVALID_REQUEST', 'Erro ao processar evento.');
 }
 
@@ -182,11 +247,26 @@ function isEventResponse(value: unknown): value is EventResponse {
     && (value.startsAt === undefined || typeof value.startsAt === 'string');
 }
 
+function isEventListResponse(value: unknown): value is EventListResponse {
+  if (!isRecord(value) || !hasExactKeys(value, ['events'])) {
+    return false;
+  }
+  return Array.isArray(value.events) && value.events.every(isEventResponse);
+}
+
 function isEventApiError(value: unknown): value is EventApiError {
   if (!isRecord(value) || !hasOnlyKeys(value, ['code', 'message', 'fieldErrors', 'traceId', 'timestamp'])) {
     return false;
   }
-  return (value.code === 'EVENT_NOT_FOUND' || value.code === 'EVENT_FORBIDDEN' || value.code === 'EVENT_INVALID_REQUEST')
+  const validCodes = [
+    'EVENT_NOT_FOUND',
+    'EVENT_FORBIDDEN',
+    'EVENT_INVALID_REQUEST',
+    'EVENT_CANNOT_BE_DELETED',
+    'EVENT_CANNOT_BE_MODIFIED',
+  ];
+  return typeof value.code === 'string'
+    && validCodes.includes(value.code)
     && typeof value.message === 'string'
     && typeof value.traceId === 'string'
     && typeof value.timestamp === 'string'

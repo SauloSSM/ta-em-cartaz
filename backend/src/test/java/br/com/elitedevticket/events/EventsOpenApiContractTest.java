@@ -7,8 +7,10 @@ import br.com.elitedevticket.events.domain.EventStatus;
 import br.com.elitedevticket.events.http.CreateDraftEventRequest;
 import br.com.elitedevticket.events.http.EventApiErrorResponse;
 import br.com.elitedevticket.events.http.EventErrorCode;
+import br.com.elitedevticket.events.http.EventListResponse;
 import br.com.elitedevticket.events.http.EventResponse;
 import br.com.elitedevticket.events.http.EventsController;
+import br.com.elitedevticket.events.http.UpdateDraftEventRequest;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
@@ -34,7 +36,9 @@ class EventsOpenApiContractTest {
     private static final Map<String, Class<?>> REFERENCED_TYPES = Map.of(
             "EventStatus", EventStatus.class,
             "CreateDraftEventRequest", CreateDraftEventRequest.class,
+            "UpdateDraftEventRequest", UpdateDraftEventRequest.class,
             "EventResponse", EventResponse.class,
+            "EventListResponse", EventListResponse.class,
             "EventErrorCode", EventErrorCode.class,
             "EventApiError", EventApiErrorResponse.class,
             "FieldError", FieldErrorResponse.class);
@@ -55,6 +59,15 @@ class EventsOpenApiContractTest {
         assertResponseReference(createDraft, "401", "AuthUnauthenticated");
         assertResponseReference(createDraft, "403", "AuthForbidden");
 
+        // GET /api/v1/events/mine
+        Map<String, Object> listMine = assertOperation(
+                paths, "/api/v1/events/mine", "get", "listMyEvents", Set.of("200", "401", "403"));
+        assertThat(listMine).doesNotContainKey("requestBody");
+        assertSecurity(listMine, Set.of(Set.of("SessionCookie")));
+        assertResponseSchema(listMine, "200", "EventListResponse");
+        assertResponseReference(listMine, "401", "AuthUnauthenticated");
+        assertResponseReference(listMine, "403", "AuthForbidden");
+
         // GET /api/v1/events/{id}
         Map<String, Object> getEvent = assertOperation(
                 paths, "/api/v1/events/{id}", "get", "getEvent", Set.of("200", "401", "403", "404"));
@@ -65,17 +78,43 @@ class EventsOpenApiContractTest {
         assertResponseReference(getEvent, "403", "AuthForbidden");
         assertResponseReference(getEvent, "404", "EventNotFound");
 
+        // PUT /api/v1/events/{id}
+        Map<String, Object> updateDraft = assertOperation(
+                paths, "/api/v1/events/{id}", "put", "updateDraftEvent", Set.of("200", "400", "401", "403", "404", "409"));
+        assertRequestSchema(updateDraft, "UpdateDraftEventRequest");
+        assertSecurity(updateDraft, Set.of(Set.of("CsrfCookie", "CsrfHeader")));
+        assertResponseSchema(updateDraft, "200", "EventResponse");
+        assertResponseReference(updateDraft, "400", "AuthInvalidRequest");
+        assertResponseReference(updateDraft, "401", "AuthUnauthenticated");
+        assertResponseReference(updateDraft, "403", "AuthForbidden");
+        assertResponseReference(updateDraft, "404", "EventNotFound");
+        assertResponseReference(updateDraft, "409", "EventConflict");
+
+        // DELETE /api/v1/events/{id}
+        Map<String, Object> deleteDraft = assertOperation(
+                paths, "/api/v1/events/{id}", "delete", "deleteDraftEvent", Set.of("204", "401", "403", "404", "409"));
+        assertThat(deleteDraft).doesNotContainKey("requestBody");
+        assertSecurity(deleteDraft, Set.of(Set.of("CsrfCookie", "CsrfHeader")));
+        assertResponseReference(deleteDraft, "401", "AuthUnauthenticated");
+        assertResponseReference(deleteDraft, "403", "AuthForbidden");
+        assertResponseReference(deleteDraft, "404", "EventNotFound");
+        assertResponseReference(deleteDraft, "409", "EventConflict");
+
         Map<String, Object> components = map(contract.get("components"));
         Map<String, Object> schemas = map(components.get("schemas"));
         assertEnumSchema(schemas, "EventStatus", EventStatus.class);
         assertRecordSchema(schemas, "CreateDraftEventRequest", CreateDraftEventRequest.class);
+        assertRecordSchema(schemas, "UpdateDraftEventRequest", UpdateDraftEventRequest.class);
         assertRecordSchema(schemas, "EventResponse", EventResponse.class);
+        assertRecordSchema(schemas, "EventListResponse", EventListResponse.class);
         assertEnumSchema(schemas, "EventErrorCode", EventErrorCode.class);
         assertRecordSchema(schemas, "EventApiError", EventApiErrorResponse.class);
 
         Map<String, Object> responses = map(components.get("responses"));
         assertThat(responses).containsKey("EventNotFound");
         assertResponseSchemaReference(responses, "EventNotFound", "EventApiError");
+        assertThat(responses).containsKey("EventConflict");
+        assertResponseSchemaReference(responses, "EventConflict", "EventApiError");
     }
 
     private void assertControllerMappings() {
@@ -98,7 +137,10 @@ class EventsOpenApiContractTest {
 
         assertThat(actual).containsExactlyInAnyOrder(
                 "POST /drafts -> createDraftEvent",
-                "GET /{id} -> getEvent"
+                "GET /mine -> listMyEvents",
+                "GET /{id} -> getEvent",
+                "PUT /{id} -> updateDraftEvent",
+                "DELETE /{id} -> deleteDraftEvent"
         );
     }
 
@@ -119,7 +161,6 @@ class EventsOpenApiContractTest {
             String operationId,
             Set<String> expectedResponses) {
         Map<String, Object> pathItem = map(paths.get(path));
-        assertThat(pathItem).containsOnlyKeys(method);
         Map<String, Object> operation = map(pathItem.get(method));
         assertThat(operation).containsEntry("operationId", operationId);
         assertThat(map(operation.get("responses")).keySet())

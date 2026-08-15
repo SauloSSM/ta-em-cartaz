@@ -6,4 +6,8 @@ public class EventNotFoundException extends RuntimeException {
     public EventNotFoundException(UUID eventId) {
         super("Evento não encontrado.");
     }
+
+    public EventNotFoundException() {
+        super("Evento não encontrado.");
+    }
 }

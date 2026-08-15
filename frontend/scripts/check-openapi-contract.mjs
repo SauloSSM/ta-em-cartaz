@@ -261,7 +261,7 @@ function assertClientOperation(operation, functions, responses) {
   if (declaration === undefined) {
     fail(`operationId ${operation.operationId} não possui função cliente correspondente`);
   }
-  const callName = functionName === 'logout' ? 'fetch' : 'requestJson';
+  const callName = (functionName === 'logout' || functionName === 'deleteDraftEvent') ? 'fetch' : 'requestJson';
   const call = findCall(declaration, callName);
   const pathArgument = call?.arguments[0];
   const initArgument = call?.arguments[1];
@@ -327,7 +327,7 @@ function assertSecuritySemantics(operations, schemes) {
     fail('cookies/header de autenticação devem usar security scheme apiKey');
   }
 
-  for (const operation of operations.filter((candidate) => candidate.method === 'POST')) {
+  for (const operation of operations.filter((candidate) => candidate.method === 'POST' || candidate.method === 'PUT' || candidate.method === 'DELETE')) {
     const expected = new Set([csrfCookie.name, csrfHeader.name]);
     if (operation.security.length !== 1 || !sameSet(operation.security[0], expected)) {
       fail(`${operation.path} deve exigir juntos cookie e header CSRF`);

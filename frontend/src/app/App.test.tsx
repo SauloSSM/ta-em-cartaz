@@ -31,10 +31,10 @@ describe('App session flow', () => {
       'organizer@demo.elitedevticket.local',
     );
     expect(screen.getByText('Organizador').textContent).toBe('Organizador');
-    expect(screen.getByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Meus Eventos' })).toBeDefined();
   });
 
-  it('não exibe busca do catálogo para papéis diferentes de ORGANIZER', async () => {
+  it('não exibe gestão de eventos para papéis diferentes de ORGANIZER', async () => {
     globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({
       authenticated: true,
       user: {
@@ -48,7 +48,7 @@ describe('App session flow', () => {
 
     await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
     expect(screen.getByText('Cliente').textContent).toBe('Cliente');
-    expect(screen.queryByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Meus Eventos' })).toBeNull();
   });
 
   it('preserva o e-mail e move o foco para o erro genérico de credenciais', async () => {
@@ -298,7 +298,7 @@ describe('App session flow', () => {
     }
   });
 
-  it('organizador pode pesquisar no catálogo, criar rascunho e visualizá-lo no editor de eventos (Superfície S11)', async () => {
+  it('organizador visualiza Meus Eventos, busca no catálogo, cria rascunho, edita e navega entre superfícies', async () => {
     document.cookie = 'XSRF-TOKEN=test-csrf; Path=/';
     globalThis.fetch = vi.fn<typeof fetch>()
       // 1. Initial session check
@@ -310,7 +310,9 @@ describe('App session flow', () => {
           role: 'ORGANIZER',
         },
       }))
-      // 2. Search catalog
+      // 2. Load my events (initial empty list)
+      .mockResolvedValueOnce(jsonResponse({ events: [] }))
+      // 3. Search catalog
       .mockResolvedValueOnce(jsonResponse({
         events: [
           {
@@ -322,7 +324,7 @@ describe('App session flow', () => {
           },
         ],
       }))
-      // 3. Create draft
+      // 4. Create draft
       .mockResolvedValueOnce(jsonResponse(
         {
           id: '99999999-9999-9999-9999-999999999999',
@@ -337,43 +339,80 @@ describe('App session flow', () => {
           updatedAt: '2026-08-15T12:00:00Z',
         },
         201,
-      ));
+      ))
+      // 5. Update draft
+      .mockResolvedValueOnce(jsonResponse(
+        {
+          id: '99999999-9999-9999-9999-999999999999',
+          organizerId: '00000000-0000-0000-0000-000000000001',
+          externalId: 'tm-rock',
+          title: 'Rock in Rio 2026 - Edição Atualizada',
+          description: 'Festival de música',
+          imageUrl: 'https://images.example.com/rock.jpg',
+          category: 'Rock',
+          status: 'DRAFT',
+          createdAt: '2026-08-15T12:00:00Z',
+          updatedAt: '2026-08-15T12:30:00Z',
+        },
+        200,
+      ))
+      // 6. Reload my events on returning
+      .mockResolvedValueOnce(jsonResponse({
+        events: [
+          {
+            id: '99999999-9999-9999-9999-999999999999',
+            organizerId: '00000000-0000-0000-0000-000000000001',
+            title: 'Rock in Rio 2026 - Edição Atualizada',
+            category: 'Rock',
+            status: 'DRAFT',
+            createdAt: '2026-08-15T12:00:00Z',
+            updatedAt: '2026-08-15T12:30:00Z',
+          },
+        ],
+      }));
 
     const user = userEvent.setup();
     render(<App />);
 
-    // Waits for organizer session to load
-    await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' });
+    // 1. Surface S09: Meus Eventos loads empty
+    await screen.findByRole('heading', { level: 2, name: 'Meus Eventos' });
+    expect(await screen.findByText('Você ainda não possui eventos cadastrados.')).toBeDefined();
 
-    // Types keyword and searches
+    // 2. Click "+ Novo evento do catálogo" -> navigates to S10
+    await user.click(screen.getByRole('button', { name: '+ Novo evento do catálogo' }));
+
+    // 3. Surface S10: Search catalog
+    await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' });
     const searchInput = screen.getByLabelText('Palavra-chave do evento');
     await user.type(searchInput, 'Rock');
     await user.click(screen.getByRole('button', { name: 'Buscar referências' }));
 
-    // Finds search result card
+    // 4. Click "Usar como referência" to create draft
     const selectBtn = await screen.findByRole('button', { name: 'Usar Rock in Rio 2026 como referência' });
-
-    // Clicks "Usar como referência" to create draft
     await user.click(selectBtn);
 
-    // Verifies success feedback banner
+    // 5. Click "Abrir rascunho no editor →" -> navigates to S11
     const openDraftBtn = await screen.findByRole('button', { name: 'Abrir rascunho no editor →' });
-    expect(openDraftBtn).toBeDefined();
-
-    // Clicks "Abrir rascunho no editor" to navigate to Surface S11
     await user.click(openDraftBtn);
 
-    // Surface S11 Editor is rendered
-    expect(await screen.findByRole('heading', { level: 2, name: 'Editor de Evento' })).toBeDefined();
+    // 6. Surface S11: Editor
+    await screen.findByRole('heading', { level: 2, name: 'Editor de Evento' });
     expect(screen.getByLabelText('Status do evento: DRAFT')).toBeDefined();
-    expect(screen.getByText('99999999-9999-9999-9999-999999999999')).toBeDefined();
-    expect(screen.getByText('tm-rock')).toBeDefined();
 
-    // Clicks back to return to search
-    const backBtn = screen.getByRole('button', { name: 'Voltar para a pesquisa de catálogo' });
+    // 7. Edit title and click "Salvar alterações"
+    const titleInput = screen.getByLabelText(/Título do Evento/);
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Rock in Rio 2026 - Edição Atualizada');
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(await screen.findByText('Alterações salvas com sucesso!')).toBeDefined();
+
+    // 8. Click "← Voltar para Meus Eventos" -> navigates back to S09
+    const backBtn = screen.getByRole('button', { name: 'Voltar para a lista de eventos' });
     await user.click(backBtn);
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' })).toBeDefined();
+    // 9. Surface S09 is rendered
+    expect(await screen.findByRole('heading', { level: 2, name: 'Meus Eventos' })).toBeDefined();
   });
 });
 

@@ -142,6 +142,146 @@ class EventsEndpointsIntegrationTest {
     }
 
     @Test
+    void listMyEventsReturnsOnlyOrganizerEvents() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // Customer cannot list organizer events
+        HttpResponse<String> customerListResponse = get("/api/v1/events/mine", "EDT_SESSION=" + customerSession);
+        assertThat(customerListResponse.statusCode()).isEqualTo(403);
+
+        // Organizer lists events
+        post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Meu Evento Para Listagem\"}"
+        );
+
+        HttpResponse<String> listResponse = get("/api/v1/events/mine", "EDT_SESSION=" + organizerSession);
+        assertThat(listResponse.statusCode()).isEqualTo(200);
+        assertThat(listResponse.body())
+                .contains("\"events\":")
+                .contains("\"title\":\"Meu Evento Para Listagem\"");
+    }
+
+    @Test
+    void updateDraftEventUpdatesFieldsAndValidatesState() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // Create draft
+        HttpResponse<String> createResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Título Inicial\"}"
+        );
+        String location = createResponse.headers().firstValue("Location").get();
+
+        // Update without CSRF fails 403
+        HttpResponse<String> noCsrfUpdate = put(
+                location,
+                "EDT_SESSION=" + organizerSession,
+                "",
+                "{\"title\":\"Sem CSRF\"}"
+        );
+        assertThat(noCsrfUpdate.statusCode()).isEqualTo(403);
+
+        // Customer cannot update draft (403)
+        HttpResponse<String> customerUpdate = put(
+                location,
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Tentativa de Cliente\"}"
+        );
+        assertThat(customerUpdate.statusCode()).isEqualTo(403);
+
+        // Blank title fails 400
+        HttpResponse<String> blankTitleUpdate = put(
+                location,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"   \"}"
+        );
+        assertThat(blankTitleUpdate.statusCode()).isEqualTo(400);
+        assertThat(blankTitleUpdate.body()).contains("\"code\":\"AUTH_INVALID_REQUEST\"");
+
+        // Successful update 200
+        String updatePayload = """
+                {
+                  "title": "Título Atualizado",
+                  "description": "Nova descrição",
+                  "imageUrl": "https://images.example.com/updated.jpg",
+                  "category": "Jazz",
+                  "venue": "Teatro Central",
+                  "startsAt": "2026-10-01T19:30:00Z"
+                }
+                """;
+        HttpResponse<String> successUpdate = put(
+                location,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                updatePayload
+        );
+        assertThat(successUpdate.statusCode()).isEqualTo(200);
+        assertThat(successUpdate.body())
+                .contains("\"title\":\"Título Atualizado\"")
+                .contains("\"description\":\"Nova descrição\"")
+                .contains("\"imageUrl\":\"https://images.example.com/updated.jpg\"")
+                .contains("\"category\":\"Jazz\"")
+                .contains("\"venue\":\"Teatro Central\"")
+                .contains("\"startsAt\":\"2026-10-01T19:30:00Z\"");
+    }
+
+    @Test
+    void deleteDraftEventDeletesEventAndPreventsUnauthorizedAccess() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // Create draft
+        HttpResponse<String> createResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Evento Para Exclusão\"}"
+        );
+        String location = createResponse.headers().firstValue("Location").get();
+
+        // Customer cannot delete (403)
+        HttpResponse<String> customerDelete = delete(
+                location,
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf
+        );
+        assertThat(customerDelete.statusCode()).isEqualTo(403);
+
+        // Delete without CSRF fails (403)
+        HttpResponse<String> noCsrfDelete = delete(
+                location,
+                "EDT_SESSION=" + organizerSession,
+                ""
+        );
+        assertThat(noCsrfDelete.statusCode()).isEqualTo(403);
+
+        // Successful delete (204)
+        HttpResponse<String> successDelete = delete(
+                location,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf
+        );
+        assertThat(successDelete.statusCode()).isEqualTo(204);
+
+        // Subsequent GET returns 404
+        HttpResponse<String> getDeleted = get(location, "EDT_SESSION=" + organizerSession);
+        assertThat(getDeleted.statusCode()).isEqualTo(404);
+        assertThat(getDeleted.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
+    }
+
+    @Test
     void createDraftWithBlankTitleReturns400BadRequest() throws Exception {
         String organizerSession = loginSession("organizer@demo.elitedevticket.local");
         String csrf = bootstrapCsrf();
@@ -197,6 +337,31 @@ class EventsEndpointsIntegrationTest {
         HttpRequest.Builder request = HttpRequest.newBuilder(uri(path))
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .header("Content-Type", "application/json");
+        if (!cookie.isBlank()) {
+            request.header("Cookie", cookie);
+        }
+        if (!csrf.isBlank()) {
+            request.header("X-XSRF-TOKEN", csrf);
+        }
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> put(String path, String cookie, String csrf, String body) throws Exception {
+        HttpRequest.Builder request = HttpRequest.newBuilder(uri(path))
+                .PUT(HttpRequest.BodyPublishers.ofString(body))
+                .header("Content-Type", "application/json");
+        if (!cookie.isBlank()) {
+            request.header("Cookie", cookie);
+        }
+        if (!csrf.isBlank()) {
+            request.header("X-XSRF-TOKEN", csrf);
+        }
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> delete(String path, String cookie, String csrf) throws Exception {
+        HttpRequest.Builder request = HttpRequest.newBuilder(uri(path))
+                .DELETE();
         if (!cookie.isBlank()) {
             request.header("Cookie", cookie);
         }

@@ -33,4 +33,37 @@ public record Event(
     public boolean isOwnedBy(UUID userId) {
         return this.organizerId.equals(userId);
     }
+
+    public Event withUpdatedDraftDetails(
+            String title,
+            String description,
+            String imageUrl,
+            String category,
+            String venue,
+            Instant startsAt,
+            Instant updatedAt) {
+        if (this.status != EventStatus.DRAFT) {
+            throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Apenas eventos em rascunho podem ser modificados.");
+        }
+        return new Event(
+                this.id,
+                this.organizerId,
+                this.externalId,
+                title,
+                description,
+                imageUrl,
+                category,
+                this.status,
+                venue,
+                startsAt,
+                this.createdAt,
+                updatedAt
+        );
+    }
+
+    public void assertCanBeDeleted() {
+        if (this.status != EventStatus.DRAFT) {
+            throw new EventConflictException("EVENT_CANNOT_BE_DELETED", "Eventos publicados não podem ser excluídos.");
+        }
+    }
 }

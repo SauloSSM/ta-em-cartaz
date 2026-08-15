@@ -2,6 +2,7 @@ package br.com.elitedevticket.events.adapters.persistence;
 
 import br.com.elitedevticket.events.application.EventRepository;
 import br.com.elitedevticket.events.domain.Event;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -25,5 +26,18 @@ class JpaEventRepository implements EventRepository {
     @Override
     public Optional<Event> findById(UUID id) {
         return repository.findById(id).map(EventEntity::toDomain);
+    }
+
+    @Override
+    public List<Event> findByOrganizerId(UUID organizerId) {
+        return repository.findByOrganizerIdOrderByCreatedAtDesc(organizerId)
+                .stream()
+                .map(EventEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        repository.deleteById(id);
     }
 }

@@ -2,16 +2,22 @@ package br.com.elitedevticket.events.http;
 
 import br.com.elitedevticket.auth.domain.SessionUser;
 import br.com.elitedevticket.events.application.CreateDraftEventUseCase;
+import br.com.elitedevticket.events.application.DeleteDraftEventUseCase;
 import br.com.elitedevticket.events.application.GetEventUseCase;
+import br.com.elitedevticket.events.application.ListMyEventsUseCase;
+import br.com.elitedevticket.events.application.UpdateDraftEventUseCase;
 import br.com.elitedevticket.events.domain.Event;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,10 +28,22 @@ public class EventsController {
 
     private final CreateDraftEventUseCase createDraftEventUseCase;
     private final GetEventUseCase getEventUseCase;
+    private final ListMyEventsUseCase listMyEventsUseCase;
+    private final UpdateDraftEventUseCase updateDraftEventUseCase;
+    private final DeleteDraftEventUseCase deleteDraftEventUseCase;
 
-    public EventsController(CreateDraftEventUseCase createDraftEventUseCase, GetEventUseCase getEventUseCase) {
+    public EventsController(
+            CreateDraftEventUseCase createDraftEventUseCase,
+            GetEventUseCase getEventUseCase,
+            ListMyEventsUseCase listMyEventsUseCase,
+            UpdateDraftEventUseCase updateDraftEventUseCase,
+            DeleteDraftEventUseCase deleteDraftEventUseCase
+    ) {
         this.createDraftEventUseCase = createDraftEventUseCase;
         this.getEventUseCase = getEventUseCase;
+        this.listMyEventsUseCase = listMyEventsUseCase;
+        this.updateDraftEventUseCase = updateDraftEventUseCase;
+        this.deleteDraftEventUseCase = deleteDraftEventUseCase;
     }
 
     @PostMapping("/drafts")
@@ -49,6 +67,18 @@ public class EventsController {
         return ResponseEntity.created(location).body(response);
     }
 
+    @GetMapping("/mine")
+    @PreAuthorize("hasRole('ORGANIZER')")
+    public ResponseEntity<EventListResponse> listMyEvents(
+            @AuthenticationPrincipal SessionUser sessionUser
+    ) {
+        List<Event> events = listMyEventsUseCase.execute(sessionUser.id());
+        List<EventResponse> responseList = events.stream()
+                .map(EventResponse::fromDomain)
+                .toList();
+        return ResponseEntity.ok(new EventListResponse(responseList));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EventResponse> getEvent(
@@ -60,5 +90,36 @@ public class EventsController {
 
         Event event = getEventUseCase.getEvent(id, userId, isOrganizer);
         return ResponseEntity.ok(EventResponse.fromDomain(event));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ORGANIZER')")
+    public ResponseEntity<EventResponse> updateDraftEvent(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal SessionUser sessionUser,
+            @RequestBody UpdateDraftEventRequest request
+    ) {
+        request.validate();
+        Event updated = updateDraftEventUseCase.execute(
+                id,
+                sessionUser.id(),
+                request.title(),
+                request.description(),
+                request.imageUrl(),
+                request.category(),
+                request.venue(),
+                request.startsAt()
+        );
+        return ResponseEntity.ok(EventResponse.fromDomain(updated));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ORGANIZER')")
+    public ResponseEntity<Void> deleteDraftEvent(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal SessionUser sessionUser
+    ) {
+        deleteDraftEventUseCase.execute(id, sessionUser.id());
+        return ResponseEntity.noContent().build();
     }
 }
