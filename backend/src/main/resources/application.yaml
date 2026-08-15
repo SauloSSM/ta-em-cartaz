@@ -17,6 +17,8 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+server:
+  port: ${PORT:8080}
 auth:
   bcrypt-cost: ${AUTH_BCRYPT_COST:10}
   jwt:
