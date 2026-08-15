@@ -22,14 +22,22 @@ public final class AuthHttpErrorWriter {
     }
 
     public void csrf(HttpServletResponse response) throws IOException {
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        write(response, HttpServletResponse.SC_FORBIDDEN, AuthErrorCode.AUTH_CSRF_INVALID, "Token CSRF inválido.");
+    }
+
+    public void unauthenticated(HttpServletResponse response) throws IOException {
+        write(response, HttpServletResponse.SC_UNAUTHORIZED, AuthErrorCode.AUTH_UNAUTHENTICATED, "Autenticação é obrigatória.");
+    }
+
+    public void forbidden(HttpServletResponse response) throws IOException {
+        write(response, HttpServletResponse.SC_FORBIDDEN, AuthErrorCode.AUTH_FORBIDDEN, "Acesso não permitido para esta operação.");
+    }
+
+    private void write(HttpServletResponse response, int status, AuthErrorCode code, String message) throws IOException {
+        response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         objectMapper.writeValue(response.getOutputStream(), new ApiErrorResponse(
-                AuthErrorCode.AUTH_CSRF_INVALID,
-                "Token CSRF inválido.",
-                null,
-                UUID.randomUUID().toString(),
-                clock.instant()));
+                code, message, null, UUID.randomUUID().toString(), clock.instant()));
     }
 }

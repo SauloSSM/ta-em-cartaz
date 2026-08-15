@@ -68,6 +68,21 @@ describe('authApi', () => {
 
     await expect(logout()).rejects.toMatchObject({ code: 'AUTH_UNAVAILABLE' });
   });
+
+  it('preserva cÃ³digos seguros dos envelopes de RBAC', async () => {
+    document.cookie = 'XSRF-TOKEN=csrf; Path=/';
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({
+      code: 'AUTH_FORBIDDEN',
+      message: 'Acesso negado.',
+      traceId: '00000000-0000-0000-0000-000000000001',
+      timestamp: '2026-08-15T15:00:00Z',
+    }, 403));
+
+    await expect(login('customer@example.com', 'secret')).rejects.toMatchObject({
+      code: 'AUTH_FORBIDDEN',
+      message: 'Acesso negado.',
+    });
+  });
 });
 
 function jsonResponse(body: unknown, status = 200) {

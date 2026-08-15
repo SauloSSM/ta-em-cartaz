@@ -111,7 +111,7 @@ components:
       enum: [ORGANIZER, CUSTOMER, GATE]
     AuthErrorCode:
       type: string
-      enum: [AUTH_INVALID_REQUEST, AUTH_INVALID_CREDENTIALS, AUTH_CSRF_INVALID]
+      enum: [AUTH_INVALID_REQUEST, AUTH_INVALID_CREDENTIALS, AUTH_CSRF_INVALID, AUTH_UNAUTHENTICATED, AUTH_FORBIDDEN]
     SessionUser:
       type: object
       additionalProperties: false
@@ -177,6 +177,18 @@ components:
   responses:
     AuthInvalidRequest:
       description: Corpo ausente ou inválido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    AuthUnauthenticated:
+      description: Uma operação protegida exige sessão autenticada válida.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    AuthForbidden:
+      description: A sessão autenticada não possui o papel exigido.
       content:
         application/json:
           schema:

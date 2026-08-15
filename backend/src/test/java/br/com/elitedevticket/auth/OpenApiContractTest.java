@@ -89,6 +89,9 @@ class OpenApiContractTest {
         Map<String, Object> responses = map(components.get("responses"));
         assertThat(map(map(responses.get("AuthInvalidCredentials")).get("headers")))
                 .containsKey("Set-Cookie");
+        assertThat(responses).containsKeys("AuthUnauthenticated", "AuthForbidden");
+        assertResponseSchemaReference(responses, "AuthUnauthenticated", "ApiError");
+        assertResponseSchemaReference(responses, "AuthForbidden", "ApiError");
     }
 
     private void assertControllerMappings() {
@@ -166,6 +169,12 @@ class OpenApiContractTest {
         Map<String, Object> response = map(map(operation.get("responses")).get(status));
         assertThat(String.valueOf(response.get("$ref")))
                 .isEqualTo("#/components/responses/" + responseName);
+    }
+
+    private void assertResponseSchemaReference(Map<String, Object> responses, String responseName, String schemaName) {
+        Map<String, Object> response = map(responses.get(responseName));
+        Map<String, Object> mediaType = map(map(response.get("content")).get("application/json"));
+        assertThat(referenceName(map(mediaType.get("schema")))).isEqualTo(schemaName);
     }
 
     private void assertSecurityScheme(

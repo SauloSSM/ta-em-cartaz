@@ -3,7 +3,9 @@ export type Role = 'ORGANIZER' | 'CUSTOMER' | 'GATE';
 export type AuthErrorCode =
   | 'AUTH_INVALID_REQUEST'
   | 'AUTH_INVALID_CREDENTIALS'
-  | 'AUTH_CSRF_INVALID';
+  | 'AUTH_CSRF_INVALID'
+  | 'AUTH_UNAUTHENTICATED'
+  | 'AUTH_FORBIDDEN';
 
 export type LoginRequest = {
   email: string;
@@ -175,7 +177,9 @@ function isSessionUser(value: unknown): value is SessionUser {
 function isAuthErrorCode(value: unknown): value is AuthErrorCode {
   return value === 'AUTH_INVALID_REQUEST'
     || value === 'AUTH_INVALID_CREDENTIALS'
-    || value === 'AUTH_CSRF_INVALID';
+    || value === 'AUTH_CSRF_INVALID'
+    || value === 'AUTH_UNAUTHENTICATED'
+    || value === 'AUTH_FORBIDDEN';
 }
 
 function hasExactKeys(value: Record<string, unknown>, expected: string[]): boolean {

@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -38,6 +39,11 @@ class AuthEndpointsIntegrationTest {
     private int port;
 
     private final HttpClient client = HttpClient.newHttpClient();
+
+    @BeforeEach
+    void resetRbacFixture() {
+        RbacTestFixture.reset();
+    }
 
     @Test
     void bootstrapWithoutSessionIsAnonymousAndIssuesReadableCsrfCookie() throws Exception {
@@ -213,6 +219,39 @@ class AuthEndpointsIntegrationTest {
     }
 
     @Test
+    void roleProtectedTestFixtureRejectsAnonymousAndIncompatibleRolesWithoutExecutingHandler() throws Exception {
+        HttpResponse<String> anonymous = get("/test/rbac/organizer", "");
+
+        assertAuthError(anonymous, 401, "AUTH_UNAUTHENTICATED");
+        assertThat(RbacTestFixture.executions()).isZero();
+
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        HttpResponse<String> forbidden = get("/test/rbac/organizer", "EDT_SESSION=" + customerSession);
+
+        assertAuthError(forbidden, 403, "AUTH_FORBIDDEN");
+        assertThat(RbacTestFixture.executions()).isZero();
+    }
+
+    @Test
+    void roleProtectedTestFixtureAllowsMatchingRole() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String gateSession = loginSession("gate@demo.elitedevticket.local");
+
+        HttpResponse<String> organizer = get("/test/rbac/organizer", "EDT_SESSION=" + organizerSession);
+        HttpResponse<String> customer = get("/test/rbac/customer", "EDT_SESSION=" + customerSession);
+        HttpResponse<String> gate = get("/test/rbac/gate", "EDT_SESSION=" + gateSession);
+
+        assertThat(organizer.statusCode()).isEqualTo(200);
+        assertThat(customer.statusCode()).isEqualTo(200);
+        assertThat(gate.statusCode()).isEqualTo(200);
+        assertThat(organizer.body()).isEqualTo("{\"result\":\"allowed\"}");
+        assertThat(customer.body()).isEqualTo("{\"result\":\"allowed\"}");
+        assertThat(gate.body()).isEqualTo("{\"result\":\"allowed\"}");
+        assertThat(RbacTestFixture.executions()).isEqualTo(3);
+    }
+
+    @Test
     void corsAllowsOnlyConfiguredOriginWithCredentials() throws Exception {
         HttpResponse<String> allowed = getSessionWithOrigin("https://allowed.example");
 
@@ -252,11 +291,23 @@ class AuthEndpointsIntegrationTest {
     }
 
     private HttpResponse<String> getSession(String cookie) throws Exception {
-        HttpRequest.Builder request = HttpRequest.newBuilder(uri("/api/v1/auth/session")).GET();
+        return get("/api/v1/auth/session", cookie);
+    }
+
+    private HttpResponse<String> get(String path, String cookie) throws Exception {
+        HttpRequest.Builder request = HttpRequest.newBuilder(uri(path)).GET();
         if (!cookie.isBlank()) {
             request.header("Cookie", cookie);
         }
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private String loginSession(String email) throws Exception {
+        String csrf = bootstrapCsrf();
+        HttpResponse<String> login = post("/api/v1/auth/login", csrfCookie(csrf), csrf,
+                "{\"email\":\"" + email + "\",\"password\":\"password\"}");
+        assertThat(login.statusCode()).isEqualTo(200);
+        return cookieValue(login, "EDT_SESSION");
     }
 
     private HttpResponse<String> getSessionWithOrigin(String origin) throws Exception {
