@@ -76,6 +76,35 @@ paths:
                 type: string
         '403':
           $ref: '#/components/responses/AuthInvalidCsrf'
+  /api/v1/catalog/events:
+    get:
+      operationId: searchCatalogEvents
+      summary: Pesquisa referências de eventos no catálogo Ticketmaster
+      description: Requer sessão autenticada com papel ORGANIZER. Consulta o catálogo externo Ticketmaster através do adapter backend com recuperação segura e orçamento de tempo controlado.
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Palavra-chave opcional para filtrar eventos no catálogo Ticketmaster.
+      responses:
+        '200':
+          description: Lista de referências de eventos retornadas pelo catálogo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogSearchResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '503':
+          $ref: '#/components/responses/CatalogUnavailable'
 components:
   securitySchemes:
     SessionCookie:
@@ -112,6 +141,33 @@ components:
     AuthErrorCode:
       type: string
       enum: [AUTH_INVALID_REQUEST, AUTH_INVALID_CREDENTIALS, AUTH_CSRF_INVALID, AUTH_UNAUTHENTICATED, AUTH_FORBIDDEN]
+    CatalogErrorCode:
+      type: string
+      enum: [CATALOG_UNAVAILABLE, CATALOG_INVALID_REQUEST]
+    CatalogEventReference:
+      type: object
+      additionalProperties: false
+      required: [externalId, title]
+      properties:
+        externalId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        category:
+          type: string
+    CatalogSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [events]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogEventReference'
     SessionUser:
       type: object
       additionalProperties: false
@@ -174,6 +230,24 @@ components:
         timestamp:
           type: string
           format: date-time
+    CatalogApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId, timestamp]
+      properties:
+        code:
+          $ref: '#/components/schemas/CatalogErrorCode'
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        traceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
   responses:
     AuthInvalidRequest:
       description: Corpo ausente ou inválido.
@@ -210,3 +284,9 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
+    CatalogUnavailable:
+      description: Catálogo Ticketmaster temporariamente indisponível ou rate limit excedido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CatalogApiError'

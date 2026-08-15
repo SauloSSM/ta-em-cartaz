@@ -44,8 +44,8 @@ development_status:
   1-4-estabelecer-fronteiras-modulares-verificáveis: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-pesquisar-referências-ticketmaster-com-recuperação-segura: backlog
+  epic-2: in-progress
+  2-1-pesquisar-referências-ticketmaster-com-recuperação-segura: done
   2-2-criar-event-interno-em-rascunho-a-partir-do-snapshot: backlog
   2-3-editar-listar-e-excluir-events-em-rascunho: backlog
   2-4-configurar-ticketsectors-do-rascunho: backlog

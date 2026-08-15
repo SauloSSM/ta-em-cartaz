@@ -5,28 +5,44 @@ const contract = readFileSync(
   new URL('../../openapi/elite-dev-ticket-v1.yaml', import.meta.url),
   'utf8',
 ).replaceAll('\r\n', '\n');
-const typeSource = readFileSync(new URL('../src/app/api/authApi.ts', import.meta.url), 'utf8');
-const sourceFile = ts.createSourceFile(
+
+const authTypeSource = readFileSync(new URL('../src/app/api/authApi.ts', import.meta.url), 'utf8');
+const catalogTypeSource = readFileSync(
+  new URL('../src/features/catalog/api/catalogApi.ts', import.meta.url),
+  'utf8',
+);
+
+const authSourceFile = ts.createSourceFile(
   'authApi.ts',
-  typeSource,
+  authTypeSource,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
+const catalogSourceFile = ts.createSourceFile(
+  'catalogApi.ts',
+  catalogTypeSource,
   ts.ScriptTarget.Latest,
   true,
   ts.ScriptKind.TS,
 );
 
+const allStatements = [...authSourceFile.statements, ...catalogSourceFile.statements];
+
 const aliases = new Map(
-  sourceFile.statements
+  allStatements
     .filter(ts.isTypeAliasDeclaration)
     .map((declaration) => [declaration.name.text, declaration]),
 );
 
 const clientFunctions = new Map(
-  sourceFile.statements
+  allStatements
     .filter(ts.isFunctionDeclaration)
     .filter((declaration) => declaration.name !== undefined)
     .map((declaration) => [declaration.name.text, declaration]),
 );
-const operations = parseAuthOperations(contract);
+
+const operations = parseOperations(contract);
 const securitySchemes = parseSecuritySchemes(contract);
 const componentResponses = parseComponentResponses(contract);
 const schemaBlocks = new Map(parseSchemas(contract).map((schema) => [schema.name, schema.block]));
@@ -37,10 +53,10 @@ for (const operation of operations) {
 }
 assertSecuritySemantics(operations, securitySchemes);
 
-for (const schemaName of reachableAuthSchemas(operations, componentResponses, schemaBlocks, schemas)) {
+for (const schemaName of reachableSchemas(operations, componentResponses, schemaBlocks, schemas)) {
   const schema = schemas.get(schemaName);
   if (schema === undefined) {
-    fail(`a autenticação referencia o schema inexistente ${schemaName}`);
+    fail(`a API referencia o schema inexistente ${schemaName}`);
   }
   const alias = aliases.get(schema.name);
   if (alias === undefined) {
@@ -56,7 +72,7 @@ for (const schemaName of reachableAuthSchemas(operations, componentResponses, sc
   }
 }
 
-function parseAuthOperations(source) {
+function parseOperations(source) {
   const start = source.indexOf('paths:\n');
   const end = source.indexOf('\ncomponents:', start);
   if (start < 0 || end < 0) {
@@ -69,7 +85,7 @@ function parseAuthOperations(source) {
     const pathStart = pathMarker.index + pathMarker[0].length + 1;
     const pathEnd = pathMarkers[index + 1]?.index ?? section.length;
     const pathBlock = section.slice(pathStart, pathEnd);
-    if (!pathMarker[1].startsWith('/api/v1/auth/')) {
+    if (!pathMarker[1].startsWith('/api/v1/auth/') && !pathMarker[1].startsWith('/api/v1/catalog/')) {
       return [];
     }
     const methodMarkers = [...pathBlock.matchAll(/^    (get|post|put|patch|delete|options|head|trace):$/gm)];
@@ -107,7 +123,7 @@ function parseAuthOperations(source) {
   });
 }
 
-function reachableAuthSchemas(operations, responses, schemaBlocks, schemas) {
+function reachableSchemas(operations, responses, schemaBlocks, schemas) {
   const pending = [];
   for (const operation of operations) {
     if (operation.requestSchema !== undefined) pending.push(operation.requestSchema);
@@ -116,7 +132,7 @@ function reachableAuthSchemas(operations, responses, schemaBlocks, schemas) {
       if (response.componentRef !== undefined) {
         const component = responses.get(response.componentRef);
         if (component === undefined) {
-          fail(`a autenticação referencia a response inexistente ${response.componentRef}`);
+          fail(`a operação referencia a response inexistente ${response.componentRef}`);
         }
         if (component.schemaRef !== undefined) pending.push(component.schemaRef);
       }
@@ -232,11 +248,12 @@ function assertClientOperation(operation, functions, responses) {
   const call = findCall(declaration, callName);
   const pathArgument = call?.arguments[0];
   const initArgument = call?.arguments[1];
-  if (call === undefined || !ts.isStringLiteral(pathArgument) || !ts.isObjectLiteralExpression(initArgument)) {
+  if (call === undefined || (!ts.isStringLiteral(pathArgument) && !ts.isTemplateExpression(pathArgument)) || !ts.isObjectLiteralExpression(initArgument)) {
     fail(`${functionName} não possui chamada HTTP analisável`);
   }
-  if (pathArgument.text !== operation.path) {
-    fail(`${functionName} usa ${pathArgument.text}, mas o OpenAPI declara ${operation.path}`);
+  const pathText = ts.isStringLiteral(pathArgument) ? pathArgument.text : pathArgument.head.text;
+  if (pathText !== operation.path) {
+    fail(`${functionName} usa ${pathText}, mas o OpenAPI declara ${operation.path}`);
   }
   const method = objectStringProperty(initArgument, 'method');
   if (method !== operation.method) {
@@ -244,6 +261,7 @@ function assertClientOperation(operation, functions, responses) {
   }
 
   const bodyProperty = objectProperty(initArgument, 'body');
+  const sourceFile = declaration.getSourceFile();
   const functionText = declaration.getText(sourceFile);
   if (operation.requestSchema === undefined) {
     if (bodyProperty !== undefined) {
@@ -257,7 +275,7 @@ function assertClientOperation(operation, functions, responses) {
     }
   }
 
-  const returnType = promisedReturnType(declaration);
+  const returnType = promisedReturnType(declaration, sourceFile);
   const successes = [...operation.responses.entries()].filter(([status]) => status.startsWith('2'));
   if (successes.length !== 1) {
     fail(`${operation.path} deve declarar exatamente uma resposta de sucesso`);
@@ -274,8 +292,8 @@ function assertClientOperation(operation, functions, responses) {
   for (const [status, response] of operation.responses) {
     if (!status.startsWith('2')) {
       const component = response.componentRef === undefined ? undefined : responses.get(response.componentRef);
-      if (component?.schemaRef !== 'ApiError') {
-        fail(`resposta ${status} de ${operation.path} não referencia ApiError via component response`);
+      if (component?.schemaRef !== 'ApiError' && component?.schemaRef !== 'CatalogApiError') {
+        fail(`resposta ${status} de ${operation.path} não referencia ApiError ou CatalogApiError via component response`);
       }
     }
   }
@@ -296,7 +314,7 @@ function assertSecuritySemantics(operations, schemes) {
     }
     const functionName = operation.operationId;
     const declaration = clientFunctions.get(functionName);
-    if (declaration === undefined || !declaration.getText(sourceFile).includes('csrfHeaders()')) {
+    if (declaration === undefined || !declaration.getText(declaration.getSourceFile()).includes('csrfHeaders()')) {
       fail(`${functionName} não envia a proteção CSRF declarada`);
     }
   }
@@ -307,11 +325,11 @@ function assertSecuritySemantics(operations, schemes) {
     || !session.security.some((requirement) => requirement.size === 0)) {
     fail('getAuthSession deve aceitar cookie de sessão ou acesso anônimo');
   }
-  if (!typeSource.includes(`readCookie('${csrfCookie.parameterName}')`)
-    || !typeSource.includes(`'${csrfHeader.parameterName}'`)) {
+  if (!authTypeSource.includes(`readCookie('${csrfCookie.parameterName}')`)
+    || !authTypeSource.includes(`'${csrfHeader.parameterName}'`)) {
     fail('nomes CSRF do cliente divergiram dos security schemes');
   }
-  if (typeSource.includes(sessionCookie.parameterName)) {
+  if (authTypeSource.includes(sessionCookie.parameterName) || catalogTypeSource.includes(sessionCookie.parameterName)) {
     fail('o cliente JavaScript não pode acessar EDT_SESSION');
   }
 }
@@ -335,7 +353,7 @@ function findCall(declaration, callName) {
 function objectProperty(object, name) {
   return object.properties
     .filter(ts.isPropertyAssignment)
-    .find((property) => property.name.getText(sourceFile).replaceAll("'", '') === name);
+    .find((property) => property.name.getText(object.getSourceFile()).replaceAll("'", '') === name);
 }
 
 function objectStringProperty(object, name) {
@@ -345,7 +363,7 @@ function objectStringProperty(object, name) {
     : undefined;
 }
 
-function promisedReturnType(declaration) {
+function promisedReturnType(declaration, sourceFile) {
   if (declaration.type === undefined
     || !ts.isTypeReferenceNode(declaration.type)
     || declaration.type.typeName.getText(sourceFile) !== 'Promise'
@@ -353,7 +371,7 @@ function promisedReturnType(declaration) {
     fail(`${declaration.name?.text} deve declarar retorno Promise explícito`);
   }
   const promised = declaration.type.typeArguments[0];
-  return promised.kind === ts.SyntaxKind.VoidKeyword ? 'void' : normalizeType(promised);
+  return promised.kind === ts.SyntaxKind.VoidKeyword ? 'void' : normalizeType(promised, sourceFile);
 }
 
 function hasExact204Guard(declaration) {
@@ -493,12 +511,13 @@ function assertObjectAlias(schema, alias) {
     fail(`${schema.name} deveria ser um object type`);
   }
 
+  const sourceFile = alias.getSourceFile();
   const actual = alias.type.members
     .filter(ts.isPropertySignature)
     .map((property) => ({
       name: property.name.getText(sourceFile),
       optional: property.questionToken !== undefined,
-      type: normalizeType(property.type),
+      type: normalizeType(property.type, sourceFile),
     }));
   const expected = [...schema.properties].sort(byName);
   actual.sort(byName);
@@ -512,21 +531,22 @@ function assertUnionAlias(name, expectedMembers, alias) {
   if (!ts.isUnionTypeNode(alias.type)) {
     fail(`${name} deveria ser uma união TypeScript`);
   }
-  const actual = alias.type.types.map(normalizeType).sort();
+  const sourceFile = alias.getSourceFile();
+  const actual = alias.type.types.map((type) => normalizeType(type, sourceFile)).sort();
   const expected = [...expectedMembers].sort();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     fail(`${name} divergiu: esperado ${expected.join(' | ')}, recebido ${actual.join(' | ')}`);
   }
 }
 
-function normalizeType(type) {
+function normalizeType(type, sourceFile) {
   if (type === undefined) {
     fail('propriedade TypeScript sem tipo explícito');
   }
   if (type.kind === ts.SyntaxKind.StringKeyword) return 'string';
   if (type.kind === ts.SyntaxKind.BooleanKeyword) return 'boolean';
   if (ts.isTypeReferenceNode(type)) return type.typeName.getText(sourceFile);
-  if (ts.isArrayTypeNode(type)) return `${normalizeType(type.elementType)}[]`;
+  if (ts.isArrayTypeNode(type)) return `${normalizeType(type.elementType, sourceFile)}[]`;
   if (ts.isLiteralTypeNode(type)) return type.literal.getText(sourceFile).replaceAll("'", '');
   fail(`tipo TypeScript não suportado: ${type.getText(sourceFile)}`);
 }
@@ -540,5 +560,5 @@ function byName(left, right) {
 }
 
 function fail(message) {
-  throw new Error(`Drift no contrato de autenticação: ${message}`);
+  throw new Error(`Drift no contrato de OpenAPI: ${message}`);
 }

@@ -31,6 +31,24 @@ describe('App session flow', () => {
       'organizer@demo.elitedevticket.local',
     );
     expect(screen.getByText('Organizador').textContent).toBe('Organizador');
+    expect(screen.getByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' })).toBeDefined();
+  });
+
+  it('não exibe busca do catálogo para papéis diferentes de ORGANIZER', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({
+      authenticated: true,
+      user: {
+        id: '00000000-0000-0000-0000-000000000002',
+        email: 'customer@demo.elitedevticket.local',
+        role: 'CUSTOMER',
+      },
+    }));
+
+    render(<App />);
+
+    await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
+    expect(screen.getByText('Cliente').textContent).toBe('Cliente');
+    expect(screen.queryByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' })).toBeNull();
   });
 
   it('preserva o e-mail e move o foco para o erro genérico de credenciais', async () => {

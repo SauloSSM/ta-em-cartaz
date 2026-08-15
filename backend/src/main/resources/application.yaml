@@ -26,6 +26,14 @@ auth:
     ttl: ${AUTH_JWT_TTL:PT8H}
   cors:
     allowed-origins: ${AUTH_CORS_ALLOWED_ORIGINS:}
+catalog:
+  ticketmaster:
+    api-key: ${TICKETMASTER_API_KEY:}
+    base-url: ${TICKETMASTER_BASE_URL:https://app.ticketmaster.com/discovery/v2}
+    connect-timeout: ${TICKETMASTER_CONNECT_TIMEOUT:PT2S}
+    read-timeout: ${TICKETMASTER_READ_TIMEOUT:PT2.5S}
+    max-retries: ${TICKETMASTER_MAX_RETRIES:1}
+    total-budget: ${TICKETMASTER_TOTAL_BUDGET:PT5S}
 management:
   endpoint:
     health:
