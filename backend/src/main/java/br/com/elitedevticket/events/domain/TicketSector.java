@@ -37,6 +37,10 @@ public record TicketSector(
         Objects.requireNonNull(updatedAt, "updatedAt must not be null");
     }
 
+    public int committedQuantity() {
+        return this.capacity - this.availableQuantity;
+    }
+
     public TicketSector withUpdatedDraftDetails(
             String name,
             String description,
@@ -52,6 +56,27 @@ public record TicketSector(
                 capacity,
                 capacity,
                 price,
+                this.createdAt,
+                updatedAt
+        );
+    }
+
+    public TicketSector withUpdatedDetails(
+            String name,
+            String description,
+            int newCapacity,
+            int newAvailableQuantity,
+            BigDecimal newPrice,
+            Instant updatedAt
+    ) {
+        return new TicketSector(
+                this.id,
+                this.eventId,
+                name,
+                description,
+                newCapacity,
+                newAvailableQuantity,
+                newPrice,
                 this.createdAt,
                 updatedAt
         );

@@ -8,11 +8,11 @@ import { SectorEditor } from './SectorEditor';
 
 type SectorManagerProps = {
   eventId: string;
-  isDraft: boolean;
+  isDraft?: boolean;
   onSectorsChange?: (sectors: TicketSectorResponse[]) => void;
 };
 
-export function SectorManager({ eventId, isDraft, onSectorsChange }: SectorManagerProps) {
+export function SectorManager({ eventId, isDraft: _isDraft, onSectorsChange }: SectorManagerProps) {
   const [sectors, setSectors] = useState<TicketSectorResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -117,17 +117,15 @@ export function SectorManager({ eventId, isDraft, onSectorsChange }: SectorManag
             Configure a capacidade e os valores dos ingressos por setor para este evento.
           </p>
         </div>
-        {isDraft ? (
-          <button
-            type="button"
-            id="add-sector-btn"
-            className="add-sector-btn"
-            onClick={handleOpenCreate}
-            aria-label="Adicionar novo setor de ingressos"
-          >
-            + Novo Setor
-          </button>
-        ) : null}
+        <button
+          type="button"
+          id="add-sector-btn"
+          className="add-sector-btn"
+          onClick={handleOpenCreate}
+          aria-label="Adicionar novo setor de ingressos"
+        >
+          + Novo Setor
+        </button>
       </header>
 
       {statusMessage !== null ? (
@@ -149,11 +147,9 @@ export function SectorManager({ eventId, isDraft, onSectorsChange }: SectorManag
       ) : sectors.length === 0 ? (
         <div className="empty-sectors-card">
           <p className="empty-sectors-title">Nenhum setor cadastrado ainda.</p>
-          {isDraft ? (
-            <p className="empty-sectors-hint">
-              Clique em &quot;+ Novo Setor&quot; para cadastrar áreas (Ex.: Pista, Camarote, VIP).
-            </p>
-          ) : null}
+          <p className="empty-sectors-hint">
+            Clique em &quot;+ Novo Setor&quot; para cadastrar áreas (Ex.: Pista, Camarote, VIP).
+          </p>
         </div>
       ) : (
         <div className="sectors-list-container">
@@ -163,31 +159,40 @@ export function SectorManager({ eventId, isDraft, onSectorsChange }: SectorManag
           </div>
 
           <ul className="sectors-list" aria-label="Lista de setores de ingressos">
-            {sectors.map((sector) => (
-              <li key={sector.id} className="sector-card">
-                <div className="sector-card-header">
-                  <h4 className="sector-card-title">{sector.name}</h4>
-                  <span className="sector-price-badge">{formatPrice(sector.price)}</span>
-                </div>
+            {sectors.map((sector) => {
+              const committed = sector.capacity - sector.availableQuantity;
+              const hasCommitments = committed > 0;
 
-                {sector.description ? (
-                  <p className="sector-card-desc">{sector.description}</p>
-                ) : null}
-
-                <div className="sector-card-meta">
-                  <div className="sector-meta-item">
-                    <span className="sector-meta-label">Capacidade:</span>
-                    <strong className="sector-meta-value">{sector.capacity}</strong>
+              return (
+                <li key={sector.id} className="sector-card">
+                  <div className="sector-card-header">
+                    <h4 className="sector-card-title">{sector.name}</h4>
+                    <span className="sector-price-badge">{formatPrice(sector.price)}</span>
                   </div>
-                  <div className="sector-meta-item">
-                    <span className="sector-meta-label">Disponibilidade:</span>
-                    <strong className="sector-meta-value">
-                      {sector.availableQuantity} / {sector.capacity}
-                    </strong>
-                  </div>
-                </div>
 
-                {isDraft ? (
+                  {sector.description ? (
+                    <p className="sector-card-desc">{sector.description}</p>
+                  ) : null}
+
+                  <div className="sector-card-meta">
+                    <div className="sector-meta-item">
+                      <span className="sector-meta-label">Capacidade:</span>
+                      <strong className="sector-meta-value">{sector.capacity}</strong>
+                    </div>
+                    <div className="sector-meta-item">
+                      <span className="sector-meta-label">Disponíveis:</span>
+                      <strong className="sector-meta-value">
+                        {sector.availableQuantity} / {sector.capacity}
+                      </strong>
+                    </div>
+                    <div className="sector-meta-item">
+                      <span className="sector-meta-label">Comprometidos:</span>
+                      <strong className={`sector-meta-value ${hasCommitments ? 'has-commitments' : ''}`}>
+                        {committed}
+                      </strong>
+                    </div>
+                  </div>
+
                   <div className="sector-card-actions">
                     <button
                       type="button"
@@ -200,15 +205,25 @@ export function SectorManager({ eventId, isDraft, onSectorsChange }: SectorManag
                     <button
                       type="button"
                       className="sector-delete-btn"
+                      disabled={hasCommitments}
                       onClick={() => setDeletingSector(sector)}
-                      aria-label={`Excluir setor ${sector.name}`}
+                      title={
+                        hasCommitments
+                          ? 'Setor com ingressos comprometidos não pode ser excluído.'
+                          : undefined
+                      }
+                      aria-label={
+                        hasCommitments
+                          ? `Setor ${sector.name} possui ingressos comprometidos e não pode ser excluído`
+                          : `Excluir setor ${sector.name}`
+                      }
                     >
                       Excluir
                     </button>
                   </div>
-                ) : null}
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

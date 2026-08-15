@@ -9,6 +9,8 @@ public interface TicketSectorRepository {
     TicketSector save(TicketSector ticketSector);
 
     Optional<TicketSector> findById(UUID id);
+ 
+    Optional<TicketSector> findByIdWithLock(UUID id);
 
     List<TicketSector> findByEventId(UUID eventId);
 

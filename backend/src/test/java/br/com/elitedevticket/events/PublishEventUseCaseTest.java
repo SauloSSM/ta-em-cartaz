@@ -285,6 +285,11 @@ class PublishEventUseCaseTest {
         }
 
         @Override
+        public Optional<TicketSector> findByIdWithLock(UUID id) {
+            return Optional.ofNullable(store.get(id));
+        }
+
+        @Override
         public List<TicketSector> findByEventId(UUID eventId) {
             return store.values().stream()
                     .filter(s -> s.eventId().equals(eventId))

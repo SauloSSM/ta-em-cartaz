@@ -34,15 +34,15 @@ public class DeleteTicketSectorUseCase {
             throw new EventForbiddenException("Apenas o organizador proprietário pode excluir setores do evento.");
         }
 
-        if (event.status() != EventStatus.DRAFT) {
-            throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Apenas setores de eventos em rascunho podem ser excluídos.");
-        }
-
-        TicketSector sector = ticketSectorRepository.findById(sectorId)
+        TicketSector sector = ticketSectorRepository.findByIdWithLock(sectorId)
                 .orElseThrow(() -> new TicketSectorNotFoundException("Setor não encontrado."));
 
         if (!sector.eventId().equals(eventId)) {
             throw new TicketSectorNotFoundException("Setor não pertence ao evento especificado.");
+        }
+
+        if (sector.committedQuantity() > 0) {
+            throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Não é possível remover setor com ingressos ou reservas associadas.");
         }
 
         ticketSectorRepository.deleteById(sectorId);

@@ -35,6 +35,9 @@ class EventsEndpointsIntegrationTest {
     @LocalServerPort
     private int port;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test
@@ -727,6 +730,331 @@ class EventsEndpointsIntegrationTest {
         );
         assertThat(notFoundPublish.statusCode()).isEqualTo(404);
         assertThat(notFoundPublish.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
+    }
+
+    @Test
+    void organizerCanUpdateNonStructuralFieldsOfPublishedEventAndCannotMutateStructuralFields() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Create draft event
+        HttpResponse<String> draftResp = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "externalId": "tm-published-edit-1",
+                  "title": "Festival de Jazz 2026",
+                  "description": "Descrição inicial",
+                  "imageUrl": "https://img.com/jazz.jpg",
+                  "category": "Jazz"
+                }
+                """
+        );
+        assertThat(draftResp.statusCode()).isEqualTo(201);
+        String eventId = extractJsonField(draftResp.body(), "id");
+
+        // 2. Set venue and future startsAt
+        HttpResponse<String> updateResp = put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Festival de Jazz 2026",
+                  "venueName": "Auditório Ibirapuera",
+                  "venueAddress": "Av. Pedro Álvares Cabral, São Paulo",
+                  "startsAt": "2026-11-20T21:00:00Z"
+                }
+                """
+        );
+        assertThat(updateResp.statusCode()).isEqualTo(200);
+
+        // 3. Add a ticket sector
+        HttpResponse<String> sectorResp = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "name": "Plateia",
+                  "capacity": 200,
+                  "price": 120.00
+                }
+                """
+        );
+        assertThat(sectorResp.statusCode()).isEqualTo(201);
+
+        // 4. Publish event
+        HttpResponse<String> publishResp = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(publishResp.statusCode()).isEqualTo(200);
+        assertThat(publishResp.body()).contains("\"status\":\"PUBLISHED\"");
+
+        // 5. Attempt to change structural fields (title, venueName, venueAddress, startsAt) -> 409
+        HttpResponse<String> badTitle = put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Festival de Jazz Alterado",
+                  "venueName": "Auditório Ibirapuera",
+                  "venueAddress": "Av. Pedro Álvares Cabral, São Paulo",
+                  "startsAt": "2026-11-20T21:00:00Z"
+                }
+                """
+        );
+        assertThat(badTitle.statusCode()).isEqualTo(409);
+        assertThat(badTitle.body()).contains("\"code\":\"EVENT_CANNOT_BE_MODIFIED\"");
+
+        HttpResponse<String> badVenue = put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Festival de Jazz 2026",
+                  "venueName": "Outro Local",
+                  "venueAddress": "Av. Pedro Álvares Cabral, São Paulo",
+                  "startsAt": "2026-11-20T21:00:00Z"
+                }
+                """
+        );
+        assertThat(badVenue.statusCode()).isEqualTo(409);
+        assertThat(badVenue.body()).contains("\"code\":\"EVENT_CANNOT_BE_MODIFIED\"");
+
+        // 6. Update non-structural fields (description, imageUrl, category) -> 200 OK
+        HttpResponse<String> goodUpdate = put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Festival de Jazz 2026",
+                  "venueName": "Auditório Ibirapuera",
+                  "venueAddress": "Av. Pedro Álvares Cabral, São Paulo",
+                  "startsAt": "2026-11-20T21:00:00Z",
+                  "description": "Nova descrição enriquecida com line-up",
+                  "imageUrl": "https://img.com/jazz-new.jpg",
+                  "category": "Jazz & Blues"
+                }
+                """
+        );
+        assertThat(goodUpdate.statusCode()).isEqualTo(200);
+        assertThat(goodUpdate.body()).contains("\"description\":\"Nova descrição enriquecida com line-up\"");
+        assertThat(goodUpdate.body()).contains("\"imageUrl\":\"https://img.com/jazz-new.jpg\"");
+        assertThat(goodUpdate.body()).contains("\"category\":\"Jazz & Blues\"");
+        assertThat(goodUpdate.body()).contains("\"title\":\"Festival de Jazz 2026\"");
+
+        // 7. Deletion is forbidden -> 409
+        HttpResponse<String> deleteResp = delete(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf
+        );
+        assertThat(deleteResp.statusCode()).isEqualTo(409);
+        assertThat(deleteResp.body()).contains("\"code\":\"EVENT_CANNOT_BE_DELETED\"");
+    }
+
+    @Test
+    void organizerCanManagePublishedTicketSectorsPreservingCommittedQuantity() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Create and configure event
+        HttpResponse<String> draftResp = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "externalId": "tm-published-sec-1",
+                  "title": "Concerto Clássico",
+                  "description": "Música clássica",
+                  "category": "Clássica"
+                }
+                """
+        );
+        String eventId = extractJsonField(draftResp.body(), "id");
+
+        put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Concerto Clássico",
+                  "venueName": "Sala São Paulo",
+                  "venueAddress": "Praça Júlio Prestes, 16",
+                  "startsAt": "2026-12-01T20:00:00Z"
+                }
+                """
+        );
+
+        HttpResponse<String> sector1Resp = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "name": "Plateia Central",
+                  "capacity": 100,
+                  "price": 150.00
+                }
+                """
+        );
+        String sector1Id = extractJsonField(sector1Resp.body(), "id");
+
+        // 2. Publish event
+        post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+
+        // 3. Update capacity of published sector (increase 100 -> 180) and price (150.00 -> 175.00)
+        HttpResponse<String> updateSec = put(
+                "/api/v1/events/" + eventId + "/sectors/" + sector1Id,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "name": "Plateia Central VIP",
+                  "capacity": 180,
+                  "price": 175.00
+                }
+                """
+        );
+        assertThat(updateSec.statusCode()).isEqualTo(200);
+        assertThat(updateSec.body()).contains("\"name\":\"Plateia Central VIP\"");
+        assertThat(updateSec.body()).contains("\"capacity\":180");
+        assertThat(updateSec.body()).contains("\"availableQuantity\":180");
+        assertThat(updateSec.body()).contains("\"price\":175.0");
+
+        // 4. Create new sector on PUBLISHED event
+        HttpResponse<String> newSector = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "name": "Camarote Superior",
+                  "capacity": 40,
+                  "price": 250.00
+                }
+                """
+        );
+        assertThat(newSector.statusCode()).isEqualTo(201);
+        String sector2Id = extractJsonField(newSector.body(), "id");
+
+        // 5. Delete uncommitted sector on PUBLISHED event -> 204
+        HttpResponse<String> delSec = delete(
+                "/api/v1/events/" + eventId + "/sectors/" + sector2Id,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf
+        );
+        assertThat(delSec.statusCode()).isEqualTo(204);
+
+        // 6. Simulate committed tickets (simulate available_quantity = 140 out of 180, committed = 40)
+        jdbcTemplate.update(
+                "UPDATE ticket_sectors SET available_quantity = 140 WHERE id = ?",
+                UUID.fromString(sector1Id)
+        );
+
+        // 7. Try to decrease capacity below committed (e.g. newCapacity = 35 < 40) -> 409
+        HttpResponse<String> badCapacity = put(
+                "/api/v1/events/" + eventId + "/sectors/" + sector1Id,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "name": "Plateia Central VIP",
+                  "capacity": 35,
+                  "price": 175.00
+                }
+                """
+        );
+        assertThat(badCapacity.statusCode()).isEqualTo(409);
+        assertThat(badCapacity.body()).contains("\"code\":\"EVENT_CANNOT_BE_MODIFIED\"");
+
+        // 8. Decrease capacity to valid value (e.g. newCapacity = 50 >= 40 committed) -> 200 OK
+        // newAvailable should be 50 - 40 = 10
+        HttpResponse<String> validDecrease = put(
+                "/api/v1/events/" + eventId + "/sectors/" + sector1Id,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "name": "Plateia Central VIP",
+                  "capacity": 50,
+                  "price": 175.00
+                }
+                """
+        );
+        assertThat(validDecrease.statusCode()).isEqualTo(200);
+        assertThat(validDecrease.body()).contains("\"capacity\":50");
+        assertThat(validDecrease.body()).contains("\"availableQuantity\":10");
+
+        // 9. Attempt to delete committed sector -> 409
+        HttpResponse<String> delCommitted = delete(
+                "/api/v1/events/" + eventId + "/sectors/" + sector1Id,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf
+        );
+        assertThat(delCommitted.statusCode()).isEqualTo(409);
+        assertThat(delCommitted.body()).contains("\"code\":\"EVENT_CANNOT_BE_MODIFIED\"");
+    }
+
+    @Test
+    void databaseIntegrityConstraintsAreEnforcedByPostgres() {
+        UUID organizerId = jdbcTemplate.queryForObject(
+                "SELECT id FROM users WHERE role = 'ORGANIZER' LIMIT 1",
+                UUID.class
+        );
+        UUID eventId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO events (id, organizer_id, external_source, external_id, title, status, created_at, updated_at)
+                VALUES (?, ?, 'TICKETMASTER', 'tm-constraint-1', 'Evento Constraint', 'DRAFT', NOW(), NOW())
+                """, eventId, organizerId);
+
+        // 1. capacity <= 0 fails check constraint
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> {
+            jdbcTemplate.update("""
+                    INSERT INTO ticket_sectors (id, event_id, name, capacity, available_quantity, price, created_at, updated_at)
+                    VALUES (?, ?, 'Invalido', 0, 0, 10.00, NOW(), NOW())
+                    """, UUID.randomUUID(), eventId);
+        });
+
+        // 2. available_quantity < 0 fails check constraint
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> {
+            jdbcTemplate.update("""
+                    INSERT INTO ticket_sectors (id, event_id, name, capacity, available_quantity, price, created_at, updated_at)
+                    VALUES (?, ?, 'Invalido', 100, -1, 10.00, NOW(), NOW())
+                    """, UUID.randomUUID(), eventId);
+        });
+
+        // 3. available_quantity > capacity fails check constraint
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> {
+            jdbcTemplate.update("""
+                    INSERT INTO ticket_sectors (id, event_id, name, capacity, available_quantity, price, created_at, updated_at)
+                    VALUES (?, ?, 'Invalido', 100, 101, 10.00, NOW(), NOW())
+                    """, UUID.randomUUID(), eventId);
+        });
+
+        // 4. price < 0 fails check constraint
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> {
+            jdbcTemplate.update("""
+                    INSERT INTO ticket_sectors (id, event_id, name, capacity, available_quantity, price, created_at, updated_at)
+                    VALUES (?, ?, 'Invalido', 100, 100, -5.00, NOW(), NOW())
+                    """, UUID.randomUUID(), eventId);
+        });
     }
 
     private String extractJsonField(String json, String field) {

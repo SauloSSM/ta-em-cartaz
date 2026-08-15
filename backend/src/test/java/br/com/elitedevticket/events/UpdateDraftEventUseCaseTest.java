@@ -103,20 +103,82 @@ class UpdateDraftEventUseCaseTest {
     }
 
     @Test
-    void throwsConflictWhenEventIsPublished() {
+    void throwsConflictWhenModifyingStructuralFieldsOfPublishedEvent() {
         UUID organizerId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
+        Instant startsAt = fixedNow.plusSeconds(3600);
 
         Event published = new Event(
-                eventId, organizerId, "TICKETMASTER", "tm-1", "Title", null, null, null,
-                EventStatus.PUBLISHED, "Venue", "Address", fixedNow.plusSeconds(3600), fixedNow, fixedNow
+                eventId, organizerId, "TICKETMASTER", "tm-1", "Original Title", "Old Desc", "https://old.jpg", "Rock",
+                EventStatus.PUBLISHED, "Original Venue", "Original Address", startsAt, fixedNow, fixedNow
         );
         repository.save(published);
 
+        // Attempt to change title
         assertThatThrownBy(() -> useCase.execute(
-                eventId, organizerId, "Updated Title", null, null, null, null, null, null
+                eventId, organizerId, "Updated Title", "Old Desc", "https://old.jpg", "Rock",
+                "Original Venue", "Original Address", startsAt
         )).isInstanceOf(EventConflictException.class)
-                .hasMessageContaining("Apenas eventos em rascunho podem ser modificados.");
+                .hasMessageContaining("Campos estruturais de eventos publicados são imutáveis.");
+
+        // Attempt to change venueName
+        assertThatThrownBy(() -> useCase.execute(
+                eventId, organizerId, "Original Title", "Old Desc", "https://old.jpg", "Rock",
+                "New Venue", "Original Address", startsAt
+        )).isInstanceOf(EventConflictException.class)
+                .hasMessageContaining("Campos estruturais de eventos publicados são imutáveis.");
+
+        // Attempt to change venueAddress
+        assertThatThrownBy(() -> useCase.execute(
+                eventId, organizerId, "Original Title", "Old Desc", "https://old.jpg", "Rock",
+                "Original Venue", "New Address", startsAt
+        )).isInstanceOf(EventConflictException.class)
+                .hasMessageContaining("Campos estruturais de eventos publicados são imutáveis.");
+
+        // Attempt to change startsAt
+        assertThatThrownBy(() -> useCase.execute(
+                eventId, organizerId, "Original Title", "Old Desc", "https://old.jpg", "Rock",
+                "Original Venue", "Original Address", startsAt.plusSeconds(7200)
+        )).isInstanceOf(EventConflictException.class)
+                .hasMessageContaining("Campos estruturais de eventos publicados são imutáveis.");
+    }
+
+    @Test
+    void updatesNonStructuralFieldsOfPublishedEventSuccessfully() {
+        UUID organizerId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant startsAt = fixedNow.plusSeconds(3600);
+
+        Event published = new Event(
+                eventId, organizerId, "TICKETMASTER", "tm-1", "Original Title", "Old Desc", "https://old.jpg", "Rock",
+                EventStatus.PUBLISHED, "Original Venue", "Original Address", startsAt, fixedNow, fixedNow
+        );
+        repository.save(published);
+
+        Event updated = useCase.execute(
+                eventId,
+                organizerId,
+                "Original Title",
+                "New Description with details",
+                "https://new.jpg",
+                "Pop & Rock",
+                "Original Venue",
+                "Original Address",
+                startsAt
+        );
+
+        assertThat(updated.title()).isEqualTo("Original Title");
+        assertThat(updated.venueName()).isEqualTo("Original Venue");
+        assertThat(updated.venueAddress()).isEqualTo("Original Address");
+        assertThat(updated.startsAt()).isEqualTo(startsAt);
+        assertThat(updated.externalSource()).isEqualTo("TICKETMASTER");
+        assertThat(updated.externalId()).isEqualTo("tm-1");
+        assertThat(updated.status()).isEqualTo(EventStatus.PUBLISHED);
+
+        assertThat(updated.description()).isEqualTo("New Description with details");
+        assertThat(updated.imageUrl()).isEqualTo("https://new.jpg");
+        assertThat(updated.category()).isEqualTo("Pop & Rock");
+        assertThat(updated.updatedAt()).isEqualTo(fixedNow);
     }
 
     private static class InMemoryEventRepository implements EventRepository {

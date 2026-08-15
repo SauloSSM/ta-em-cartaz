@@ -204,4 +204,48 @@ class TicketSectorDomainTest {
         assertThat(updated.createdAt()).isEqualTo(t1);
         assertThat(updated.updatedAt()).isEqualTo(t2);
     }
+
+    @Test
+    void calculatesCommittedQuantityCorrectly() {
+        UUID id = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-15T12:00:00Z");
+
+        TicketSector sector = new TicketSector(
+                id, eventId, "Pista", null, 100, 75, new BigDecimal("50.00"), now, now
+        );
+
+        assertThat(sector.committedQuantity()).isEqualTo(25);
+    }
+
+    @Test
+    void withUpdatedDetailsPreservesCommittedQuantityWhenCapacityChanges() {
+        UUID id = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant t1 = Instant.parse("2026-08-15T12:00:00Z");
+        Instant t2 = Instant.parse("2026-08-15T13:00:00Z");
+
+        TicketSector sector = new TicketSector(
+                id, eventId, "Pista", "Desc", 100, 75, new BigDecimal("50.00"), t1, t1
+        );
+        // committed = 100 - 75 = 25
+
+        // Increasing capacity to 150 -> newAvailable = 150 - 25 = 125
+        TicketSector expanded = sector.withUpdatedDetails(
+                "Pista Expanded", "New Desc", 150, 125, new BigDecimal("60.00"), t2
+        );
+        assertThat(expanded.capacity()).isEqualTo(150);
+        assertThat(expanded.availableQuantity()).isEqualTo(125);
+        assertThat(expanded.committedQuantity()).isEqualTo(25);
+        assertThat(expanded.price()).isEqualTo(new BigDecimal("60.00"));
+        assertThat(expanded.name()).isEqualTo("Pista Expanded");
+
+        // Decreasing capacity to 50 -> newAvailable = 50 - 25 = 25
+        TicketSector shrunk = sector.withUpdatedDetails(
+                "Pista Shrunk", null, 50, 25, new BigDecimal("50.00"), t2
+        );
+        assertThat(shrunk.capacity()).isEqualTo(50);
+        assertThat(shrunk.availableQuantity()).isEqualTo(25);
+        assertThat(shrunk.committedQuantity()).isEqualTo(25);
+    }
 }

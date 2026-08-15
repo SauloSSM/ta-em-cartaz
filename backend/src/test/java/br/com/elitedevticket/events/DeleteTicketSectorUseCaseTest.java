@@ -76,11 +76,59 @@ class DeleteTicketSectorUseCaseTest {
         );
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
-        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.of(sector));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(sector));
 
         useCase.execute(eventId, sectorId, organizerId);
 
         verify(ticketSectorRepository).deleteById(sectorId);
+    }
+
+    @Test
+    void deletesUncommittedTicketSectorFromPublishedEventSuccessfully() {
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
+        // committed = 100 - 100 = 0
+        TicketSector sector = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista Extra",
+                null,
+                100,
+                100,
+                new BigDecimal("50.00"),
+                now,
+                now
+        );
+
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(sector));
+
+        useCase.execute(eventId, sectorId, organizerId);
+
+        verify(ticketSectorRepository).deleteById(sectorId);
+    }
+
+    @Test
+    void throwsConflictWhenDeletingSectorWithCommittedTicketsFromPublishedEvent() {
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
+        // committed = 100 - 95 = 5
+        TicketSector sector = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista",
+                null,
+                100,
+                95,
+                new BigDecimal("50.00"),
+                now,
+                now
+        );
+
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(sector));
+
+        assertThatThrownBy(() -> useCase.execute(eventId, sectorId, organizerId))
+                .isInstanceOf(EventConflictException.class)
+                .hasMessageContaining("Não é possível remover setor com ingressos ou reservas associadas.");
     }
 
     @Test
@@ -101,20 +149,10 @@ class DeleteTicketSectorUseCaseTest {
     }
 
     @Test
-    void throwsConflictWhenEventIsNotDraft() {
-        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
-
-        assertThatThrownBy(() -> useCase.execute(eventId, sectorId, organizerId))
-                .isInstanceOf(EventConflictException.class)
-                .hasMessageContaining("rascunho");
-    }
-
-    @Test
     void throwsNotFoundWhenSectorDoesNotExist() {
         Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
-        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.empty());
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(eventId, sectorId, organizerId))
                 .isInstanceOf(TicketSectorNotFoundException.class);
@@ -137,7 +175,7 @@ class DeleteTicketSectorUseCaseTest {
         );
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
-        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.of(sector));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(sector));
 
         assertThatThrownBy(() -> useCase.execute(eventId, sectorId, organizerId))
                 .isInstanceOf(TicketSectorNotFoundException.class);

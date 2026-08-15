@@ -50,7 +50,7 @@ development_status:
   2-3-editar-listar-e-excluir-events-em-rascunho: done
   2-4-configurar-ticketsectors-do-rascunho: done
   2-5-revisar-e-publicar-event-válido: done
-  2-6-gerenciar-event-publicado-sem-quebrar-compromissos-existentes: backlog
+  2-6-gerenciar-event-publicado-sem-quebrar-compromissos-existentes: done
   epic-2-retrospective: optional
 
   epic-3: backlog

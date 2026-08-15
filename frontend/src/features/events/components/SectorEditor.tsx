@@ -76,9 +76,13 @@ export function SectorEditor({
       errors.name = 'Nome do setor é obrigatório.';
     }
 
+    const committedQuantity = isEditing && sector ? sector.capacity - sector.availableQuantity : 0;
+
     const parsedCapacity = parseInt(capacity, 10);
     if (isNaN(parsedCapacity) || parsedCapacity <= 0) {
       errors.capacity = 'Capacidade deve ser um número inteiro maior que zero.';
+    } else if (isEditing && parsedCapacity < committedQuantity) {
+      errors.capacity = `A capacidade não pode ser menor que a quantidade já comprometida (${committedQuantity}).`;
     }
 
     const parsedPrice = parseFloat(price.replace(',', '.'));
@@ -119,6 +123,8 @@ export function SectorEditor({
       setBusy(false);
     }
   };
+
+  const committedQuantity = isEditing && sector ? sector.capacity - sector.availableQuantity : 0;
 
   return (
     <div className="dialog-backdrop" role="presentation">
@@ -175,7 +181,7 @@ export function SectorEditor({
               <input
                 id="sector-capacity-input"
                 type="number"
-                min="1"
+                min={committedQuantity > 0 ? String(committedQuantity) : '1'}
                 step="1"
                 required
                 disabled={busy}
@@ -188,8 +194,19 @@ export function SectorEditor({
                 }}
                 placeholder="Ex.: 500"
                 aria-invalid={fieldErrors.capacity ? 'true' : 'false'}
-                aria-describedby={fieldErrors.capacity ? 'sector-capacity-error' : undefined}
+                aria-describedby={
+                  fieldErrors.capacity
+                    ? 'sector-capacity-error'
+                    : committedQuantity > 0
+                      ? 'sector-capacity-hint'
+                      : undefined
+                }
               />
+              {committedQuantity > 0 ? (
+                <span id="sector-capacity-hint" className="field-hint">
+                  Mínimo permitido: {committedQuantity} (ingressos já comprometidos)
+                </span>
+              ) : null}
               {fieldErrors.capacity ? (
                 <span id="sector-capacity-error" className="field-error" role="alert">
                   {fieldErrors.capacity}

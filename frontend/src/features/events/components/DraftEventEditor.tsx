@@ -58,22 +58,33 @@ export function DraftEventEditor({
 
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isDraft) return;
 
     setIsSaving(true);
     setErrorMessage(null);
     setStatusMessage(null);
 
     try {
-      const updated = await updateDraftEvent(currentEvent.id, {
-        title: formData.title,
-        description: formData.description?.trim() ? formData.description : undefined,
-        imageUrl: formData.imageUrl?.trim() ? formData.imageUrl : undefined,
-        category: formData.category?.trim() ? formData.category : undefined,
-        venueName: formData.venueName?.trim() ? formData.venueName : undefined,
-        venueAddress: formData.venueAddress?.trim() ? formData.venueAddress : undefined,
-        startsAt: formData.startsAt?.trim() ? formData.startsAt : undefined,
-      });
+      const payload: UpdateDraftEventRequest = isDraft
+        ? {
+            title: formData.title,
+            description: formData.description?.trim() ? formData.description : undefined,
+            imageUrl: formData.imageUrl?.trim() ? formData.imageUrl : undefined,
+            category: formData.category?.trim() ? formData.category : undefined,
+            venueName: formData.venueName?.trim() ? formData.venueName : undefined,
+            venueAddress: formData.venueAddress?.trim() ? formData.venueAddress : undefined,
+            startsAt: formData.startsAt?.trim() ? formData.startsAt : undefined,
+          }
+        : {
+            title: currentEvent.title,
+            description: formData.description?.trim() ? formData.description : undefined,
+            imageUrl: formData.imageUrl?.trim() ? formData.imageUrl : undefined,
+            category: formData.category?.trim() ? formData.category : undefined,
+            venueName: currentEvent.venueName ?? undefined,
+            venueAddress: currentEvent.venueAddress ?? undefined,
+            startsAt: currentEvent.startsAt ?? undefined,
+          };
+
+      const updated = await updateDraftEvent(currentEvent.id, payload);
 
       startTransition(() => {
         setCurrentEvent(updated);
@@ -84,7 +95,7 @@ export function DraftEventEditor({
         onEventUpdated(updated);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar alterações no rascunho.';
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar alterações no evento.';
       setErrorMessage(msg);
     } finally {
       setIsSaving(false);
@@ -220,6 +231,11 @@ export function DraftEventEditor({
               onChange={(e) => handleFieldChange('title', e.target.value)}
               placeholder="Ex.: Festival de Música de Verão"
             />
+            {!isDraft ? (
+              <span className="field-lock-note">
+                Campo estrutural protegido: não pode ser alterado após a publicação.
+              </span>
+            ) : null}
           </div>
 
           <div className="form-row">
@@ -233,6 +249,11 @@ export function DraftEventEditor({
                 onChange={(e) => handleFieldChange('venueName', e.target.value)}
                 placeholder="Ex.: Allianz Parque"
               />
+              {!isDraft ? (
+                <span className="field-lock-note">
+                  Campo estrutural protegido: não pode ser alterado após a publicação.
+                </span>
+              ) : null}
             </div>
 
             <div className="form-group">
@@ -245,6 +266,11 @@ export function DraftEventEditor({
                 onChange={(e) => handleFieldChange('venueAddress', e.target.value)}
                 placeholder="Ex.: Av. Francisco Matarazzo, 1705, São Paulo - SP"
               />
+              {!isDraft ? (
+                <span className="field-lock-note">
+                  Campo estrutural protegido: não pode ser alterado após a publicação.
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -259,6 +285,11 @@ export function DraftEventEditor({
                 onChange={(e) => handleFieldChange('startsAt', e.target.value)}
                 placeholder="Ex.: 2026-10-15T20:00:00Z"
               />
+              {!isDraft ? (
+                <span className="field-lock-note">
+                  Campo estrutural protegido: não pode ser alterado após a publicação.
+                </span>
+              ) : null}
             </div>
 
             <div className="form-group">
@@ -266,7 +297,7 @@ export function DraftEventEditor({
               <input
                 id="event-category-input"
                 type="text"
-                disabled={!isDraft || isBusy}
+                disabled={isBusy}
                 value={formData.category}
                 onChange={(e) => handleFieldChange('category', e.target.value)}
                 placeholder="Ex.: Show, Teatro, Festival..."
@@ -280,7 +311,7 @@ export function DraftEventEditor({
               <input
                 id="event-image-url-input"
                 type="url"
-                disabled={!isDraft || isBusy}
+                disabled={isBusy}
                 value={formData.imageUrl}
                 onChange={(e) => handleFieldChange('imageUrl', e.target.value)}
                 placeholder="https://..."
@@ -293,7 +324,7 @@ export function DraftEventEditor({
             <textarea
               id="event-description-input"
               rows={4}
-              disabled={!isDraft || isBusy}
+              disabled={isBusy}
               value={formData.description}
               onChange={(e) => handleFieldChange('description', e.target.value)}
               placeholder="Descreva as principais atrações, horários e informações relevantes..."
@@ -306,26 +337,24 @@ export function DraftEventEditor({
           </div>
 
           <div className="draft-editor-actions">
-            {isDraft ? (
-              <>
-                <button
-                  type="submit"
-                  className="draft-save-btn"
-                  disabled={isBusy}
-                >
-                  {isSaving ? 'Salvando…' : 'Salvar alterações'}
-                </button>
+            <button
+              type="submit"
+              className="draft-save-btn"
+              disabled={isBusy}
+            >
+              {isSaving ? 'Salvando…' : 'Salvar alterações'}
+            </button>
 
-                <button
-                  type="button"
-                  className="draft-delete-btn"
-                  disabled={isBusy}
-                  onClick={() => setShowDeleteDialog(true)}
-                  aria-label={`Excluir rascunho de ${currentEvent.title}`}
-                >
-                  Excluir rascunho
-                </button>
-              </>
+            {isDraft ? (
+              <button
+                type="button"
+                className="draft-delete-btn"
+                disabled={isBusy}
+                onClick={() => setShowDeleteDialog(true)}
+                aria-label={`Excluir rascunho de ${currentEvent.title}`}
+              >
+                Excluir rascunho
+              </button>
             ) : (
               <div className="published-lock-note" role="note">
                 <p>Eventos publicados possuem dados estruturais protegidos e não podem ser excluídos.</p>

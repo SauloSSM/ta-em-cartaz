@@ -122,19 +122,29 @@ class CreateTicketSectorUseCaseTest {
     }
 
     @Test
-    void throwsConflictWhenEventIsNotDraft() {
+    void createsTicketSectorSuccessfullyForPublishedEvent() {
         Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
+        when(ticketSectorRepository.save(any(TicketSector.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThatThrownBy(() -> useCase.execute(
+        TicketSector created = useCase.execute(
                 eventId,
                 organizerId,
-                "Pista",
-                null,
-                100,
-                BigDecimal.TEN
-        )).isInstanceOf(EventConflictException.class)
-          .hasMessageContaining("rascunho");
+                "Camarote VIP",
+                "Novo setor pós publicação",
+                50,
+                new BigDecimal("300.00")
+        );
+
+        assertThat(created.eventId()).isEqualTo(eventId);
+        assertThat(created.name()).isEqualTo("Camarote VIP");
+        assertThat(created.description()).isEqualTo("Novo setor pós publicação");
+        assertThat(created.capacity()).isEqualTo(50);
+        assertThat(created.availableQuantity()).isEqualTo(50);
+        assertThat(created.price()).isEqualTo(new BigDecimal("300.00"));
+        assertThat(created.createdAt()).isEqualTo(now);
+        assertThat(created.updatedAt()).isEqualTo(now);
+        verify(ticketSectorRepository).save(any(TicketSector.class));
     }
 
     @Test

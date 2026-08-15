@@ -46,16 +46,23 @@ public class CreateTicketSectorUseCase {
             throw new EventForbiddenException("Apenas o organizador proprietário pode configurar setores do evento.");
         }
 
-        if (event.status() != EventStatus.DRAFT) {
-            throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Apenas eventos em rascunho podem ter setores configurados.");
+        if (name == null || name.trim().isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("capacity must be greater than zero");
+        }
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("price must be greater than or equal to zero");
         }
 
         Instant now = clock.instant();
+        String trimmedDesc = description == null || description.trim().isEmpty() ? null : description.trim();
         TicketSector sector = new TicketSector(
                 UUID.randomUUID(),
                 eventId,
                 name.trim(),
-                description,
+                trimmedDesc,
                 capacity,
                 capacity,
                 price,

@@ -29,6 +29,11 @@ class JpaTicketSectorRepository implements TicketSectorRepository {
     }
 
     @Override
+    public Optional<TicketSector> findByIdWithLock(UUID id) {
+        return repository.findByIdForUpdate(id).map(TicketSectorEntity::toDomain);
+    }
+
+    @Override
     public List<TicketSector> findByEventId(UUID eventId) {
         return repository.findByEventIdOrderByCreatedAtAsc(eventId)
                 .stream()

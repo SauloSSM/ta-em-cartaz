@@ -83,7 +83,7 @@ class UpdateTicketSectorUseCaseTest {
         );
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
-        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.of(existingSector));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(existingSector));
         when(ticketSectorRepository.save(any(TicketSector.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TicketSector updated = useCase.execute(
@@ -106,6 +106,111 @@ class UpdateTicketSectorUseCaseTest {
         assertThat(updated.createdAt()).isEqualTo(createdAt);
         assertThat(updated.updatedAt()).isEqualTo(updatedAt);
         verify(ticketSectorRepository).save(any(TicketSector.class));
+    }
+
+    @Test
+    void updatesPublishedTicketSectorIncreasingCapacityPreservingCommitted() {
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
+        // capacity 100, available 70 -> committed = 30
+        TicketSector existingSector = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista",
+                "Desc",
+                100,
+                70,
+                new BigDecimal("100.00"),
+                createdAt,
+                createdAt
+        );
+
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(existingSector));
+        when(ticketSectorRepository.save(any(TicketSector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Increase capacity to 160 -> newAvailable = 160 - 30 = 130
+        TicketSector updated = useCase.execute(
+                eventId,
+                sectorId,
+                organizerId,
+                "Pista",
+                "Desc",
+                160,
+                new BigDecimal("120.00")
+        );
+
+        assertThat(updated.capacity()).isEqualTo(160);
+        assertThat(updated.availableQuantity()).isEqualTo(130);
+        assertThat(updated.committedQuantity()).isEqualTo(30);
+        assertThat(updated.price()).isEqualTo(new BigDecimal("120.00"));
+    }
+
+    @Test
+    void updatesPublishedTicketSectorDecreasingCapacityDownToCommitted() {
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
+        // capacity 100, available 70 -> committed = 30
+        TicketSector existingSector = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista",
+                "Desc",
+                100,
+                70,
+                new BigDecimal("100.00"),
+                createdAt,
+                createdAt
+        );
+
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(existingSector));
+        when(ticketSectorRepository.save(any(TicketSector.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Decrease capacity to exactly 30 (committed quantity) -> newAvailable = 0
+        TicketSector updated = useCase.execute(
+                eventId,
+                sectorId,
+                organizerId,
+                "Pista",
+                "Desc",
+                30,
+                new BigDecimal("100.00")
+        );
+
+        assertThat(updated.capacity()).isEqualTo(30);
+        assertThat(updated.availableQuantity()).isEqualTo(0);
+        assertThat(updated.committedQuantity()).isEqualTo(30);
+    }
+
+    @Test
+    void throwsConflictWhenDecreasingCapacityBelowCommitted() {
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
+        // capacity 100, available 70 -> committed = 30
+        TicketSector existingSector = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista",
+                "Desc",
+                100,
+                70,
+                new BigDecimal("100.00"),
+                createdAt,
+                createdAt
+        );
+
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(existingSector));
+
+        // Attempt to decrease capacity to 29 (< 30 committed)
+        assertThatThrownBy(() -> useCase.execute(
+                eventId,
+                sectorId,
+                organizerId,
+                "Pista",
+                "Desc",
+                29,
+                new BigDecimal("100.00")
+        )).isInstanceOf(EventConflictException.class)
+                .hasMessageContaining("A nova capacidade não pode ser menor que a quantidade já comprometida (30).");
     }
 
     @Test
@@ -140,27 +245,10 @@ class UpdateTicketSectorUseCaseTest {
     }
 
     @Test
-    void throwsConflictWhenEventIsNotDraft() {
-        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
-
-        assertThatThrownBy(() -> useCase.execute(
-                eventId,
-                sectorId,
-                organizerId,
-                "Pista",
-                null,
-                100,
-                BigDecimal.TEN
-        )).isInstanceOf(EventConflictException.class)
-          .hasMessageContaining("rascunho");
-    }
-
-    @Test
     void throwsNotFoundWhenSectorDoesNotExist() {
         Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
-        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.empty());
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(
                 eventId,
@@ -190,7 +278,7 @@ class UpdateTicketSectorUseCaseTest {
         );
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
-        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.of(sector));
+        when(ticketSectorRepository.findByIdWithLock(sectorId)).thenReturn(Optional.of(sector));
 
         assertThatThrownBy(() -> useCase.execute(
                 eventId,
@@ -201,5 +289,23 @@ class UpdateTicketSectorUseCaseTest {
                 100,
                 BigDecimal.TEN
         )).isInstanceOf(TicketSectorNotFoundException.class);
+    }
+
+    @Test
+    void throwsIllegalArgumentWhenInputsAreInvalid() {
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
+
+        assertThatThrownBy(() -> useCase.execute(
+                eventId, sectorId, organizerId, "  ", null, 100, BigDecimal.TEN
+        )).isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> useCase.execute(
+                eventId, sectorId, organizerId, "Pista", null, 0, BigDecimal.TEN
+        )).isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> useCase.execute(
+                eventId, sectorId, organizerId, "Pista", null, 100, new BigDecimal("-1.00")
+        )).isInstanceOf(IllegalArgumentException.class);
     }
 }

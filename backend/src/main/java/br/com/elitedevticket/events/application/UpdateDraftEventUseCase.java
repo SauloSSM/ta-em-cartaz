@@ -1,8 +1,10 @@
 package br.com.elitedevticket.events.application;
 
 import br.com.elitedevticket.events.domain.Event;
+import br.com.elitedevticket.events.domain.EventConflictException;
 import br.com.elitedevticket.events.domain.EventForbiddenException;
 import br.com.elitedevticket.events.domain.EventNotFoundException;
+import br.com.elitedevticket.events.domain.EventStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
@@ -48,18 +50,41 @@ public class UpdateDraftEventUseCase {
         }
 
         Instant now = Instant.now(clock);
-        Event updated = existing.withUpdatedDraftDetails(
-                trimmedTitle,
-                trimToNull(description),
-                trimToNull(imageUrl),
-                trimToNull(category),
-                trimToNull(venueName),
-                trimToNull(venueAddress),
-                startsAt,
-                now
-        );
 
-        return eventRepository.save(updated);
+        if (existing.status() == EventStatus.DRAFT) {
+            Event updated = existing.withUpdatedDraftDetails(
+                    trimmedTitle,
+                    trimToNull(description),
+                    trimToNull(imageUrl),
+                    trimToNull(category),
+                    trimToNull(venueName),
+                    trimToNull(venueAddress),
+                    startsAt,
+                    now
+            );
+            return eventRepository.save(updated);
+        }
+
+        if (existing.status() == EventStatus.PUBLISHED) {
+            boolean titleChanged = !trimmedTitle.equals(existing.title());
+            boolean venueNameChanged = !Objects.equals(trimToNull(venueName), existing.venueName());
+            boolean venueAddressChanged = !Objects.equals(trimToNull(venueAddress), existing.venueAddress());
+            boolean startsAtChanged = startsAt != null && !startsAt.equals(existing.startsAt());
+
+            if (titleChanged || venueNameChanged || venueAddressChanged || startsAtChanged) {
+                throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Campos estruturais de eventos publicados são imutáveis.");
+            }
+
+            Event updated = existing.withUpdatedPublishedDetails(
+                    trimToNull(description),
+                    trimToNull(imageUrl),
+                    trimToNull(category),
+                    now
+            );
+            return eventRepository.save(updated);
+        }
+
+        throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Apenas eventos em rascunho ou publicados podem ser modificados.");
     }
 
     private static String trimToNull(String value) {

@@ -69,6 +69,32 @@ public record Event(
         );
     }
 
+    public Event withUpdatedPublishedDetails(
+            String description,
+            String imageUrl,
+            String category,
+            Instant updatedAt) {
+        if (this.status != EventStatus.PUBLISHED) {
+            throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Apenas eventos publicados podem ser modificados.");
+        }
+        return new Event(
+                this.id,
+                this.organizerId,
+                this.externalSource,
+                this.externalId,
+                this.title,
+                description,
+                imageUrl,
+                category,
+                this.status,
+                this.venueName,
+                this.venueAddress,
+                this.startsAt,
+                this.createdAt,
+                updatedAt
+        );
+    }
+
     public Event publish(Instant publishedAt, List<TicketSector> sectors, Clock clock) {
         if (this.status != EventStatus.DRAFT) {
             throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Apenas eventos em rascunho podem ser publicados.");

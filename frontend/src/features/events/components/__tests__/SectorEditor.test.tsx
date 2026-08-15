@@ -203,4 +203,42 @@ describe('SectorEditor', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(2);
   });
+
+  it('validates minimum capacity against committed tickets when editing sector with commitments', async () => {
+    const updateSpy = vi.spyOn(eventsApi, 'updateTicketSector');
+    const committedSector: eventsApi.TicketSectorResponse = {
+      id: 'sec-committed',
+      eventId,
+      name: 'Pista',
+      capacity: 100,
+      availableQuantity: 60, // 40 committed
+      price: 80.0,
+      createdAt: '2026-08-15T12:00:00Z',
+      updatedAt: '2026-08-15T12:00:00Z',
+    };
+
+    render(
+      <SectorEditor
+        eventId={eventId}
+        sector={committedSector}
+        isOpen={true}
+        onSaved={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    // Verify hint
+    expect(screen.getByText('Mínimo permitido: 40 (ingressos já comprometidos)')).toBeDefined();
+
+    const capInput = screen.getByLabelText(/Capacidade Total/i);
+    fireEvent.change(capInput, { target: { value: '35' } });
+
+    const submitBtn = screen.getByRole('button', { name: 'Salvar Alterações' });
+    fireEvent.click(submitBtn);
+
+    expect(
+      await screen.findByText('A capacidade não pode ser menor que a quantidade já comprometida (40).'),
+    ).toBeDefined();
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
 });

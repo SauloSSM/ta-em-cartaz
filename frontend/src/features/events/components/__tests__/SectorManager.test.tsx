@@ -58,16 +58,45 @@ describe('SectorManager', () => {
     expect(screen.getByText(/Clique em "\+ Novo Setor" para cadastrar áreas/i)).toBeDefined();
   });
 
-  it('hides edit and delete actions and new sector button when not in draft', async () => {
-    vi.spyOn(eventsApi, 'listTicketSectors').mockResolvedValue({ sectors: mockSectors });
+  it('allows adding and editing sectors in published events and disables delete on committed sectors', async () => {
+    const publishedSectors: eventsApi.TicketSectorResponse[] = [
+      {
+        ...mockSectors[0],
+        availableQuantity: 450, // 50 committed
+      },
+      {
+        ...mockSectors[1],
+        availableQuantity: 80, // 0 committed
+      },
+    ];
+
+    vi.spyOn(eventsApi, 'listTicketSectors').mockResolvedValue({ sectors: publishedSectors });
 
     render(<SectorManager eventId={eventId} isDraft={false} />);
 
     await screen.findByRole('heading', { name: 'Pista Comum' });
 
-    expect(screen.queryByRole('button', { name: /Novo Setor/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Editar setor Pista Comum/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Excluir setor Pista Comum/i })).toBeNull();
+    // "+ Novo Setor" button is available
+    expect(screen.getByRole('button', { name: /Novo Setor/i })).toBeDefined();
+
+    // "Editar" button is available on both sectors
+    expect(screen.getByRole('button', { name: 'Editar setor Pista Comum' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Editar setor Camarote VIP' })).toBeDefined();
+
+    // Committed indicators
+    expect(screen.getByText('50')).toBeDefined(); // committed for Pista Comum
+
+    // Delete button on committed sector is disabled
+    const deleteCommittedBtn = screen.getByRole('button', {
+      name: 'Setor Pista Comum possui ingressos comprometidos e não pode ser excluído',
+    }) as HTMLButtonElement;
+    expect(deleteCommittedBtn.disabled).toBe(true);
+
+    // Delete button on uncommitted sector is enabled
+    const deleteUncommittedBtn = screen.getByRole('button', {
+      name: 'Excluir setor Camarote VIP',
+    }) as HTMLButtonElement;
+    expect(deleteUncommittedBtn.disabled).toBe(false);
   });
 
   it('opens SectorEditor modal on "+ Novo Setor" button click', async () => {

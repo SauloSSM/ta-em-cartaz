@@ -48,22 +48,39 @@ public class UpdateTicketSectorUseCase {
             throw new EventForbiddenException("Apenas o organizador proprietário pode alterar setores do evento.");
         }
 
-        if (event.status() != EventStatus.DRAFT) {
-            throw new EventConflictException("EVENT_CANNOT_BE_MODIFIED", "Apenas eventos em rascunho podem ter setores modificados.");
+        if (name == null || name.trim().isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("capacity must be greater than zero");
+        }
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("price must be greater than or equal to zero");
         }
 
-        TicketSector sector = ticketSectorRepository.findById(sectorId)
+        TicketSector sector = ticketSectorRepository.findByIdWithLock(sectorId)
                 .orElseThrow(() -> new TicketSectorNotFoundException("Setor não encontrado."));
 
         if (!sector.eventId().equals(eventId)) {
             throw new TicketSectorNotFoundException("Setor não pertence ao evento especificado.");
         }
 
+        int committed = sector.committedQuantity();
+        if (capacity < committed) {
+            throw new EventConflictException(
+                    "EVENT_CANNOT_BE_MODIFIED",
+                    "A nova capacidade não pode ser menor que a quantidade já comprometida (" + committed + ")."
+            );
+        }
+
+        int newAvailableQuantity = capacity - committed;
         Instant now = clock.instant();
-        TicketSector updated = sector.withUpdatedDraftDetails(
+        String trimmedDesc = description == null || description.trim().isEmpty() ? null : description.trim();
+        TicketSector updated = sector.withUpdatedDetails(
                 name.trim(),
-                description,
+                trimmedDesc,
                 capacity,
+                newAvailableQuantity,
                 price,
                 now
         );

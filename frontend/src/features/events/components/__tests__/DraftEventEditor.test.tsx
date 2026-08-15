@@ -173,19 +173,110 @@ describe('DraftEventEditor', () => {
     expect(handleDelete).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000');
   });
 
-  it('renders published event with disabled inputs and no delete button', () => {
+  it('renders published event with locked structural fields, editable non-structural fields and save button', () => {
     render(<DraftEventEditor event={mockPublishedEvent} />);
 
     expect(screen.getByLabelText('Status do evento: PUBLISHED')).toBeDefined();
 
+    // Structural fields are disabled
     const titleInput = screen.getByLabelText(/Título do Evento/) as HTMLInputElement;
     expect(titleInput.disabled).toBe(true);
 
-    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).toBeNull();
+    const venueNameInput = screen.getByLabelText('Nome do Local / Venue') as HTMLInputElement;
+    expect(venueNameInput.disabled).toBe(true);
+
+    const venueAddressInput = screen.getByLabelText('Endereço do Local') as HTMLInputElement;
+    expect(venueAddressInput.disabled).toBe(true);
+
+    const startsAtInput = screen.getByLabelText('Data e Hora de Início (ISO)') as HTMLInputElement;
+    expect(startsAtInput.disabled).toBe(true);
+
+    // Structural lock explanations are visible
+    const lockNotes = screen.getAllByText('Campo estrutural protegido: não pode ser alterado após a publicação.');
+    expect(lockNotes.length).toBe(4);
+
+    // Non-structural fields are editable
+    const descInput = screen.getByLabelText('Descrição do Evento') as HTMLTextAreaElement;
+    expect(descInput.disabled).toBe(false);
+
+    const categoryInput = screen.getByLabelText('Categoria') as HTMLInputElement;
+    expect(categoryInput.disabled).toBe(false);
+
+    const imageInput = screen.getByLabelText('URL do Banner / Imagem') as HTMLInputElement;
+    expect(imageInput.disabled).toBe(false);
+
+    // Save button is available
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDefined();
+
+    // Delete button is not present
     expect(screen.queryByRole('button', { name: /Excluir rascunho/ })).toBeNull();
     expect(
       screen.getByText('Eventos publicados possuem dados estruturais protegidos e não podem ser excluídos.'),
     ).toBeDefined();
+  });
+
+  it('edits non-structural fields of published event and submits update successfully', async () => {
+    const user = userEvent.setup();
+    const handleUpdate = vi.fn();
+
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((url: string | URL | Request, init?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+      if (urlString.includes('/sectors')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ sectors: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (init?.method === 'PUT') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ...mockPublishedEvent,
+              description: 'Nova descrição enriquecida',
+              category: 'Rock Festival',
+              updatedAt: '2026-08-15T15:00:00Z',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(mockPublishedEvent), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<DraftEventEditor event={mockPublishedEvent} onEventUpdated={handleUpdate} />);
+
+    const descInput = screen.getByLabelText('Descrição do Evento');
+    await user.clear(descInput);
+    await user.type(descInput, 'Nova descrição enriquecida');
+
+    const categoryInput = screen.getByLabelText('Categoria');
+    await user.clear(categoryInput);
+    await user.type(categoryInput, 'Rock Festival');
+
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/events/${mockPublishedEvent.id}`,
+      expect.objectContaining({
+        method: 'PUT',
+      }),
+    );
+
+    expect(await screen.findByText('Alterações salvas com sucesso!')).toBeDefined();
+    expect(handleUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Nova descrição enriquecida',
+        category: 'Rock Festival',
+      }),
+    );
   });
 
   it('calls onBack when clicking back button', async () => {
