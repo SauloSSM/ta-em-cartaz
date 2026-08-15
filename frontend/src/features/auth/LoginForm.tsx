@@ -10,6 +10,7 @@ type LoginFormProps = {
 
 export function LoginForm({ email, busy, error, onEmailChange, onLogin }: LoginFormProps) {
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -28,7 +29,11 @@ export function LoginForm({ email, busy, error, onEmailChange, onLogin }: LoginF
     <section aria-labelledby="login-title">
       <h2 id="login-title">Entrar com conta provisionada</h2>
       <p>Use uma das contas fornecidas para a avaliação.</p>
-      <form onSubmit={handleSubmit} aria-describedby={error === undefined ? undefined : 'login-error'}>
+      <form
+        onSubmit={handleSubmit}
+        aria-busy={busy}
+        aria-describedby={error === undefined ? undefined : 'login-error'}
+      >
         <div>
           <label htmlFor="email">E-mail</label>
           <input
@@ -47,13 +52,22 @@ export function LoginForm({ email, busy, error, onEmailChange, onLogin }: LoginF
           <input
             id="password"
             name="password"
-            type="password"
+            type={passwordVisible ? 'text' : 'password'}
             autoComplete="current-password"
             required
             value={password}
             onChange={(event) => setPassword(event.currentTarget.value)}
             disabled={busy}
           />
+          <button
+            type="button"
+            aria-pressed={passwordVisible}
+            aria-label={passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+            disabled={busy}
+            onClick={() => setPasswordVisible((visible) => !visible)}
+          >
+            {passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+          </button>
         </div>
         {error === undefined ? null : (
           <p id="login-error" role="alert" tabIndex={-1} ref={errorRef}>

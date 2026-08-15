@@ -11,6 +11,7 @@ const PURCHASE_INTENT_KEY = 'edt.purchase-intent.v1';
 
 export type SessionState =
   | { status: 'loading' }
+  | { status: 'bootstrap-error'; message: string }
   | { status: 'anonymous'; email: string }
   | { status: 'authenticating'; email: string }
   | { status: 'authentication-error'; email: string; message: string }
@@ -19,8 +20,10 @@ export type SessionState =
   | { status: 'logout-error'; user: SessionUser; message: string };
 
 type SessionAction =
+  | { type: 'BOOTSTRAP_STARTED' }
   | { type: 'BOOTSTRAP_ANONYMOUS' }
   | { type: 'BOOTSTRAP_AUTHENTICATED'; user: SessionUser }
+  | { type: 'BOOTSTRAP_FAILED'; message: string }
   | { type: 'EDIT_EMAIL'; email: string }
   | { type: 'LOGIN_STARTED' }
   | { type: 'LOGIN_SUCCEEDED'; user: SessionUser }
@@ -42,12 +45,30 @@ export function useSession() {
           : { type: 'BOOTSTRAP_ANONYMOUS' });
       })
       .catch(() => {
-        if (active) dispatch({ type: 'BOOTSTRAP_ANONYMOUS' });
+        if (active) dispatch({
+          type: 'BOOTSTRAP_FAILED',
+          message: 'Não foi possível verificar sua sessão. Tente novamente.',
+        });
       });
     return () => {
       active = false;
     };
   }, []);
+
+  async function retryBootstrap() {
+    dispatch({ type: 'BOOTSTRAP_STARTED' });
+    try {
+      const session = await getSession();
+      dispatch(session.authenticated
+        ? { type: 'BOOTSTRAP_AUTHENTICATED', user: session.user }
+        : { type: 'BOOTSTRAP_ANONYMOUS' });
+    } catch {
+      dispatch({
+        type: 'BOOTSTRAP_FAILED',
+        message: 'Não foi possível verificar sua sessão. Tente novamente.',
+      });
+    }
+  }
 
   async function authenticate(password: string) {
     if (!hasEmail(state)) return;
@@ -82,16 +103,21 @@ export function useSession() {
     setEmail: (email: string) => dispatch({ type: 'EDIT_EMAIL', email }),
     authenticate,
     endSession,
+    retryBootstrap,
   };
 }
 
 export function reduceSession(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
+    case 'BOOTSTRAP_STARTED':
+      return { status: 'loading' };
     case 'BOOTSTRAP_ANONYMOUS':
       return { status: 'anonymous', email: '' };
     case 'BOOTSTRAP_AUTHENTICATED':
     case 'LOGIN_SUCCEEDED':
       return { status: 'authenticated', user: action.user };
+    case 'BOOTSTRAP_FAILED':
+      return { status: 'bootstrap-error', message: action.message };
     case 'EDIT_EMAIL':
       return hasEmail(state) ? { status: 'anonymous', email: action.email } : state;
     case 'LOGIN_STARTED':

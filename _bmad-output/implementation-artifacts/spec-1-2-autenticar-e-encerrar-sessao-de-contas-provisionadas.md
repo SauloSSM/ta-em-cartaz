@@ -92,7 +92,7 @@ context:
   [`AuthController.java:21`](../../backend/src/main/java/br/com/elitedevticket/auth/http/AuthController.java#L21)
 
 - Confira a cadeia stateless, CORS restrito e proteção CSRF.
-  [`SecurityConfiguration.java:111`](../../backend/src/main/java/br/com/elitedevticket/auth/adapters/security/SecurityConfiguration.java#L111)
+  [`SecurityConfiguration.java:31`](../../backend/src/main/java/br/com/elitedevticket/auth/adapters/security/SecurityConfiguration.java#L31)
 
 **Segurança da sessão**
 
@@ -113,19 +113,25 @@ context:
 - Examine o cliente same-origin e a fronteira runtime do contrato.
   [`authApi.ts:61`](../../frontend/src/app/api/authApi.ts#L61)
 
-- Siga as transições discriminadas de bootstrap, login e logout.
-  [`useSession.ts:32`](../../frontend/src/app/session/useSession.ts#L32)
+- Siga bootstrap recuperável e transições discriminadas de login e logout.
+  [`useSession.ts:35`](../../frontend/src/app/session/useSession.ts#L35)
 
-- Veja a composição acessível dos estados de sessão.
-  [`App.tsx:4`](../../frontend/src/app/App.tsx#L4)
+- Confira senha revelável, erro focável e estado ocupado acessível.
+  [`LoginForm.tsx:11`](../../frontend/src/features/auth/LoginForm.tsx#L11)
+
+- Veja a composição acessível, incluindo falha e retry do bootstrap.
+  [`App.tsx:29`](../../frontend/src/app/App.tsx#L29)
 
 **Provas e proteção contra drift**
 
-- Audite operações e DTOs Java contra o OpenAPI.
-  [`OpenApiContractTest.java:38`](../../backend/src/test/java/br/com/elitedevticket/auth/OpenApiContractTest.java#L38)
+- Audite mappings reais e DTOs Java contra o OpenAPI.
+  [`OpenApiContractTest.java:43`](../../backend/src/test/java/br/com/elitedevticket/auth/OpenApiContractTest.java#L43)
 
-- Confira matriz HTTP, PostgreSQL real, CORS, cookies e vazamentos.
-  [`AuthEndpointsIntegrationTest.java:26`](../../backend/src/test/java/br/com/elitedevticket/auth/AuthEndpointsIntegrationTest.java#L26)
+- Confira drift TypeScript limitado aos schemas alcançáveis pela autenticação.
+  [`check-openapi-contract.mjs:29`](../../frontend/scripts/check-openapi-contract.mjs#L29)
 
-- Feche pela experiência observável de login, erro, logout e troca.
-  [`App.test.tsx:13`](../../frontend/src/app/App.test.tsx#L13)
+- Confira preflight CORS real com POST, CSRF e credenciais.
+  [`AuthEndpointsIntegrationTest.java:230`](../../backend/src/test/java/br/com/elitedevticket/auth/AuthEndpointsIntegrationTest.java#L230)
+
+- Feche pela recuperação observável de bootstrap, login e CSRF.
+  [`App.test.tsx:129`](../../frontend/src/app/App.test.tsx#L129)

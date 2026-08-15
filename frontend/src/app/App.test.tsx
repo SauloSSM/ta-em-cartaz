@@ -8,6 +8,9 @@ const originalFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = originalFetch;
   document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/';
+  sessionStorage.removeItem('edt.purchase-intent.v1');
+  sessionStorage.removeItem('unrelated.preference');
+  localStorage.removeItem('unrelated.local-preference');
 });
 
 describe('App session flow', () => {
@@ -55,6 +58,103 @@ describe('App session flow', () => {
       'customer.one@demo.elitedevticket.local',
     );
     expect((screen.getByLabelText('Senha') as HTMLInputElement).value).toBe('');
+  });
+
+  it('revela e oculta a senha com nome, estado e foco acessíveis', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ authenticated: false }));
+    const user = userEvent.setup();
+    render(<App />);
+    const password = await screen.findByLabelText('Senha') as HTMLInputElement;
+    const reveal = screen.getByRole('button', { name: 'Mostrar senha' });
+
+    await user.type(password, 'password');
+    await user.click(reveal);
+
+    expect(password.type).toBe('text');
+    expect(reveal.getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(reveal);
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar senha' }));
+    expect(password.type).toBe('password');
+    expect(reveal.getAttribute('aria-pressed')).toBe('false');
+    expect(document.activeElement).toBe(reveal);
+  });
+
+  it('expõe estado ocupado e rótulo contextual durante login', async () => {
+    document.cookie = 'XSRF-TOKEN=csrf; Path=/';
+    let completeLogin!: (response: Response) => void;
+    globalThis.fetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
+      .mockReturnValueOnce(new Promise((resolve) => { completeLogin = resolve; }));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(await screen.findByLabelText('E-mail'), 'customer.one@demo.elitedevticket.local');
+    await user.type(screen.getByLabelText('Senha'), 'password');
+
+    void user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    const busyButton = await screen.findByRole('button', { name: 'Entrando…' });
+    expect(busyButton.closest('form')?.getAttribute('aria-busy')).toBe('true');
+    completeLogin(jsonResponse({
+      authenticated: true,
+      user: {
+        id: '00000000-0000-0000-0000-000000000002',
+        email: 'customer.one@demo.elitedevticket.local',
+        role: 'CUSTOMER',
+      },
+    }));
+    await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
+  });
+
+  it('mostra erro genérico seguro, preserva e-mail, limpa senha e encerra busy', async () => {
+    document.cookie = 'XSRF-TOKEN=csrf; Path=/';
+    globalThis.fetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
+      .mockResolvedValueOnce(jsonResponse({ message: 'detalhe interno' }, 500));
+    const user = userEvent.setup();
+    render(<App />);
+    const email = await screen.findByLabelText('E-mail') as HTMLInputElement;
+    await user.type(email, 'customer.one@demo.elitedevticket.local');
+    await user.type(screen.getByLabelText('Senha'), 'secret');
+    await user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Não foi possível entrar. Tente novamente.');
+    expect(email.value).toBe('customer.one@demo.elitedevticket.local');
+    expect((screen.getByLabelText('Senha') as HTMLInputElement).value).toBe('');
+    const form = screen.getByRole('button', { name: 'Entrar' }).closest('form');
+    expect(form?.getAttribute('aria-busy')).toBe('false');
+    expect((screen.getByRole('button', { name: 'Entrar' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('oferece retry acessível quando o bootstrap falha e permite login após emitir CSRF', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError('offline'))
+      .mockImplementationOnce(async () => {
+        document.cookie = 'XSRF-TOKEN=csrf-after-retry; Path=/';
+        return jsonResponse({ authenticated: false });
+      })
+      .mockResolvedValueOnce(jsonResponse({
+        authenticated: true,
+        user: {
+          id: '00000000-0000-0000-0000-000000000002',
+          email: 'customer.one@demo.elitedevticket.local',
+          role: 'CUSTOMER',
+        },
+      }));
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Não foi possível verificar sua sessão. Tente novamente.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+    await user.type(await screen.findByLabelText('E-mail'), 'customer.one@demo.elitedevticket.local');
+    await user.type(screen.getByLabelText('Senha'), 'password');
+    await user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
+    const loginCall = vi.mocked(globalThis.fetch).mock.calls[2];
+    expect((loginCall[1]?.headers as Record<string, string>)['X-XSRF-TOKEN']).toBe('csrf-after-retry');
   });
 
   it('autentica credenciais válidas e mostra identidade e papel', async () => {
@@ -107,6 +207,42 @@ describe('App session flow', () => {
     expect(sessionStorage.length).toBe(1);
     expect(localStorage.getItem('unrelated.local-preference')).toBe('keep');
     await waitFor(() => expect((screen.getByLabelText('E-mail') as HTMLInputElement).disabled).toBe(false));
+  });
+
+  it('preserva identidade e intenção, anuncia falha de logout e reabilita retry', async () => {
+    document.cookie = 'XSRF-TOKEN=csrf; Path=/';
+    sessionStorage.setItem('edt.purchase-intent.v1', '{"eventId":"future"}');
+    let completeLogout!: (response: Response) => void;
+    globalThis.fetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({
+        authenticated: true,
+        user: {
+          id: '00000000-0000-0000-0000-000000000004',
+          email: 'gate@demo.elitedevticket.local',
+          role: 'GATE',
+        },
+      }))
+      .mockReturnValueOnce(new Promise((resolve) => { completeLogout = resolve; }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const user = userEvent.setup();
+    render(<App />);
+
+    void user.click(await screen.findByRole('button', { name: 'Sair e trocar de conta' }));
+    const busyButton = await screen.findByRole('button', { name: 'Saindo…' });
+    expect(busyButton.closest('section')?.getAttribute('aria-busy')).toBe('true');
+    completeLogout(jsonResponse({ code: 'AUTH_UNAVAILABLE' }, 503));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Não foi possível encerrar a sessão. Tente novamente.',
+    );
+    expect(screen.getByText('gate@demo.elitedevticket.local')).toBeTruthy();
+    expect(sessionStorage.getItem('edt.purchase-intent.v1')).toBe('{"eventId":"future"}');
+    const retry = screen.getByRole('button', { name: 'Sair e trocar de conta' }) as HTMLButtonElement;
+    expect(retry.disabled).toBe(false);
+    expect(retry.closest('section')?.getAttribute('aria-busy')).toBe('false');
+
+    await user.click(retry);
+    await screen.findByRole('heading', { level: 2, name: 'Entrar com conta provisionada' });
   });
 
   it('fica anônima mesmo quando a remoção da intenção falha após logout 204', async () => {

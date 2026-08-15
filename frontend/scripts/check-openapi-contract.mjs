@@ -29,13 +29,19 @@ const clientFunctions = new Map(
 const operations = parseAuthOperations(contract);
 const securitySchemes = parseSecuritySchemes(contract);
 const componentResponses = parseComponentResponses(contract);
+const schemaBlocks = new Map(parseSchemas(contract).map((schema) => [schema.name, schema.block]));
+const schemas = new Map();
 
 for (const operation of operations) {
   assertClientOperation(operation, clientFunctions, componentResponses);
 }
 assertSecuritySemantics(operations, securitySchemes);
 
-for (const schema of parseSchemas(contract)) {
+for (const schemaName of reachableAuthSchemas(operations, componentResponses, schemaBlocks, schemas)) {
+  const schema = schemas.get(schemaName);
+  if (schema === undefined) {
+    fail(`a autenticação referencia o schema inexistente ${schemaName}`);
+  }
   const alias = aliases.get(schema.name);
   if (alias === undefined) {
     fail(`o schema ${schema.name} não possui tipo TypeScript correspondente`);
@@ -58,39 +64,84 @@ function parseAuthOperations(source) {
   }
 
   const section = source.slice(start + 'paths:\n'.length, end);
-  const pathMarkers = [...section.matchAll(/^  (\/api\/v1\/auth\/[^:]+):$/gm)];
-  return pathMarkers.map((pathMarker, index) => {
+  const pathMarkers = [...section.matchAll(/^  (\/[^:]+):$/gm)];
+  return pathMarkers.flatMap((pathMarker, index) => {
     const pathStart = pathMarker.index + pathMarker[0].length + 1;
     const pathEnd = pathMarkers[index + 1]?.index ?? section.length;
     const pathBlock = section.slice(pathStart, pathEnd);
-    const methodMarker = pathBlock.match(/^    (get|post|put|patch|delete):$/m);
-    if (methodMarker === null) {
+    if (!pathMarker[1].startsWith('/api/v1/auth/')) {
+      return [];
+    }
+    const methodMarkers = [...pathBlock.matchAll(/^    (get|post|put|patch|delete|options|head|trace):$/gm)];
+    if (methodMarkers.length === 0) {
       fail(`operação sem método suportado em ${pathMarker[1]}`);
     }
-    const methodBlock = pathBlock.slice(methodMarker.index + methodMarker[0].length + 1);
-    const operationId = methodBlock.match(/^      operationId: ([A-Za-z][A-Za-z0-9]*)$/m)?.[1];
-    if (operationId === undefined) {
-      fail(`operationId ausente em ${pathMarker[1]}`);
-    }
+    return methodMarkers.map((methodMarker, methodIndex) => {
+      const methodStart = methodMarker.index + methodMarker[0].length + 1;
+      const methodEnd = methodMarkers[methodIndex + 1]?.index ?? pathBlock.length;
+      const methodBlock = pathBlock.slice(methodStart, methodEnd);
+      const operationLabel = `${methodMarker[1].toUpperCase()} ${pathMarker[1]}`;
+      const operationId = methodBlock.match(/^      operationId: ([A-Za-z][A-Za-z0-9]*)$/m)?.[1];
+      if (operationId === undefined) {
+        fail(`operationId ausente em ${operationLabel}`);
+      }
 
-    const requestBlock = indentedSection(methodBlock, 'requestBody', 6);
-    const requestSchema = requestBlock === undefined
-      ? undefined
-      : requestBlock.match(/^\s+\$ref: '#\/components\/schemas\/([^']+)'$/m)?.[1];
-    if (requestBlock !== undefined
-      && (!requestBlock.includes('        required: true\n') || requestSchema === undefined)) {
-      fail(`requestBody inválido em ${pathMarker[1]}`);
-    }
+      const requestBlock = indentedSection(methodBlock, 'requestBody', 6);
+      const requestSchema = requestBlock === undefined
+        ? undefined
+        : requestBlock.match(/^\s+\$ref: '#\/components\/schemas\/([^']+)'$/m)?.[1];
+      if (requestBlock !== undefined
+        && (!requestBlock.includes('        required: true\n') || requestSchema === undefined)) {
+        fail(`requestBody inválido em ${operationLabel}`);
+      }
 
-    return {
-      path: pathMarker[1],
-      method: methodMarker[1].toUpperCase(),
-      operationId,
-      requestSchema,
-      security: parseSecurity(indentedSection(methodBlock, 'security', 6), pathMarker[1]),
-      responses: parseOperationResponses(indentedSection(methodBlock, 'responses', 6), pathMarker[1]),
-    };
+      return {
+        path: pathMarker[1],
+        method: methodMarker[1].toUpperCase(),
+        operationId,
+        requestSchema,
+        security: parseSecurity(indentedSection(methodBlock, 'security', 6), operationLabel),
+        responses: parseOperationResponses(indentedSection(methodBlock, 'responses', 6), operationLabel),
+      };
+    });
   });
+}
+
+function reachableAuthSchemas(operations, responses, schemaBlocks, schemas) {
+  const pending = [];
+  for (const operation of operations) {
+    if (operation.requestSchema !== undefined) pending.push(operation.requestSchema);
+    for (const response of operation.responses.values()) {
+      if (response.schemaRef !== undefined) pending.push(response.schemaRef);
+      if (response.componentRef !== undefined) {
+        const component = responses.get(response.componentRef);
+        if (component === undefined) {
+          fail(`a autenticação referencia a response inexistente ${response.componentRef}`);
+        }
+        if (component.schemaRef !== undefined) pending.push(component.schemaRef);
+      }
+    }
+  }
+
+  const reachable = new Set();
+  while (pending.length > 0) {
+    const name = pending.pop();
+    if (reachable.has(name)) continue;
+    reachable.add(name);
+    const block = schemaBlocks.get(name);
+    if (block === undefined) continue;
+    const schema = parseSchema(name, block);
+    schemas.set(name, schema);
+    if (schema.kind === 'union') {
+      pending.push(...schema.members);
+    } else if (schema.kind === 'object') {
+      for (const property of schema.properties) {
+        const reference = property.type.endsWith('[]') ? property.type.slice(0, -2) : property.type;
+        if (schemaBlocks.has(reference)) pending.push(reference);
+      }
+    }
+  }
+  return reachable;
 }
 
 function parseSecurity(block, path) {
@@ -369,7 +420,7 @@ function parseSchemas(source) {
   return markers.map((marker, index) => {
     const blockStart = marker.index + marker[0].length + 1;
     const blockEnd = markers[index + 1]?.index ?? section.length;
-    return parseSchema(marker[1], section.slice(blockStart, blockEnd));
+    return { name: marker[1], block: section.slice(blockStart, blockEnd) };
   });
 }
 

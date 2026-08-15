@@ -15,7 +15,7 @@ const roleLabels = {
 
 export function AuthenticatedSession({ user, busy, error, onLogout }: AuthenticatedSessionProps) {
   return (
-    <section aria-labelledby="session-title">
+    <section aria-labelledby="session-title" aria-busy={busy}>
       <h2 id="session-title">Sessão atual</h2>
       <dl>
         <div>

@@ -226,6 +226,27 @@ class AuthEndpointsIntegrationTest {
         assertThat(denied.headers().firstValue("Access-Control-Allow-Credentials")).isEmpty();
     }
 
+    @Test
+    void corsPreflightAllowsConfiguredLoginRequestWithCsrfHeaders() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(uri("/api/v1/auth/login"))
+                .header("Origin", "https://allowed.example")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type,x-xsrf-token")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("Access-Control-Allow-Origin"))
+                .contains("https://allowed.example");
+        assertThat(response.headers().firstValue("Access-Control-Allow-Credentials")).contains("true");
+        assertThat(commaSeparatedHeader(response, "Access-Control-Allow-Methods"))
+                .contains("post");
+        assertThat(commaSeparatedHeader(response, "Access-Control-Allow-Headers"))
+                .contains("content-type", "x-xsrf-token");
+    }
+
     private String bootstrapCsrf() throws Exception {
         return cookieValue(getSession(""), "XSRF-TOKEN");
     }
@@ -307,6 +328,14 @@ class AuthEndpointsIntegrationTest {
 
     private List<String> setCookies(HttpResponse<String> response) {
         return response.headers().allValues("Set-Cookie");
+    }
+
+    private List<String> commaSeparatedHeader(HttpResponse<String> response, String name) {
+        return response.headers().allValues(name).stream()
+                .flatMap(value -> List.of(value.split(",")).stream())
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .toList();
     }
 
     private String cookieValue(HttpResponse<String> response, String name) {

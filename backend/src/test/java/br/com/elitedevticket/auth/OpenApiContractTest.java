@@ -7,6 +7,7 @@ import br.com.elitedevticket.auth.http.AnonymousSessionResponse;
 import br.com.elitedevticket.auth.http.ApiErrorResponse;
 import br.com.elitedevticket.auth.http.AuthErrorCode;
 import br.com.elitedevticket.auth.http.AuthenticatedSessionResponse;
+import br.com.elitedevticket.auth.http.AuthController;
 import br.com.elitedevticket.auth.http.FieldErrorResponse;
 import br.com.elitedevticket.auth.http.LoginRequest;
 import br.com.elitedevticket.auth.http.SessionResponse;
@@ -19,12 +20,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.yaml.snakeyaml.Yaml;
 
 class OpenApiContractTest {
@@ -36,6 +41,7 @@ class OpenApiContractTest {
 
     @Test
     void javaAuthDtosAndOperationsRemainStructurallyAlignedWithTheVersionedOpenApi() throws IOException {
+        assertControllerMappings();
         Map<String, Object> contract = loadContract();
         Map<String, Object> paths = map(contract.get("paths"));
         Map<String, Object> session = assertOperation(
@@ -83,6 +89,34 @@ class OpenApiContractTest {
         Map<String, Object> responses = map(components.get("responses"));
         assertThat(map(map(responses.get("AuthInvalidCredentials")).get("headers")))
                 .containsKey("Set-Cookie");
+    }
+
+    private void assertControllerMappings() {
+        assertThat(AuthController.class.isAnnotationPresent(RestController.class)).isTrue();
+        RequestMapping baseMapping = AuthController.class.getAnnotation(RequestMapping.class);
+        assertThat(baseMapping).isNotNull();
+        assertThat(mappingPaths(baseMapping.path(), baseMapping.value()))
+                .containsExactly("/api/v1/auth");
+
+        List<String> actual = new ArrayList<>();
+        Arrays.stream(AuthController.class.getDeclaredMethods()).forEach(method -> {
+            RequestMapping mapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);
+            if (mapping != null) {
+                List<String> paths = mappingPaths(mapping.path(), mapping.value());
+                assertThat(paths).hasSize(1);
+                assertThat(mapping.method()).hasSize(1);
+                actual.add(mapping.method()[0].name() + " " + paths.getFirst() + " -> " + method.getName());
+            }
+        });
+
+        assertThat(actual).containsExactlyInAnyOrder(
+                "GET /session -> session",
+                "POST /login -> login",
+                "POST /logout -> logout");
+    }
+
+    private List<String> mappingPaths(String[] path, String[] value) {
+        return List.of(path.length == 0 ? value : path);
     }
 
     @SuppressWarnings("unchecked")
