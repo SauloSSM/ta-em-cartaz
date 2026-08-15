@@ -297,6 +297,84 @@ describe('App session flow', () => {
       removeItem.mockRestore();
     }
   });
+
+  it('organizador pode pesquisar no catálogo, criar rascunho e visualizá-lo no editor de eventos (Superfície S11)', async () => {
+    document.cookie = 'XSRF-TOKEN=test-csrf; Path=/';
+    globalThis.fetch = vi.fn<typeof fetch>()
+      // 1. Initial session check
+      .mockResolvedValueOnce(jsonResponse({
+        authenticated: true,
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          email: 'organizer@demo.elitedevticket.local',
+          role: 'ORGANIZER',
+        },
+      }))
+      // 2. Search catalog
+      .mockResolvedValueOnce(jsonResponse({
+        events: [
+          {
+            externalId: 'tm-rock',
+            title: 'Rock in Rio 2026',
+            description: 'Festival de música',
+            category: 'Rock',
+            imageUrl: 'https://images.example.com/rock.jpg',
+          },
+        ],
+      }))
+      // 3. Create draft
+      .mockResolvedValueOnce(jsonResponse(
+        {
+          id: '99999999-9999-9999-9999-999999999999',
+          organizerId: '00000000-0000-0000-0000-000000000001',
+          externalId: 'tm-rock',
+          title: 'Rock in Rio 2026',
+          description: 'Festival de música',
+          imageUrl: 'https://images.example.com/rock.jpg',
+          category: 'Rock',
+          status: 'DRAFT',
+          createdAt: '2026-08-15T12:00:00Z',
+          updatedAt: '2026-08-15T12:00:00Z',
+        },
+        201,
+      ));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Waits for organizer session to load
+    await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' });
+
+    // Types keyword and searches
+    const searchInput = screen.getByLabelText('Palavra-chave do evento');
+    await user.type(searchInput, 'Rock');
+    await user.click(screen.getByRole('button', { name: 'Buscar referências' }));
+
+    // Finds search result card
+    const selectBtn = await screen.findByRole('button', { name: 'Usar Rock in Rio 2026 como referência' });
+
+    // Clicks "Usar como referência" to create draft
+    await user.click(selectBtn);
+
+    // Verifies success feedback banner
+    const openDraftBtn = await screen.findByRole('button', { name: 'Abrir rascunho no editor →' });
+    expect(openDraftBtn).toBeDefined();
+
+    // Clicks "Abrir rascunho no editor" to navigate to Surface S11
+    await user.click(openDraftBtn);
+
+    // Surface S11 Editor is rendered
+    expect(await screen.findByRole('heading', { level: 2, name: 'Editor de Evento' })).toBeDefined();
+    expect(screen.getByLabelText('Status do evento: DRAFT')).toBeDefined();
+    expect(screen.getByText('99999999-9999-9999-9999-999999999999')).toBeDefined();
+    expect(screen.getByText('tm-rock')).toBeDefined();
+
+    // Clicks back to return to search
+    const backBtn = screen.getByRole('button', { name: 'Voltar para a pesquisa de catálogo' });
+    await user.click(backBtn);
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' })).toBeDefined();
+  });
 });
 
 function jsonResponse(body: unknown, status = 200) {

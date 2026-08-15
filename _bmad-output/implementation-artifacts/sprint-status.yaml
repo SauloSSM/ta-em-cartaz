@@ -46,7 +46,7 @@ development_status:
 
   epic-2: in-progress
   2-1-pesquisar-referências-ticketmaster-com-recuperação-segura: done
-  2-2-criar-event-interno-em-rascunho-a-partir-do-snapshot: backlog
+  2-2-criar-event-interno-em-rascunho-a-partir-do-snapshot: review
   2-3-editar-listar-e-excluir-events-em-rascunho: backlog
   2-4-configurar-ticketsectors-do-rascunho: backlog
   2-5-revisar-e-publicar-event-válido: backlog

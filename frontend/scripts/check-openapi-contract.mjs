@@ -11,6 +11,10 @@ const catalogTypeSource = readFileSync(
   new URL('../src/features/catalog/api/catalogApi.ts', import.meta.url),
   'utf8',
 );
+const eventsTypeSource = readFileSync(
+  new URL('../src/features/events/api/eventsApi.ts', import.meta.url),
+  'utf8',
+);
 
 const authSourceFile = ts.createSourceFile(
   'authApi.ts',
@@ -26,8 +30,19 @@ const catalogSourceFile = ts.createSourceFile(
   true,
   ts.ScriptKind.TS,
 );
+const eventsSourceFile = ts.createSourceFile(
+  'eventsApi.ts',
+  eventsTypeSource,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
 
-const allStatements = [...authSourceFile.statements, ...catalogSourceFile.statements];
+const allStatements = [
+  ...authSourceFile.statements,
+  ...catalogSourceFile.statements,
+  ...eventsSourceFile.statements,
+];
 
 const aliases = new Map(
   allStatements
@@ -85,7 +100,9 @@ function parseOperations(source) {
     const pathStart = pathMarker.index + pathMarker[0].length + 1;
     const pathEnd = pathMarkers[index + 1]?.index ?? section.length;
     const pathBlock = section.slice(pathStart, pathEnd);
-    if (!pathMarker[1].startsWith('/api/v1/auth/') && !pathMarker[1].startsWith('/api/v1/catalog/')) {
+    if (!pathMarker[1].startsWith('/api/v1/auth/')
+      && !pathMarker[1].startsWith('/api/v1/catalog/')
+      && !pathMarker[1].startsWith('/api/v1/events')) {
       return [];
     }
     const methodMarkers = [...pathBlock.matchAll(/^    (get|post|put|patch|delete|options|head|trace):$/gm)];
@@ -252,7 +269,10 @@ function assertClientOperation(operation, functions, responses) {
     fail(`${functionName} não possui chamada HTTP analisável`);
   }
   const pathText = ts.isStringLiteral(pathArgument) ? pathArgument.text : pathArgument.head.text;
-  if (pathText !== operation.path) {
+  const pathMatches = ts.isStringLiteral(pathArgument)
+    ? pathArgument.text === operation.path
+    : (pathArgument.head.text.length > 0 && operation.path.startsWith(pathArgument.head.text));
+  if (!pathMatches) {
     fail(`${functionName} usa ${pathText}, mas o OpenAPI declara ${operation.path}`);
   }
   const method = objectStringProperty(initArgument, 'method');
@@ -285,15 +305,15 @@ function assertClientOperation(operation, functions, responses) {
     if (successStatus !== '204' || successResponse.hasContent || !hasExact204Guard(declaration)) {
       fail(`${functionName} deve aceitar somente 204 sem corpo`);
     }
-  } else if (successStatus !== '200' || successResponse.schemaRef !== returnType) {
+  } else if ((successStatus !== '200' && successStatus !== '201') || successResponse.schemaRef !== returnType) {
     fail(`${functionName} retorna ${returnType}, mas a resposta ${successStatus} referencia ${successResponse.schemaRef}`);
   }
 
   for (const [status, response] of operation.responses) {
     if (!status.startsWith('2')) {
       const component = response.componentRef === undefined ? undefined : responses.get(response.componentRef);
-      if (component?.schemaRef !== 'ApiError' && component?.schemaRef !== 'CatalogApiError') {
-        fail(`resposta ${status} de ${operation.path} não referencia ApiError ou CatalogApiError via component response`);
+      if (component?.schemaRef !== 'ApiError' && component?.schemaRef !== 'CatalogApiError' && component?.schemaRef !== 'EventApiError') {
+        fail(`resposta ${status} de ${operation.path} não referencia ApiError, CatalogApiError ou EventApiError via component response`);
       }
     }
   }
@@ -329,7 +349,9 @@ function assertSecuritySemantics(operations, schemes) {
     || !authTypeSource.includes(`'${csrfHeader.parameterName}'`)) {
     fail('nomes CSRF do cliente divergiram dos security schemes');
   }
-  if (authTypeSource.includes(sessionCookie.parameterName) || catalogTypeSource.includes(sessionCookie.parameterName)) {
+  if (authTypeSource.includes(sessionCookie.parameterName)
+    || catalogTypeSource.includes(sessionCookie.parameterName)
+    || eventsTypeSource.includes(sessionCookie.parameterName)) {
     fail('o cliente JavaScript não pode acessar EDT_SESSION');
   }
 }

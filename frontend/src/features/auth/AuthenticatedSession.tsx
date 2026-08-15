@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { SessionUser } from '../../app/api/authApi';
 import { TicketmasterSearch } from '../catalog';
+import { DraftEventEditor, type EventResponse } from '../events';
 
 type AuthenticatedSessionProps = {
   user: SessionUser;
@@ -15,6 +17,8 @@ const roleLabels = {
 } as const;
 
 export function AuthenticatedSession({ user, busy, error, onLogout }: AuthenticatedSessionProps) {
+  const [activeDraft, setActiveDraft] = useState<EventResponse | null>(null);
+
   return (
     <div className="session-view">
       <section aria-labelledby="session-title" aria-busy={busy}>
@@ -36,7 +40,16 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
       </section>
 
       {user.role === 'ORGANIZER' ? (
-        <TicketmasterSearch />
+        activeDraft !== null ? (
+          <DraftEventEditor
+            event={activeDraft}
+            onBack={() => setActiveDraft(null)}
+          />
+        ) : (
+          <TicketmasterSearch
+            onOpenDraft={(draft) => setActiveDraft(draft)}
+          />
+        )
       ) : null}
     </div>
   );

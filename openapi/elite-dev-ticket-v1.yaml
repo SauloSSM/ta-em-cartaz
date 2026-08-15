@@ -105,6 +105,61 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
         '503':
           $ref: '#/components/responses/CatalogUnavailable'
+  /api/v1/events/drafts:
+    post:
+      operationId: createDraftEvent
+      summary: Cria um novo Event em rascunho (DRAFT) a partir de snapshot
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Cria um evento interno DRAFT independente com identidade própria.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDraftEventRequest'
+      responses:
+        '201':
+          description: Evento em rascunho criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+  /api/v1/events/{id}:
+    get:
+      operationId: getEvent
+      summary: Consulta os dados de um evento por ID
+      description: Requer sessão autenticada. Se o evento estiver em DRAFT, somente o Organizer proprietário pode acessá-lo.
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+      responses:
+        '200':
+          description: Dados do evento recuperados com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
 components:
   securitySchemes:
     SessionCookie:
@@ -248,6 +303,79 @@ components:
         timestamp:
           type: string
           format: date-time
+    EventStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED]
+    CreateDraftEventRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        externalId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        category:
+          type: string
+    EventResponse:
+      type: object
+      additionalProperties: false
+      required: [id, organizerId, title, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizerId:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        category:
+          type: string
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        venue:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    EventErrorCode:
+      type: string
+      enum: [EVENT_NOT_FOUND, EVENT_FORBIDDEN, EVENT_INVALID_REQUEST]
+    EventApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId, timestamp]
+      properties:
+        code:
+          $ref: '#/components/schemas/EventErrorCode'
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        traceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
   responses:
     AuthInvalidRequest:
       description: Corpo ausente ou inválido.
@@ -290,3 +418,9 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/CatalogApiError'
+    EventNotFound:
+      description: Evento não encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EventApiError'

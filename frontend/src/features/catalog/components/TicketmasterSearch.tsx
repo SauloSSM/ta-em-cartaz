@@ -1,9 +1,12 @@
 import { useState, useTransition, type FormEvent } from 'react';
 import { searchCatalogEvents, type CatalogEventReference } from '../api/catalogApi';
+import { createDraftEvent, type EventResponse } from '../../events/api/eventsApi';
 import { TicketmasterResultCard } from './TicketmasterResultCard';
 
 type TicketmasterSearchProps = {
   onSelectReference?: (event: CatalogEventReference) => void;
+  onDraftCreated?: (event: EventResponse) => void;
+  onOpenDraft?: (event: EventResponse) => void;
 };
 
 type SearchState =
@@ -13,10 +16,17 @@ type SearchState =
   | { kind: 'success'; events: CatalogEventReference[]; query: string }
   | { kind: 'error'; message: string; query: string };
 
-export function TicketmasterSearch({ onSelectReference }: TicketmasterSearchProps) {
+export function TicketmasterSearch({
+  onSelectReference,
+  onDraftCreated,
+  onOpenDraft,
+}: TicketmasterSearchProps) {
   const [keyword, setKeyword] = useState('');
   const [searchState, setSearchState] = useState<SearchState>({ kind: 'idle' });
   const [selectedReference, setSelectedReference] = useState<CatalogEventReference | null>(null);
+  const [createdDraft, setCreatedDraft] = useState<EventResponse | null>(null);
+  const [creatingExternalId, setCreatingExternalId] = useState<string | null>(null);
+  const [creationError, setCreationError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -53,24 +63,49 @@ export function TicketmasterSearch({ onSelectReference }: TicketmasterSearchProp
     void performSearch(termToRetry);
   };
 
-  const handleSelect = (event: CatalogEventReference) => {
-    startTransition(() => {
-      setSelectedReference(event);
-      setAnnouncement(`Referência selecionada: ${event.title}. Criação de rascunho disponível na próxima etapa.`);
-    });
-    if (onSelectReference !== undefined) {
-      onSelectReference(event);
+  const handleSelectAndCreateDraft = async (event: CatalogEventReference) => {
+    setCreatingExternalId(event.externalId);
+    setCreationError(null);
+    setAnnouncement(`Criando rascunho a partir de "${event.title}"…`);
+
+    try {
+      const draft = await createDraftEvent(
+        event.title,
+        event.externalId,
+        event.description,
+        event.imageUrl,
+        event.category,
+      );
+
+      startTransition(() => {
+        setSelectedReference(event);
+        setCreatedDraft(draft);
+        setAnnouncement(`Rascunho criado com sucesso para o evento "${draft.title}".`);
+      });
+
+      if (onDraftCreated !== undefined) {
+        onDraftCreated(draft);
+      }
+      if (onSelectReference !== undefined) {
+        onSelectReference(event);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Falha ao criar rascunho de evento.';
+      setCreationError(message);
+      setAnnouncement(`Erro ao criar rascunho: ${message}`);
+    } finally {
+      setCreatingExternalId(null);
     }
   };
 
-  const isBusy = searchState.kind === 'loading';
+  const isBusy = searchState.kind === 'loading' || creatingExternalId !== null;
 
   return (
     <section className="catalog-search-section" aria-labelledby="catalog-search-title">
       <header className="catalog-search-header">
         <h2 id="catalog-search-title">Pesquisar referências Ticketmaster</h2>
         <p className="catalog-search-subtitle">
-          Consulte eventos no catálogo externo para usar como base para novos eventos.
+          Consulte eventos no catálogo externo para usar como base para novos eventos em rascunho.
         </p>
       </header>
 
@@ -93,7 +128,7 @@ export function TicketmasterSearch({ onSelectReference }: TicketmasterSearchProp
           className="catalog-search-submit-btn"
           disabled={isBusy}
         >
-          {isBusy ? 'Buscando…' : 'Buscar referências'}
+          {searchState.kind === 'loading' ? 'Buscando…' : 'Buscar referências'}
         </button>
       </form>
 
@@ -101,10 +136,31 @@ export function TicketmasterSearch({ onSelectReference }: TicketmasterSearchProp
         {announcement}
       </div>
 
-      {selectedReference !== null ? (
+      {creationError !== null ? (
+        <div className="catalog-search-error" role="alert">
+          <p>{creationError}</p>
+        </div>
+      ) : null}
+
+      {createdDraft !== null ? (
+        <aside className="catalog-selected-feedback" role="status">
+          <div className="draft-created-banner">
+            <strong>Rascunho criado com sucesso:</strong> {createdDraft.title}
+            <span className="event-status-badge status-draft-mini">DRAFT</span>
+            {onOpenDraft !== undefined ? (
+              <button
+                type="button"
+                className="draft-open-btn"
+                onClick={() => onOpenDraft(createdDraft)}
+              >
+                Abrir rascunho no editor →
+              </button>
+            ) : null}
+          </div>
+        </aside>
+      ) : selectedReference !== null ? (
         <aside className="catalog-selected-feedback" role="status">
           <strong>Referência selecionada:</strong> {selectedReference.title}
-          <span className="catalog-selected-hint"> (Criação de rascunho disponível na próxima etapa)</span>
         </aside>
       ) : null}
 
@@ -140,8 +196,9 @@ export function TicketmasterSearch({ onSelectReference }: TicketmasterSearchProp
               <li key={event.externalId} className="catalog-results-item">
                 <TicketmasterResultCard
                   event={event}
-                  onSelectReference={handleSelect}
+                  onSelectReference={handleSelectAndCreateDraft}
                   disabled={isBusy}
+                  isLoading={creatingExternalId === event.externalId}
                 />
               </li>
             ))}

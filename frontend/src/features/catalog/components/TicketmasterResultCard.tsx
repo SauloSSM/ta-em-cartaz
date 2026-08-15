@@ -5,12 +5,14 @@ type TicketmasterResultCardProps = {
   event: CatalogEventReference;
   onSelectReference: (event: CatalogEventReference) => void;
   disabled?: boolean;
+  isLoading?: boolean;
 };
 
 export function TicketmasterResultCard({
   event,
   onSelectReference,
   disabled = false,
+  isLoading = false,
 }: TicketmasterResultCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -54,11 +56,11 @@ export function TicketmasterResultCard({
           <button
             type="button"
             className="catalog-card-select-button"
-            disabled={disabled}
+            disabled={disabled || isLoading}
             onClick={() => onSelectReference(event)}
             aria-label={`Usar ${event.title} como referência`}
           >
-            Usar como referência
+            {isLoading ? 'Criando rascunho…' : 'Usar como referência'}
           </button>
         </div>
       </div>

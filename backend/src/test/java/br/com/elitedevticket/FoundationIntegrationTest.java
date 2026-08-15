@@ -135,6 +135,34 @@ class FoundationIntegrationTest {
     }
 
     @Test
+    void databasePreMigratedToV2MigratesCleanlyToV3WithoutRepairOrReset() {
+        String schema = "premigration_v2_profile";
+        jdbcTemplate.execute("CREATE SCHEMA " + schema);
+
+        org.flywaydb.core.Flyway preFlyway = org.flywaydb.core.Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl() + "&currentSchema=" + schema, POSTGRES.getUsername(), POSTGRES.getPassword())
+                .schemas(schema)
+                .locations("classpath:db/migration", "classpath:db/seed/demo")
+                .target("2")
+                .load();
+        preFlyway.migrate();
+
+        List<String> initialTables = jdbcTemplate.queryForList(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_type = 'BASE TABLE' AND table_name <> 'flyway_schema_history'",
+                String.class, schema);
+        assertThat(initialTables).containsExactly("users");
+
+        try (ConfigurableApplicationContext context = new SpringApplicationBuilder(EliteDevTicketApplication.class)
+                .web(WebApplicationType.NONE)
+                .profiles("demo")
+                .run(commandLineArguments(databaseSettings(schema)))) {
+            assertThat(context.getEnvironment().getActiveProfiles()).containsExactly("demo");
+        }
+
+        assertApplicationTables(schema);
+    }
+
+    @Test
     void livenessAndReadinessExposeOnlyStatusAndReadinessIncludesDatabaseAndFlyway() throws Exception {
         HttpClient client = HttpClient.newHttpClient();
         String liveness = healthResponse(client, "liveness");
@@ -226,7 +254,7 @@ class FoundationIntegrationTest {
                         + "AND table_name <> 'flyway_schema_history'",
                 String.class,
                 schema);
-        assertThat(tables).containsExactly("users");
+        assertThat(tables).containsExactlyInAnyOrder("users", "events");
     }
 
     private String databaseUrlFor(String schema) {

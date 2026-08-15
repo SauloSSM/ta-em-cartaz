@@ -184,22 +184,50 @@ describe('TicketmasterSearch (Superfície S10)', () => {
     expect(await screen.findByRole('heading', { level: 3, name: 'Show Recuperado' })).toBeDefined();
   });
 
-  it('permite selecionar referência com anúncio acessível sem persistir evento DRAFT', async () => {
+  it('cria rascunho de evento a partir da referência com feedback acessível', async () => {
     const user = userEvent.setup();
-    const onSelect = vi.fn();
-    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValueOnce(
-      jsonResponse({
-        events: [
+    const onDraftCreated = vi.fn();
+    const onOpenDraft = vi.fn();
+
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          events: [
+            {
+              externalId: 'tm-ref-1',
+              title: 'Concerto Sinfônico',
+              category: 'Clássica',
+              description: 'Grande concerto',
+              imageUrl: 'https://images.example.com/concerto.jpg',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
           {
+            id: '123e4567-e89b-12d3-a456-426614174000',
+            organizerId: '00000000-0000-0000-0000-000000000001',
             externalId: 'tm-ref-1',
             title: 'Concerto Sinfônico',
+            description: 'Grande concerto',
+            imageUrl: 'https://images.example.com/concerto.jpg',
             category: 'Clássica',
+            status: 'DRAFT',
+            createdAt: '2026-08-15T12:00:00Z',
+            updatedAt: '2026-08-15T12:00:00Z',
           },
-        ],
-      }),
-    );
+          201,
+        ),
+      );
+    globalThis.fetch = fetchMock;
 
-    render(<TicketmasterSearch onSelectReference={onSelect} />);
+    render(
+      <TicketmasterSearch
+        onDraftCreated={onDraftCreated}
+        onOpenDraft={onOpenDraft}
+      />,
+    );
 
     await user.type(screen.getByLabelText('Palavra-chave do evento'), 'Concerto');
     await user.click(screen.getByRole('button', { name: 'Buscar referências' }));
@@ -209,18 +237,76 @@ describe('TicketmasterSearch (Superfície S10)', () => {
     });
     await user.click(selectButton);
 
-    expect(onSelect).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/events/drafts',
       expect.objectContaining({
-        externalId: 'tm-ref-1',
-        title: 'Concerto Sinfônico',
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Concerto Sinfônico',
+          externalId: 'tm-ref-1',
+          description: 'Grande concerto',
+          imageUrl: 'https://images.example.com/concerto.jpg',
+          category: 'Clássica',
+        }),
       }),
     );
 
-    // Anúncio e feedback de seleção na tela
-    expect(screen.getByText('Referência selecionada:')).toBeDefined();
-    expect(screen.getByText('(Criação de rascunho disponível na próxima etapa)')).toBeDefined();
-    expect(screen.getByRole('heading', { level: 3, name: 'Concerto Sinfônico' })).toBeDefined();
-    expect(screen.getAllByText(/Concerto Sinfônico/)).toHaveLength(3);
+    expect(onDraftCreated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        title: 'Concerto Sinfônico',
+        status: 'DRAFT',
+      }),
+    );
+
+    // Feedback de rascunho criado exibido com botão para abrir
+    expect(await screen.findByText('Rascunho criado com sucesso:')).toBeDefined();
+    const openBtn = screen.getByRole('button', { name: 'Abrir rascunho no editor →' });
+    expect(openBtn).toBeDefined();
+
+    await user.click(openBtn);
+    expect(onOpenDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it('exibe alerta acessível caso a criação do rascunho falhe', async () => {
+    const user = userEvent.setup();
+
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          events: [
+            {
+              externalId: 'tm-err-1',
+              title: 'Evento com Erro',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            code: 'AUTH_FORBIDDEN',
+            message: 'Acesso negado para criação de rascunho.',
+            traceId: 'tr-err',
+            timestamp: '2026-08-15T12:00:00Z',
+          },
+          403,
+        ),
+      );
+    globalThis.fetch = fetchMock;
+
+    render(<TicketmasterSearch />);
+
+    await user.type(screen.getByLabelText('Palavra-chave do evento'), 'Erro');
+    await user.click(screen.getByRole('button', { name: 'Buscar referências' }));
+
+    const selectButton = await screen.findByRole('button', {
+      name: 'Usar Evento com Erro como referência',
+    });
+    await user.click(selectButton);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Acesso negado para criação de rascunho.');
   });
 });
 
