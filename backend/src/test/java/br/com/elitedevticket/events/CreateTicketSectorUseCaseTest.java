@@ -45,22 +45,28 @@ class CreateTicketSectorUseCaseTest {
         useCase = new CreateTicketSectorUseCase(eventRepository, ticketSectorRepository, clock);
     }
 
-    @Test
-    void createsTicketSectorSuccessfullyForDraftEvent() {
-        Event draftEvent = new Event(
+    private Event createEvent(EventStatus status, UUID owner) {
+        return new Event(
                 eventId,
-                organizerId,
-                null,
+                owner,
+                "TICKETMASTER",
+                "tm-100",
                 "Show de Rock",
                 null,
                 null,
                 null,
-                EventStatus.DRAFT,
-                null,
-                null,
+                status,
+                "Local",
+                "Endereço",
+                now.plusSeconds(3600),
                 now,
                 now
         );
+    }
+
+    @Test
+    void createsTicketSectorSuccessfullyForDraftEvent() {
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
         when(ticketSectorRepository.save(any(TicketSector.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -101,20 +107,7 @@ class CreateTicketSectorUseCaseTest {
 
     @Test
     void throwsForbiddenWhenUserIsNotOwner() {
-        Event draftEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.DRAFT,
-                null,
-                null,
-                now,
-                now
-        );
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
 
         assertThatThrownBy(() -> useCase.execute(
@@ -130,20 +123,7 @@ class CreateTicketSectorUseCaseTest {
 
     @Test
     void throwsConflictWhenEventIsNotDraft() {
-        Event publishedEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.PUBLISHED,
-                null,
-                null,
-                now,
-                now
-        );
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
 
         assertThatThrownBy(() -> useCase.execute(
@@ -154,6 +134,24 @@ class CreateTicketSectorUseCaseTest {
                 100,
                 BigDecimal.TEN
         )).isInstanceOf(EventConflictException.class)
-          .hasMessageContaining("Apenas eventos em rascunho");
+          .hasMessageContaining("rascunho");
+    }
+
+    @Test
+    void throwsIllegalArgumentWhenParametersAreInvalid() {
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
+
+        assertThatThrownBy(() -> useCase.execute(eventId, organizerId, "", "desc", 100, BigDecimal.TEN))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> useCase.execute(eventId, organizerId, "Pista", "desc", 0, BigDecimal.TEN))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> useCase.execute(eventId, organizerId, "Pista", "desc", -5, BigDecimal.TEN))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> useCase.execute(eventId, organizerId, "Pista", "desc", 100, new BigDecimal("-1.00")))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

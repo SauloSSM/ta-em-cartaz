@@ -49,7 +49,7 @@ development_status:
   2-2-criar-event-interno-em-rascunho-a-partir-do-snapshot: review
   2-3-editar-listar-e-excluir-events-em-rascunho: done
   2-4-configurar-ticketsectors-do-rascunho: done
-  2-5-revisar-e-publicar-event-válido: backlog
+  2-5-revisar-e-publicar-event-válido: done
   2-6-gerenciar-event-publicado-sem-quebrar-compromissos-existentes: backlog
   epic-2-retrospective: optional
 

@@ -10,7 +10,8 @@ public record UpdateDraftEventRequest(
         @JsonInclude(JsonInclude.Include.NON_NULL) String description,
         @JsonInclude(JsonInclude.Include.NON_NULL) String imageUrl,
         @JsonInclude(JsonInclude.Include.NON_NULL) String category,
-        @JsonInclude(JsonInclude.Include.NON_NULL) String venue,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String venueName,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String venueAddress,
         @JsonInclude(JsonInclude.Include.NON_NULL) Instant startsAt
 ) {
     public void validate() {

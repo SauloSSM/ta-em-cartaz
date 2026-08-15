@@ -242,6 +242,39 @@ paths:
           $ref: '#/components/responses/EventNotFound'
         '409':
           $ref: '#/components/responses/EventConflict'
+  /api/v1/events/{id}/publish:
+    post:
+      operationId: publishEvent
+      summary: Publica um evento em rascunho (DRAFT)
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Valida todas as pendências mínimas (título, local, data futura, referência externa e pelo menos um setor de ingressos) e transiciona o evento para PUBLISHED de forma transacional.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+      responses:
+        '200':
+          description: Evento publicado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/EventNotFound'
+        '409':
+          $ref: '#/components/responses/EventConflict'
   /api/v1/events/{eventId}/sectors:
     get:
       operationId: listTicketSectors
@@ -538,6 +571,8 @@ components:
       additionalProperties: false
       required: [title]
       properties:
+        externalSource:
+          type: string
         externalId:
           type: string
         title:
@@ -559,6 +594,8 @@ components:
         organizerId:
           type: string
           format: uuid
+        externalSource:
+          type: string
         externalId:
           type: string
         title:
@@ -571,7 +608,9 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/EventStatus'
-        venue:
+        venueName:
+          type: string
+        venueAddress:
           type: string
         startsAt:
           type: string
@@ -604,7 +643,9 @@ components:
           type: string
         category:
           type: string
-        venue:
+        venueName:
+          type: string
+        venueAddress:
           type: string
         startsAt:
           type: string

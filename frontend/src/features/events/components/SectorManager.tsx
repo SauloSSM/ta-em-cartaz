@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   listTicketSectors,
   deleteTicketSector,
@@ -9,9 +9,10 @@ import { SectorEditor } from './SectorEditor';
 type SectorManagerProps = {
   eventId: string;
   isDraft: boolean;
+  onSectorsChange?: (sectors: TicketSectorResponse[]) => void;
 };
 
-export function SectorManager({ eventId, isDraft }: SectorManagerProps) {
+export function SectorManager({ eventId, isDraft, onSectorsChange }: SectorManagerProps) {
   const [sectors, setSectors] = useState<TicketSectorResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -23,12 +24,16 @@ export function SectorManager({ eventId, isDraft }: SectorManagerProps) {
   const [deletingSector, setDeletingSector] = useState<TicketSectorResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const onSectorsChangeRef = useRef(onSectorsChange);
+  onSectorsChangeRef.current = onSectorsChange;
+
   const loadSectors = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
       const response = await listTicketSectors(eventId);
       setSectors(response.sectors);
+      onSectorsChangeRef.current?.(response.sectors);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao carregar setores do evento.';
       setErrorMessage(msg);
@@ -58,10 +63,13 @@ export function SectorManager({ eventId, isDraft }: SectorManagerProps) {
     setEditingSector(null);
     setSectors((prev) => {
       const exists = prev.some((s) => s.id === savedSector.id);
-      if (exists) {
-        return prev.map((s) => (s.id === savedSector.id ? savedSector : s));
+      const next = exists
+        ? prev.map((s) => (s.id === savedSector.id ? savedSector : s))
+        : [...prev, savedSector];
+      if (onSectorsChange) {
+        onSectorsChange(next);
       }
-      return [...prev, savedSector];
+      return next;
     });
     setStatusMessage(`Setor "${savedSector.name}" salvo com sucesso!`);
   };
@@ -73,7 +81,13 @@ export function SectorManager({ eventId, isDraft }: SectorManagerProps) {
 
     try {
       await deleteTicketSector(eventId, deletingSector.id);
-      setSectors((prev) => prev.filter((s) => s.id !== deletingSector.id));
+      setSectors((prev) => {
+        const next = prev.filter((s) => s.id !== deletingSector.id);
+        if (onSectorsChange) {
+          onSectorsChange(next);
+        }
+        return next;
+      });
       setStatusMessage(`Setor "${deletingSector.name}" excluído com sucesso.`);
       setDeletingSector(null);
     } catch (err: unknown) {
@@ -95,7 +109,7 @@ export function SectorManager({ eventId, isDraft }: SectorManagerProps) {
   const totalCapacity = sectors.reduce((sum, s) => sum + s.capacity, 0);
 
   return (
-    <section className="sector-manager-section" aria-labelledby="sector-manager-title">
+    <section id="sector-manager-section" className="sector-manager-section" aria-labelledby="sector-manager-title">
       <header className="sector-manager-header">
         <div>
           <h3 id="sector-manager-title">Setores de Ingressos</h3>
@@ -106,6 +120,7 @@ export function SectorManager({ eventId, isDraft }: SectorManagerProps) {
         {isDraft ? (
           <button
             type="button"
+            id="add-sector-btn"
             className="add-sector-btn"
             onClick={handleOpenCreate}
             aria-label="Adicionar novo setor de ingressos"

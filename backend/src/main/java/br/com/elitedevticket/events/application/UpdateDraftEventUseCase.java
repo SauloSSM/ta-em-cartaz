@@ -29,7 +29,8 @@ public class UpdateDraftEventUseCase {
             String description,
             String imageUrl,
             String category,
-            String venue,
+            String venueName,
+            String venueAddress,
             Instant startsAt) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(organizerId, "organizerId must not be null");
@@ -52,7 +53,8 @@ public class UpdateDraftEventUseCase {
                 trimToNull(description),
                 trimToNull(imageUrl),
                 trimToNull(category),
-                trimToNull(venue),
+                trimToNull(venueName),
+                trimToNull(venueAddress),
                 startsAt,
                 now
         );

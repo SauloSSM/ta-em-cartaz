@@ -216,7 +216,8 @@ class EventsEndpointsIntegrationTest {
                   "description": "Nova descrição",
                   "imageUrl": "https://images.example.com/updated.jpg",
                   "category": "Jazz",
-                  "venue": "Teatro Central",
+                  "venueName": "Teatro Central",
+                  "venueAddress": "Rua Central, 100, São Paulo - SP",
                   "startsAt": "2026-10-01T19:30:00Z"
                 }
                 """;
@@ -232,7 +233,8 @@ class EventsEndpointsIntegrationTest {
                 .contains("\"description\":\"Nova descrição\"")
                 .contains("\"imageUrl\":\"https://images.example.com/updated.jpg\"")
                 .contains("\"category\":\"Jazz\"")
-                .contains("\"venue\":\"Teatro Central\"")
+                .contains("\"venueName\":\"Teatro Central\"")
+                .contains("\"venueAddress\":\"Rua Central, 100, São Paulo - SP\"")
                 .contains("\"startsAt\":\"2026-10-01T19:30:00Z\"");
     }
 
@@ -511,6 +513,220 @@ class EventsEndpointsIntegrationTest {
         );
         assertThat(notFoundEvent.statusCode()).isEqualTo(404);
         assertThat(notFoundEvent.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
+    }
+
+    @Test
+    void organizerCanPublishValidDraftEventSuccessfullyAndCannotRepublish() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Criar draft
+        String createDraftPayload = """
+                {
+                  "externalId": "tm-pub-1",
+                  "title": "Festival de Publicação",
+                  "description": "Descrição do festival",
+                  "imageUrl": "https://images.example.com/pub.jpg",
+                  "category": "Música"
+                }
+                """;
+        HttpResponse<String> createResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                createDraftPayload
+        );
+        assertThat(createResponse.statusCode()).isEqualTo(201);
+        String eventId = extractJsonField(createResponse.body(), "id");
+
+        // 2. Atualizar draft com local e data futura válida
+        String updatePayload = """
+                {
+                  "title": "Festival de Publicação Oficial",
+                  "venueName": "Allianz Parque",
+                  "venueAddress": "Av. Francisco Matarazzo, 1705, São Paulo - SP",
+                  "startsAt": "2026-11-20T21:00:00Z"
+                }
+                """;
+        HttpResponse<String> updateResponse = put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                updatePayload
+        );
+        assertThat(updateResponse.statusCode()).isEqualTo(200);
+
+        // 3. Tentar publicar sem setores -> 400
+        HttpResponse<String> publishWithoutSectors = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(publishWithoutSectors.statusCode()).isEqualTo(400);
+        assertThat(publishWithoutSectors.body()).contains("\"code\":\"AUTH_INVALID_REQUEST\"");
+
+        // 4. Adicionar setores válidos
+        String sectorPayload = """
+                {
+                  "name": "Pista Premium",
+                  "description": "Acesso frontal ao palco",
+                  "capacity": 300,
+                  "price": 250.00
+                }
+                """;
+        HttpResponse<String> sectorResponse = post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                sectorPayload
+        );
+        assertThat(sectorResponse.statusCode()).isEqualTo(201);
+
+        // 5. Publicar evento com sucesso -> 200 PUBLISHED
+        HttpResponse<String> publishResponse = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(publishResponse.statusCode()).isEqualTo(200);
+        assertThat(publishResponse.body()).contains("\"status\":\"PUBLISHED\"");
+        assertThat(publishResponse.body()).contains("\"title\":\"Festival de Publicação Oficial\"");
+        assertThat(publishResponse.body()).contains("\"venueName\":\"Allianz Parque\"");
+        assertThat(publishResponse.body()).contains("\"venueAddress\":\"Av. Francisco Matarazzo, 1705, São Paulo - SP\"");
+
+        // 6. Consultar evento -> deve estar PUBLISHED
+        HttpResponse<String> getEventResponse = get(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession
+        );
+        assertThat(getEventResponse.statusCode()).isEqualTo(200);
+        assertThat(getEventResponse.body()).contains("\"status\":\"PUBLISHED\"");
+
+        // 7. Consultar setores -> disponibilidade inicial preservada
+        HttpResponse<String> getSectorsResponse = get(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession
+        );
+        assertThat(getSectorsResponse.statusCode()).isEqualTo(200);
+        assertThat(getSectorsResponse.body()).contains("\"availableQuantity\":300");
+
+        // 8. Tentar publicar novamente evento já PUBLISHED -> 409 Conflict (sem duplicação de efeitos)
+        HttpResponse<String> republishResponse = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(republishResponse.statusCode()).isEqualTo(409);
+        assertThat(republishResponse.body()).contains("\"code\":\"EVENT_CANNOT_BE_MODIFIED\"");
+
+        // 9. Tentar excluir evento publicado -> 409 Conflict
+        HttpResponse<String> deleteResponse = delete(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf
+        );
+        assertThat(deleteResponse.statusCode()).isEqualTo(409);
+        assertThat(deleteResponse.body()).contains("\"code\":\"EVENT_CANNOT_BE_DELETED\"");
+    }
+
+    @Test
+    void cannotPublishEventWithPastDateOrMissingVenue() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // Criar draft
+        HttpResponse<String> createResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"externalId\":\"tm-past\",\"title\":\"Evento Passado\"}"
+        );
+        String eventId = extractJsonField(createResponse.body(), "id");
+
+        // Adicionar setor
+        post(
+                "/api/v1/events/" + eventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Pista\",\"capacity\":100,\"price\":50.00}"
+        );
+
+        // Atualizar com data passada
+        put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Evento Passado\",\"venueName\":\"Local\",\"venueAddress\":\"Endereço\",\"startsAt\":\"2020-01-01T20:00:00Z\"}"
+        );
+
+        // Tentar publicar -> 400 Bad Request
+        HttpResponse<String> publishPast = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(publishPast.statusCode()).isEqualTo(400);
+        assertThat(publishPast.body()).contains("\"code\":\"AUTH_INVALID_REQUEST\"");
+    }
+
+    @Test
+    void publishSecurityAndOwnershipGuardsEnforced() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Criar draft pelo organizer
+        HttpResponse<String> createResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"externalId\":\"tm-sec\",\"title\":\"Evento Segurança\"}"
+        );
+        String eventId = extractJsonField(createResponse.body(), "id");
+
+        // 2. Anônimo tentando publicar -> 401
+        HttpResponse<String> anonPublish = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(anonPublish.statusCode()).isEqualTo(401);
+        assertThat(anonPublish.body()).contains("\"code\":\"AUTH_UNAUTHENTICATED\"");
+
+        // 3. Customer tentando publicar -> 403
+        HttpResponse<String> custPublish = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(custPublish.statusCode()).isEqualTo(403);
+        assertThat(custPublish.body()).contains("\"code\":\"AUTH_FORBIDDEN\"");
+
+        // 4. Sem CSRF -> 403
+        HttpResponse<String> noCsrfPublish = post(
+                "/api/v1/events/" + eventId + "/publish",
+                "EDT_SESSION=" + organizerSession,
+                "",
+                ""
+        );
+        assertThat(noCsrfPublish.statusCode()).isEqualTo(403);
+        assertThat(noCsrfPublish.body()).contains("\"code\":\"AUTH_CSRF_INVALID\"");
+
+        // 5. Evento inexistente -> 404
+        HttpResponse<String> notFoundPublish = post(
+                "/api/v1/events/" + UUID.randomUUID() + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(notFoundPublish.statusCode()).isEqualTo(404);
+        assertThat(notFoundPublish.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
     }
 
     private String extractJsonField(String json, String field) {

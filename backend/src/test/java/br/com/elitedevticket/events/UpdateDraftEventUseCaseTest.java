@@ -30,8 +30,8 @@ class UpdateDraftEventUseCaseTest {
         UUID organizerId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
         Event initial = new Event(
-                eventId, organizerId, "tm-1", "Original Title", "Old desc", null, "Rock",
-                EventStatus.DRAFT, null, null, Instant.parse("2026-08-15T10:00:00Z"), Instant.parse("2026-08-15T10:00:00Z")
+                eventId, organizerId, "TICKETMASTER", "tm-1", "Original Title", "Old desc", null, "Rock",
+                EventStatus.DRAFT, null, null, null, Instant.parse("2026-08-15T10:00:00Z"), Instant.parse("2026-08-15T10:00:00Z")
         );
         repository.save(initial);
 
@@ -44,6 +44,7 @@ class UpdateDraftEventUseCaseTest {
                 "https://images.example.com/banner.jpg",
                 "Pop",
                 "Allianz Parque",
+                "Av. Francisco Matarazzo, 1705, São Paulo - SP",
                 startsAt
         );
 
@@ -51,7 +52,8 @@ class UpdateDraftEventUseCaseTest {
         assertThat(updated.description()).isEqualTo("New Description");
         assertThat(updated.imageUrl()).isEqualTo("https://images.example.com/banner.jpg");
         assertThat(updated.category()).isEqualTo("Pop");
-        assertThat(updated.venue()).isEqualTo("Allianz Parque");
+        assertThat(updated.venueName()).isEqualTo("Allianz Parque");
+        assertThat(updated.venueAddress()).isEqualTo("Av. Francisco Matarazzo, 1705, São Paulo - SP");
         assertThat(updated.startsAt()).isEqualTo(startsAt);
         assertThat(updated.updatedAt()).isEqualTo(fixedNow);
         assertThat(updated.status()).isEqualTo(EventStatus.DRAFT);
@@ -63,7 +65,7 @@ class UpdateDraftEventUseCaseTest {
         UUID eventId = UUID.randomUUID();
 
         assertThatThrownBy(() -> useCase.execute(
-                eventId, organizerId, "Title", null, null, null, null, null
+                eventId, organizerId, "Title", null, null, null, null, null, null
         )).isInstanceOf(EventNotFoundException.class);
     }
 
@@ -74,13 +76,13 @@ class UpdateDraftEventUseCaseTest {
         UUID eventId = UUID.randomUUID();
 
         Event event = new Event(
-                eventId, otherOrganizerId, "tm-1", "Title", null, null, null,
-                EventStatus.DRAFT, null, null, fixedNow, fixedNow
+                eventId, otherOrganizerId, "TICKETMASTER", "tm-1", "Title", null, null, null,
+                EventStatus.DRAFT, null, null, null, fixedNow, fixedNow
         );
         repository.save(event);
 
         assertThatThrownBy(() -> useCase.execute(
-                eventId, organizerId, "New Title", null, null, null, null, null
+                eventId, organizerId, "New Title", null, null, null, null, null, null
         )).isInstanceOf(EventForbiddenException.class);
     }
 
@@ -90,13 +92,13 @@ class UpdateDraftEventUseCaseTest {
         UUID eventId = UUID.randomUUID();
 
         Event event = new Event(
-                eventId, organizerId, "tm-1", "Title", null, null, null,
-                EventStatus.DRAFT, null, null, fixedNow, fixedNow
+                eventId, organizerId, "TICKETMASTER", "tm-1", "Title", null, null, null,
+                EventStatus.DRAFT, null, null, null, fixedNow, fixedNow
         );
         repository.save(event);
 
         assertThatThrownBy(() -> useCase.execute(
-                eventId, organizerId, "   ", null, null, null, null, null
+                eventId, organizerId, "   ", null, null, null, null, null, null
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -106,13 +108,13 @@ class UpdateDraftEventUseCaseTest {
         UUID eventId = UUID.randomUUID();
 
         Event published = new Event(
-                eventId, organizerId, "tm-1", "Title", null, null, null,
-                EventStatus.PUBLISHED, "Venue", fixedNow.plusSeconds(3600), fixedNow, fixedNow
+                eventId, organizerId, "TICKETMASTER", "tm-1", "Title", null, null, null,
+                EventStatus.PUBLISHED, "Venue", "Address", fixedNow.plusSeconds(3600), fixedNow, fixedNow
         );
         repository.save(published);
 
         assertThatThrownBy(() -> useCase.execute(
-                eventId, organizerId, "Updated Title", null, null, null, null, null
+                eventId, organizerId, "Updated Title", null, null, null, null, null, null
         )).isInstanceOf(EventConflictException.class)
                 .hasMessageContaining("Apenas eventos em rascunho podem ser modificados.");
     }

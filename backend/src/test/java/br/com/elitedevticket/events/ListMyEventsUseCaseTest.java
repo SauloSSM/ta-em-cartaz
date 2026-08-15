@@ -22,12 +22,12 @@ class ListMyEventsUseCaseTest {
     void listsEventsOwnedByOrganizer() {
         UUID organizerId = UUID.randomUUID();
         Event event1 = new Event(
-                UUID.randomUUID(), organizerId, "tm-1", "Rock in Rio", null, null, null,
-                EventStatus.DRAFT, null, null, Instant.now(), Instant.now()
+                UUID.randomUUID(), organizerId, "TICKETMASTER", "tm-1", "Rock in Rio", null, null, null,
+                EventStatus.DRAFT, null, null, null, Instant.now(), Instant.now()
         );
         Event event2 = new Event(
-                UUID.randomUUID(), organizerId, "tm-2", "Lollapalooza", null, null, null,
-                EventStatus.PUBLISHED, "Autódromo", Instant.now().plusSeconds(3600), Instant.now(), Instant.now()
+                UUID.randomUUID(), organizerId, "TICKETMASTER", "tm-2", "Lollapalooza", null, null, null,
+                EventStatus.PUBLISHED, "Autódromo", "Interlagos", Instant.now().plusSeconds(3600), Instant.now(), Instant.now()
         );
         repository.save(event1);
         repository.save(event2);

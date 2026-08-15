@@ -2,6 +2,7 @@ package br.com.elitedevticket.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -28,13 +29,11 @@ class GetEventUseCaseTest {
         useCase = new GetEventUseCase(eventRepository);
     }
 
-    @Test
-    void getEventReturnsEventForOwnerOrganizer() {
-        UUID eventId = UUID.randomUUID();
-        UUID organizerId = UUID.randomUUID();
-        Event event = new Event(
+    private Event createEvent(UUID eventId, UUID organizerId) {
+        return new Event(
                 eventId,
                 organizerId,
+                "TICKETMASTER",
                 "tm-1",
                 "Show",
                 "Desc",
@@ -43,9 +42,17 @@ class GetEventUseCaseTest {
                 EventStatus.DRAFT,
                 null,
                 null,
+                null,
                 Instant.now(),
                 Instant.now()
         );
+    }
+
+    @Test
+    void getEventReturnsEventForOwnerOrganizer() {
+        UUID eventId = UUID.randomUUID();
+        UUID organizerId = UUID.randomUUID();
+        Event event = createEvent(eventId, organizerId);
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
 
@@ -58,20 +65,7 @@ class GetEventUseCaseTest {
         UUID eventId = UUID.randomUUID();
         UUID ownerOrganizerId = UUID.randomUUID();
         UUID otherOrganizerId = UUID.randomUUID();
-        Event event = new Event(
-                eventId,
-                ownerOrganizerId,
-                "tm-1",
-                "Show",
-                "Desc",
-                null,
-                null,
-                EventStatus.DRAFT,
-                null,
-                null,
-                Instant.now(),
-                Instant.now()
-        );
+        Event event = createEvent(eventId, ownerOrganizerId);
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
 

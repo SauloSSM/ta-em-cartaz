@@ -8,6 +8,7 @@ import br.com.elitedevticket.events.application.DeleteTicketSectorUseCase;
 import br.com.elitedevticket.events.application.GetEventUseCase;
 import br.com.elitedevticket.events.application.ListMyEventsUseCase;
 import br.com.elitedevticket.events.application.ListTicketSectorsUseCase;
+import br.com.elitedevticket.events.application.PublishEventUseCase;
 import br.com.elitedevticket.events.application.UpdateDraftEventUseCase;
 import br.com.elitedevticket.events.application.UpdateTicketSectorUseCase;
 import br.com.elitedevticket.events.domain.Event;
@@ -36,6 +37,7 @@ public class EventsController {
     private final ListMyEventsUseCase listMyEventsUseCase;
     private final UpdateDraftEventUseCase updateDraftEventUseCase;
     private final DeleteDraftEventUseCase deleteDraftEventUseCase;
+    private final PublishEventUseCase publishEventUseCase;
     private final CreateTicketSectorUseCase createTicketSectorUseCase;
     private final UpdateTicketSectorUseCase updateTicketSectorUseCase;
     private final DeleteTicketSectorUseCase deleteTicketSectorUseCase;
@@ -47,6 +49,7 @@ public class EventsController {
             ListMyEventsUseCase listMyEventsUseCase,
             UpdateDraftEventUseCase updateDraftEventUseCase,
             DeleteDraftEventUseCase deleteDraftEventUseCase,
+            PublishEventUseCase publishEventUseCase,
             CreateTicketSectorUseCase createTicketSectorUseCase,
             UpdateTicketSectorUseCase updateTicketSectorUseCase,
             DeleteTicketSectorUseCase deleteTicketSectorUseCase,
@@ -57,6 +60,7 @@ public class EventsController {
         this.listMyEventsUseCase = listMyEventsUseCase;
         this.updateDraftEventUseCase = updateDraftEventUseCase;
         this.deleteDraftEventUseCase = deleteDraftEventUseCase;
+        this.publishEventUseCase = publishEventUseCase;
         this.createTicketSectorUseCase = createTicketSectorUseCase;
         this.updateTicketSectorUseCase = updateTicketSectorUseCase;
         this.deleteTicketSectorUseCase = deleteTicketSectorUseCase;
@@ -73,6 +77,7 @@ public class EventsController {
         Event event = createDraftEventUseCase.createDraft(
                 sessionUser.id(),
                 request.title(),
+                request.externalSource(),
                 request.externalId(),
                 request.description(),
                 request.imageUrl(),
@@ -124,7 +129,8 @@ public class EventsController {
                 request.description(),
                 request.imageUrl(),
                 request.category(),
-                request.venue(),
+                request.venueName(),
+                request.venueAddress(),
                 request.startsAt()
         );
         return ResponseEntity.ok(EventResponse.fromDomain(updated));
@@ -138,6 +144,16 @@ public class EventsController {
     ) {
         deleteDraftEventUseCase.execute(id, sessionUser.id());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/publish")
+    @PreAuthorize("hasRole('ORGANIZER')")
+    public ResponseEntity<EventResponse> publishEvent(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal SessionUser sessionUser
+    ) {
+        Event published = publishEventUseCase.execute(id, sessionUser.id());
+        return ResponseEntity.ok(EventResponse.fromDomain(published));
     }
 
     @GetMapping("/{eventId}/sectors")

@@ -244,6 +244,7 @@ describe('TicketmasterSearch (Superfície S10)', () => {
         body: JSON.stringify({
           title: 'Concerto Sinfônico',
           externalId: 'tm-ref-1',
+          externalSource: 'TICKETMASTER',
           description: 'Grande concerto',
           imageUrl: 'https://images.example.com/concerto.jpg',
           category: 'Clássica',

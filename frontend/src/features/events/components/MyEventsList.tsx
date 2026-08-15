@@ -149,8 +149,8 @@ export function MyEventsList({ onSelectEvent, onNewEvent }: MyEventsListProps) {
                       {item.category ? (
                         <span className="my-event-card-tag">{item.category}</span>
                       ) : null}
-                      {item.venue ? (
-                        <span className="my-event-card-venue">📍 {item.venue}</span>
+                      {item.venueName ? (
+                        <span className="my-event-card-venue">📍 {item.venueName}</span>
                       ) : null}
                       {item.startsAt ? (
                         <span className="my-event-card-date">

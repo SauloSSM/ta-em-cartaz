@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 
 public record CreateDraftEventRequest(
+        @JsonInclude(JsonInclude.Include.NON_NULL) String externalSource,
         @JsonInclude(JsonInclude.Include.NON_NULL) String externalId,
         String title,
         @JsonInclude(JsonInclude.Include.NON_NULL) String description,

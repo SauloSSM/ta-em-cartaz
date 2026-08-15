@@ -1,6 +1,7 @@
 export type EventStatus = 'DRAFT' | 'PUBLISHED';
 
 export type CreateDraftEventRequest = {
+  externalSource?: string;
   externalId?: string;
   title: string;
   description?: string;
@@ -13,20 +14,23 @@ export type UpdateDraftEventRequest = {
   description?: string;
   imageUrl?: string;
   category?: string;
-  venue?: string;
+  venueName?: string;
+  venueAddress?: string;
   startsAt?: string;
 };
 
 export type EventResponse = {
   id: string;
   organizerId: string;
+  externalSource?: string;
   externalId?: string;
   title: string;
   description?: string;
   imageUrl?: string;
   category?: string;
   status: EventStatus;
-  venue?: string;
+  venueName?: string;
+  venueAddress?: string;
   startsAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -109,10 +113,12 @@ export async function createDraftEvent(
   description?: string,
   imageUrl?: string,
   category?: string,
+  externalSource?: string,
 ): Promise<EventResponse> {
   const request: CreateDraftEventRequest = {
     title,
     ...(externalId === undefined ? {} : { externalId }),
+    ...(externalSource === undefined ? (externalId ? { externalSource: 'TICKETMASTER' } : {}) : { externalSource }),
     ...(description === undefined ? {} : { description }),
     ...(imageUrl === undefined ? {} : { imageUrl }),
     ...(category === undefined ? {} : { category }),
@@ -157,7 +163,8 @@ export async function updateDraftEvent(
     ...(data.description === undefined ? {} : { description: data.description }),
     ...(data.imageUrl === undefined ? {} : { imageUrl: data.imageUrl }),
     ...(data.category === undefined ? {} : { category: data.category }),
-    ...(data.venue === undefined ? {} : { venue: data.venue }),
+    ...(data.venueName === undefined ? {} : { venueName: data.venueName }),
+    ...(data.venueAddress === undefined ? {} : { venueAddress: data.venueAddress }),
     ...(data.startsAt === undefined ? {} : { startsAt: data.startsAt }),
   };
   const payload = await requestJson(`/api/v1/events/${encodeURIComponent(id)}`, {
@@ -183,6 +190,17 @@ export async function deleteDraftEvent(id: string): Promise<void> {
   if (response.status !== 204) {
     throw await toApiError(response);
   }
+}
+
+export async function publishEvent(id: string): Promise<EventResponse> {
+  const payload = await requestJson(`/api/v1/events/${encodeURIComponent(id)}/publish`, {
+    method: 'POST',
+    headers: csrfHeaders(),
+  });
+  if (!isEventResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
 }
 
 export async function listTicketSectors(eventId: string): Promise<TicketSectorListResponse> {
@@ -323,13 +341,15 @@ function isEventResponse(value: unknown): value is EventResponse {
   if (!isRecord(value) || !hasOnlyKeys(value, [
     'id',
     'organizerId',
+    'externalSource',
     'externalId',
     'title',
     'description',
     'imageUrl',
     'category',
     'status',
-    'venue',
+    'venueName',
+    'venueAddress',
     'startsAt',
     'createdAt',
     'updatedAt',
@@ -342,11 +362,13 @@ function isEventResponse(value: unknown): value is EventResponse {
     && (value.status === 'DRAFT' || value.status === 'PUBLISHED')
     && typeof value.createdAt === 'string'
     && typeof value.updatedAt === 'string'
+    && (value.externalSource === undefined || typeof value.externalSource === 'string')
     && (value.externalId === undefined || typeof value.externalId === 'string')
     && (value.description === undefined || typeof value.description === 'string')
     && (value.imageUrl === undefined || typeof value.imageUrl === 'string')
     && (value.category === undefined || typeof value.category === 'string')
-    && (value.venue === undefined || typeof value.venue === 'string')
+    && (value.venueName === undefined || typeof value.venueName === 'string')
+    && (value.venueAddress === undefined || typeof value.venueAddress === 'string')
     && (value.startsAt === undefined || typeof value.startsAt === 'string');
 }
 

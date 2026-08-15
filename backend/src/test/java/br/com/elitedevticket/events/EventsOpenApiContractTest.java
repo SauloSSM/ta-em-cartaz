@@ -109,6 +109,18 @@ class EventsOpenApiContractTest {
         assertResponseReference(deleteDraft, "404", "EventNotFound");
         assertResponseReference(deleteDraft, "409", "EventConflict");
 
+        // POST /api/v1/events/{id}/publish
+        Map<String, Object> publishEvent = assertOperation(
+                paths, "/api/v1/events/{id}/publish", "post", "publishEvent", Set.of("200", "400", "401", "403", "404", "409"));
+        assertThat(publishEvent).doesNotContainKey("requestBody");
+        assertSecurity(publishEvent, Set.of(Set.of("CsrfCookie", "CsrfHeader")));
+        assertResponseSchema(publishEvent, "200", "EventResponse");
+        assertResponseReference(publishEvent, "400", "AuthInvalidRequest");
+        assertResponseReference(publishEvent, "401", "AuthUnauthenticated");
+        assertResponseReference(publishEvent, "403", "AuthForbidden");
+        assertResponseReference(publishEvent, "404", "EventNotFound");
+        assertResponseReference(publishEvent, "409", "EventConflict");
+
         // GET /api/v1/events/{eventId}/sectors
         Map<String, Object> listSectors = assertOperation(
                 paths, "/api/v1/events/{eventId}/sectors", "get", "listTicketSectors", Set.of("200", "401", "403", "404"));
@@ -198,6 +210,7 @@ class EventsOpenApiContractTest {
                 "GET /{id} -> getEvent",
                 "PUT /{id} -> updateDraftEvent",
                 "DELETE /{id} -> deleteDraftEvent",
+                "POST /{id}/publish -> publishEvent",
                 "GET /{eventId}/sectors -> listTicketSectors",
                 "POST /{eventId}/sectors -> createTicketSector",
                 "PUT /{eventId}/sectors/{sectorId} -> updateTicketSector",

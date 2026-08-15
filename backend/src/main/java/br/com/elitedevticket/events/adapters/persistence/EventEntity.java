@@ -21,6 +21,9 @@ public class EventEntity {
     @Column(name = "organizer_id", nullable = false)
     private UUID organizerId;
 
+    @Column(name = "external_source", length = 64)
+    private String externalSource;
+
     @Column(name = "external_id", length = 255)
     private String externalId;
 
@@ -40,8 +43,11 @@ public class EventEntity {
     @Column(nullable = false, length = 32)
     private EventStatus status;
 
-    @Column(length = 255)
-    private String venue;
+    @Column(name = "venue_name", length = 255)
+    private String venueName;
+
+    @Column(name = "venue_address", length = 500)
+    private String venueAddress;
 
     @Column(name = "starts_at")
     private Instant startsAt;
@@ -58,13 +64,15 @@ public class EventEntity {
     public EventEntity(Event event) {
         this.id = event.id();
         this.organizerId = event.organizerId();
+        this.externalSource = event.externalSource();
         this.externalId = event.externalId();
         this.title = event.title();
         this.description = event.description();
         this.imageUrl = event.imageUrl();
         this.category = event.category();
         this.status = event.status();
-        this.venue = event.venue();
+        this.venueName = event.venueName();
+        this.venueAddress = event.venueAddress();
         this.startsAt = event.startsAt();
         this.createdAt = event.createdAt();
         this.updatedAt = event.updatedAt();
@@ -74,13 +82,15 @@ public class EventEntity {
         return new Event(
                 id,
                 organizerId,
+                externalSource,
                 externalId,
                 title,
                 description,
                 imageUrl,
                 category,
                 status,
-                venue,
+                venueName,
+                venueAddress,
                 startsAt,
                 createdAt,
                 updatedAt
@@ -93,6 +103,10 @@ public class EventEntity {
 
     public UUID organizerId() {
         return organizerId;
+    }
+
+    public String externalSource() {
+        return externalSource;
     }
 
     public String externalId() {
@@ -119,8 +133,12 @@ public class EventEntity {
         return status;
     }
 
-    public String venue() {
-        return venue;
+    public String venueName() {
+        return venueName;
+    }
+
+    public String venueAddress() {
+        return venueAddress;
     }
 
     public Instant startsAt() {

@@ -73,6 +73,18 @@ public class EventsExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        ApiErrorResponse body = new ApiErrorResponse(
+                AuthErrorCode.AUTH_INVALID_REQUEST,
+                ex.getMessage(),
+                null,
+                UUID.randomUUID().toString(),
+                clock.instant()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(EventConflictException.class)
     public ResponseEntity<EventApiErrorResponse> handleConflict(EventConflictException ex) {
         EventErrorCode code;

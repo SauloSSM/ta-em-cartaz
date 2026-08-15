@@ -9,6 +9,7 @@ import {
   createTicketSector,
   updateTicketSector,
   deleteTicketSector,
+  publishEvent,
   EventClientError,
 } from './eventsApi';
 
@@ -29,6 +30,7 @@ describe('eventsApi', () => {
       const mockResponse = {
         id: '123e4567-e89b-12d3-a456-426614174000',
         organizerId: '00000000-0000-0000-0000-000000000001',
+        externalSource: 'TICKETMASTER',
         externalId: 'tm-100',
         title: 'Rock in Rio',
         description: 'Festival',
@@ -65,6 +67,7 @@ describe('eventsApi', () => {
         body: JSON.stringify({
           title: 'Rock in Rio',
           externalId: 'tm-100',
+          externalSource: 'TICKETMASTER',
           description: 'Festival',
           imageUrl: 'https://images.example.com/rock.jpg',
           category: 'Music',
@@ -476,6 +479,89 @@ describe('eventsApi', () => {
           'X-XSRF-TOKEN': 'csrf-delete-sec',
         },
       });
+    });
+  });
+
+  describe('publishEvent', () => {
+    it('sends POST request with CSRF to /api/v1/events/:id/publish and parses PUBLISHED response', async () => {
+      document.cookie = 'XSRF-TOKEN=csrf-publish; Path=/';
+
+      const mockPublishedResponse = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        organizerId: '00000000-0000-0000-0000-000000000001',
+        externalSource: 'TICKETMASTER',
+        externalId: 'tm-100',
+        title: 'Festival Publicado',
+        description: 'Descrição',
+        imageUrl: 'https://images.example.com/banner.jpg',
+        category: 'Música',
+        status: 'PUBLISHED',
+        venueName: 'Allianz Parque',
+        venueAddress: 'Av. Francisco Matarazzo, 1705, São Paulo - SP',
+        startsAt: '2026-11-20T21:00:00Z',
+        createdAt: '2026-08-15T12:00:00Z',
+        updatedAt: '2026-08-15T15:00:00Z',
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockPublishedResponse),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await publishEvent('123e4567-e89b-12d3-a456-426614174000');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/events/123e4567-e89b-12d3-a456-426614174000/publish',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': 'csrf-publish',
+          },
+        },
+      );
+      expect(result).toEqual(mockPublishedResponse);
+    });
+
+    it('throws EventClientError on 409 conflict when already published', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: false,
+          status: 409,
+          json: () =>
+            Promise.resolve({
+              code: 'EVENT_CANNOT_BE_MODIFIED',
+              message: 'Apenas eventos em rascunho podem ser publicados.',
+              traceId: 'tr-pub-conflict',
+              timestamp: '2026-08-15T15:00:00Z',
+            }),
+        }),
+      );
+
+      await expect(publishEvent('ev-already-pub')).rejects.toThrow(EventClientError);
+    });
+
+    it('throws EventClientError on 400 when missing mandatory fields', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: false,
+          status: 400,
+          json: () =>
+            Promise.resolve({
+              code: 'AUTH_INVALID_REQUEST',
+              message: 'Pendências encontradas.',
+              traceId: 'tr-pub-inv',
+              timestamp: '2026-08-15T15:00:00Z',
+            }),
+        }),
+      );
+
+      await expect(publishEvent('ev-missing-fields')).rejects.toThrow(EventClientError);
     });
   });
 });

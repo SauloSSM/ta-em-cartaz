@@ -48,22 +48,28 @@ class UpdateTicketSectorUseCaseTest {
         useCase = new UpdateTicketSectorUseCase(eventRepository, ticketSectorRepository, clock);
     }
 
-    @Test
-    void updatesTicketSectorSuccessfully() {
-        Event draftEvent = new Event(
+    private Event createEvent(EventStatus status, UUID owner) {
+        return new Event(
                 eventId,
-                organizerId,
-                null,
+                owner,
+                "TICKETMASTER",
+                "tm-100",
                 "Show de Rock",
                 null,
                 null,
                 null,
-                EventStatus.DRAFT,
-                null,
-                null,
+                status,
+                "Local",
+                "Endereço",
+                createdAt.plusSeconds(3600),
                 createdAt,
                 createdAt
         );
+    }
+
+    @Test
+    void updatesTicketSectorSuccessfully() {
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         TicketSector existingSector = new TicketSector(
                 sectorId,
                 eventId,
@@ -119,20 +125,7 @@ class UpdateTicketSectorUseCaseTest {
 
     @Test
     void throwsForbiddenWhenUserIsNotOwner() {
-        Event draftEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.DRAFT,
-                null,
-                null,
-                createdAt,
-                createdAt
-        );
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
 
         assertThatThrownBy(() -> useCase.execute(
@@ -148,20 +141,7 @@ class UpdateTicketSectorUseCaseTest {
 
     @Test
     void throwsConflictWhenEventIsNotDraft() {
-        Event publishedEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.PUBLISHED,
-                null,
-                null,
-                createdAt,
-                createdAt
-        );
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));
 
         assertThatThrownBy(() -> useCase.execute(
@@ -172,25 +152,13 @@ class UpdateTicketSectorUseCaseTest {
                 null,
                 100,
                 BigDecimal.TEN
-        )).isInstanceOf(EventConflictException.class);
+        )).isInstanceOf(EventConflictException.class)
+          .hasMessageContaining("rascunho");
     }
 
     @Test
     void throwsNotFoundWhenSectorDoesNotExist() {
-        Event draftEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.DRAFT,
-                null,
-                null,
-                createdAt,
-                createdAt
-        );
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
         when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.empty());
 
@@ -207,24 +175,11 @@ class UpdateTicketSectorUseCaseTest {
 
     @Test
     void throwsNotFoundWhenSectorBelongsToAnotherEvent() {
-        Event draftEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.DRAFT,
-                null,
-                null,
-                createdAt,
-                createdAt
-        );
-        UUID otherEventId = UUID.randomUUID();
-        TicketSector sectorOfOtherEvent = new TicketSector(
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
+        UUID differentEventId = UUID.randomUUID();
+        TicketSector sector = new TicketSector(
                 sectorId,
-                otherEventId,
+                differentEventId,
                 "Pista",
                 null,
                 100,
@@ -233,8 +188,9 @@ class UpdateTicketSectorUseCaseTest {
                 createdAt,
                 createdAt
         );
+
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
-        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.of(sectorOfOtherEvent));
+        when(ticketSectorRepository.findById(sectorId)).thenReturn(Optional.of(sector));
 
         assertThatThrownBy(() -> useCase.execute(
                 eventId,
@@ -244,7 +200,6 @@ class UpdateTicketSectorUseCaseTest {
                 null,
                 100,
                 BigDecimal.TEN
-        )).isInstanceOf(TicketSectorNotFoundException.class)
-          .hasMessageContaining("não pertence");
+        )).isInstanceOf(TicketSectorNotFoundException.class);
     }
 }

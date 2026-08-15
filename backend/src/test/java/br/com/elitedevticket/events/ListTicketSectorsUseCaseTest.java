@@ -39,22 +39,28 @@ class ListTicketSectorsUseCaseTest {
         useCase = new ListTicketSectorsUseCase(eventRepository, ticketSectorRepository);
     }
 
-    @Test
-    void listsSectorsSuccessfullyForOwnerOrganizerOnDraftEvent() {
-        Event draftEvent = new Event(
+    private Event createEvent(EventStatus status, UUID owner) {
+        return new Event(
                 eventId,
-                organizerId,
-                null,
+                owner,
+                "TICKETMASTER",
+                "tm-100",
                 "Show de Rock",
                 null,
                 null,
                 null,
-                EventStatus.DRAFT,
-                null,
-                null,
+                status,
+                "Local",
+                "Endereço",
+                now.plusSeconds(3600),
                 now,
                 now
         );
+    }
+
+    @Test
+    void listsSectorsSuccessfullyForOwnerOrganizerOnDraftEvent() {
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
         TicketSector s1 = new TicketSector(UUID.randomUUID(), eventId, "Pista", null, 100, 100, new BigDecimal("50.00"), now, now);
         TicketSector s2 = new TicketSector(UUID.randomUUID(), eventId, "Camarote", null, 50, 50, new BigDecimal("150.00"), now, now);
 
@@ -70,20 +76,7 @@ class ListTicketSectorsUseCaseTest {
 
     @Test
     void throwsForbiddenWhenOtherUserAccessesDraftEventSectors() {
-        Event draftEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.DRAFT,
-                null,
-                null,
-                now,
-                now
-        );
+        Event draftEvent = createEvent(EventStatus.DRAFT, organizerId);
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(draftEvent));
 
@@ -96,20 +89,7 @@ class ListTicketSectorsUseCaseTest {
 
     @Test
     void allowsAuthenticatedUserToListSectorsOfPublishedEvent() {
-        Event publishedEvent = new Event(
-                eventId,
-                organizerId,
-                null,
-                "Show de Rock",
-                null,
-                null,
-                null,
-                EventStatus.PUBLISHED,
-                null,
-                null,
-                now,
-                now
-        );
+        Event publishedEvent = createEvent(EventStatus.PUBLISHED, organizerId);
         TicketSector s1 = new TicketSector(UUID.randomUUID(), eventId, "Pista", null, 100, 100, new BigDecimal("50.00"), now, now);
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(publishedEvent));

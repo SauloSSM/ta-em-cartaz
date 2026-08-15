@@ -51,12 +51,14 @@ class CreateDraftEventUseCaseTest {
         assertThat(created.id()).isNotNull();
         assertThat(created.organizerId()).isEqualTo(organizerId);
         assertThat(created.title()).isEqualTo("Rock In Rio 2026");
+        assertThat(created.externalSource()).isEqualTo("TICKETMASTER");
         assertThat(created.externalId()).isEqualTo("tm-123");
         assertThat(created.description()).isEqualTo("Descrição do evento");
         assertThat(created.imageUrl()).isEqualTo("https://images.example.com/banner.jpg");
         assertThat(created.category()).isEqualTo("Rock");
         assertThat(created.status()).isEqualTo(EventStatus.DRAFT);
-        assertThat(created.venue()).isNull();
+        assertThat(created.venueName()).isNull();
+        assertThat(created.venueAddress()).isNull();
         assertThat(created.startsAt()).isNull();
         assertThat(created.createdAt()).isEqualTo(now);
         assertThat(created.updatedAt()).isEqualTo(now);
@@ -75,6 +77,7 @@ class CreateDraftEventUseCaseTest {
 
         assertThat(first.id()).isNotEqualTo(second.id());
         assertThat(first.externalId()).isEqualTo(second.externalId()).isEqualTo("tm-same");
+        assertThat(first.externalSource()).isEqualTo("TICKETMASTER");
     }
 
     @Test

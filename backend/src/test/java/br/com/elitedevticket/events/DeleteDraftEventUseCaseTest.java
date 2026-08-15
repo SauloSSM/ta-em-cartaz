@@ -21,14 +21,30 @@ class DeleteDraftEventUseCaseTest {
     private final InMemoryEventRepository repository = new InMemoryEventRepository();
     private final DeleteDraftEventUseCase useCase = new DeleteDraftEventUseCase(repository);
 
+    private Event createEvent(UUID eventId, UUID organizerId, EventStatus status) {
+        return new Event(
+                eventId,
+                organizerId,
+                "TICKETMASTER",
+                "tm-1",
+                "Festival",
+                null,
+                null,
+                null,
+                status,
+                status == EventStatus.PUBLISHED ? "Venue" : null,
+                status == EventStatus.PUBLISHED ? "Address" : null,
+                status == EventStatus.PUBLISHED ? Instant.now().plusSeconds(3600) : null,
+                Instant.now(),
+                Instant.now()
+        );
+    }
+
     @Test
     void deletesDraftEventOwnedByOrganizer() {
         UUID organizerId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
-        Event draft = new Event(
-                eventId, organizerId, "tm-1", "Festival", null, null, null,
-                EventStatus.DRAFT, null, null, Instant.now(), Instant.now()
-        );
+        Event draft = createEvent(eventId, organizerId, EventStatus.DRAFT);
         repository.save(draft);
 
         useCase.execute(eventId, organizerId);
@@ -50,10 +66,7 @@ class DeleteDraftEventUseCaseTest {
         UUID organizerId = UUID.randomUUID();
         UUID otherOrganizerId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
-        Event draft = new Event(
-                eventId, otherOrganizerId, "tm-1", "Festival", null, null, null,
-                EventStatus.DRAFT, null, null, Instant.now(), Instant.now()
-        );
+        Event draft = createEvent(eventId, otherOrganizerId, EventStatus.DRAFT);
         repository.save(draft);
 
         assertThatThrownBy(() -> useCase.execute(eventId, organizerId))
@@ -65,10 +78,7 @@ class DeleteDraftEventUseCaseTest {
     void throwsConflictWhenTryingToDeletePublishedEvent() {
         UUID organizerId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
-        Event published = new Event(
-                eventId, organizerId, "tm-1", "Festival", null, null, null,
-                EventStatus.PUBLISHED, "Venue", Instant.now().plusSeconds(3600), Instant.now(), Instant.now()
-        );
+        Event published = createEvent(eventId, organizerId, EventStatus.PUBLISHED);
         repository.save(published);
 
         assertThatThrownBy(() -> useCase.execute(eventId, organizerId))

@@ -20,7 +20,7 @@ public class CreateDraftEventUseCase {
     }
 
     @Transactional
-    public Event createDraft(UUID organizerId, String title, String externalId, String description, String imageUrl, String category) {
+    public Event createDraft(UUID organizerId, String title, String externalSource, String externalId, String description, String imageUrl, String category) {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("Título do evento é obrigatório.");
         }
@@ -28,6 +28,9 @@ public class CreateDraftEventUseCase {
         UUID eventId = UUID.randomUUID();
 
         String trimmedExternalId = (externalId != null && !externalId.isBlank()) ? externalId.trim() : null;
+        String trimmedExternalSource = (externalSource != null && !externalSource.isBlank())
+                ? externalSource.trim()
+                : (trimmedExternalId != null ? "TICKETMASTER" : null);
         String trimmedDescription = (description != null && !description.isBlank()) ? description.trim() : null;
         String trimmedImageUrl = (imageUrl != null && !imageUrl.isBlank()) ? imageUrl.trim() : null;
         String trimmedCategory = (category != null && !category.isBlank()) ? category.trim() : null;
@@ -35,6 +38,7 @@ public class CreateDraftEventUseCase {
         Event draftEvent = new Event(
                 eventId,
                 organizerId,
+                trimmedExternalSource,
                 trimmedExternalId,
                 title.trim(),
                 trimmedDescription,
@@ -43,10 +47,16 @@ public class CreateDraftEventUseCase {
                 EventStatus.DRAFT,
                 null,
                 null,
+                null,
                 now,
                 now
         );
 
         return eventRepository.save(draftEvent);
+    }
+
+    @Transactional
+    public Event createDraft(UUID organizerId, String title, String externalId, String description, String imageUrl, String category) {
+        return createDraft(organizerId, title, externalId != null ? "TICKETMASTER" : null, externalId, description, imageUrl, category);
     }
 }

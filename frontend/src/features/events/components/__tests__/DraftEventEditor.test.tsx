@@ -10,13 +10,15 @@ describe('DraftEventEditor', () => {
   const mockDraftEvent: EventResponse = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     organizerId: '00000000-0000-0000-0000-000000000001',
+    externalSource: 'TICKETMASTER',
     externalId: 'tm-rock-2026',
     title: 'Rock in Rio 2026',
     description: 'Grande festival de música',
     imageUrl: 'https://images.example.com/banner.jpg',
     category: 'Rock',
     status: 'DRAFT',
-    venue: 'Cidade do Rock',
+    venueName: 'Cidade do Rock',
+    venueAddress: 'Av. Salvador Allende, 6500, Rio de Janeiro - RJ',
     startsAt: '2026-09-20T18:00:00Z',
     createdAt: '2026-08-15T12:00:00Z',
     updatedAt: '2026-08-15T12:00:00Z',
@@ -195,5 +197,79 @@ describe('DraftEventEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Voltar para a lista de eventos' }));
 
     expect(handleBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('publishes draft event when ready and updates UI to published state', async () => {
+    const user = userEvent.setup();
+    const handleUpdate = vi.fn();
+
+    const mockSectors = [
+      {
+        id: 'sec-1',
+        eventId: mockDraftEvent.id,
+        name: 'Pista',
+        description: 'Pista geral',
+        capacity: 500,
+        availableQuantity: 500,
+        price: 150.0,
+        createdAt: '2026-08-15T12:00:00Z',
+        updatedAt: '2026-08-15T12:00:00Z',
+      },
+    ];
+
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((url: string | URL | Request, init?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+      if (urlString.includes('/sectors')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ sectors: mockSectors }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (urlString.includes('/publish') && init?.method === 'POST') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ...mockDraftEvent,
+              status: 'PUBLISHED',
+              updatedAt: '2026-08-15T16:00:00Z',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(mockDraftEvent), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<DraftEventEditor event={mockDraftEvent} onEventUpdated={handleUpdate} />);
+
+    // Wait for sectors to load and checklist to become ready
+    expect(await screen.findByText(/Todas as condições obrigatórias foram atendidas/i)).toBeDefined();
+
+    const publishButton = screen.getByRole('button', { name: 'Publicar Evento' }) as HTMLButtonElement;
+    expect(publishButton.disabled).toBe(false);
+
+    await user.click(publishButton);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/events/${mockDraftEvent.id}/publish`,
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+
+    expect(await screen.findByText(/Evento Publicado!/i)).toBeDefined();
+    expect(handleUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'PUBLISHED',
+      }),
+    );
   });
 });
