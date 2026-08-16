@@ -1,0 +1,110 @@
+/* ==========================================================================
+   CheckoutView (Surface S04) Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & EXPERIENCE.md
+   ========================================================================== */
+
+.edt-checkout-view {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--page-padding);
+}
+
+.edt-checkout-view__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  gap: var(--space-2);
+}
+
+.edt-checkout-view__header {
+  margin-bottom: var(--space-4);
+}
+
+.edt-checkout-view__title {
+  font-size: var(--type-heading-l-size);
+  font-weight: 700;
+  color: var(--brand-ink);
+  margin-bottom: var(--space-1);
+}
+
+.edt-checkout-view__subtitle {
+  font-size: var(--type-body-s-size);
+  color: var(--neutral-700);
+}
+
+.edt-checkout-view__timer-section {
+  margin: var(--space-4) 0;
+}
+
+.edt-checkout-view__expired-alert {
+  margin: var(--space-4) 0;
+  padding: var(--space-6);
+}
+
+.edt-checkout-view__expired-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.edt-checkout-view__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.edt-checkout-view__payment-placeholder {
+  padding: var(--space-6);
+  border-radius: var(--radius-container);
+  background-color: var(--brand-paper-soft);
+  border: 1px solid var(--neutral-300);
+}
+
+.edt-payment-placeholder__title {
+  font-size: var(--type-heading-m-size);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+  color: var(--brand-ink);
+}
+
+.edt-payment-placeholder__desc {
+  font-size: var(--type-body-m-size);
+  color: var(--neutral-700);
+  margin-bottom: var(--space-4);
+  line-height: var(--type-body-m-line);
+}
+
+.edt-payment-placeholder__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.edt-checkout-view--expired .edt-checkout-view__payment-placeholder {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .edt-checkout-view__nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .edt-checkout-view__expired-actions {
+    flex-direction: column;
+  }
+
+  .edt-checkout-view__expired-actions .edt-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .edt-payment-placeholder__actions {
+    justify-content: stretch;
+  }
+
+  .edt-payment-placeholder__actions .edt-button {
+    width: 100%;
+  }
+}

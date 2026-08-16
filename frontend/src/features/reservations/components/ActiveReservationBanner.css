@@ -1,0 +1,100 @@
+/* ==========================================================================
+   ActiveReservationBanner Component Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & EXPERIENCE.md
+   ========================================================================== */
+
+.edt-active-reservation-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-container);
+  border: 1px solid var(--neutral-300);
+  background-color: var(--brand-paper-soft);
+  color: var(--brand-ink);
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+  box-shadow: 0 2px 8px rgba(16, 16, 15, 0.06);
+}
+
+.edt-active-reservation-banner--normal {
+  border-color: var(--semantic-success);
+  background-color: var(--semantic-success-bg);
+}
+
+.edt-active-reservation-banner--warning {
+  border-color: var(--semantic-warning);
+  background-color: var(--semantic-warning-bg);
+}
+
+.edt-active-reservation-banner--critical {
+  border-color: var(--semantic-danger);
+  background-color: var(--semantic-danger-bg);
+}
+
+.edt-active-reservation-banner__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: var(--space-4);
+}
+
+.edt-active-reservation-banner__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edt-active-reservation-banner__title {
+  font-size: var(--type-body-s-size);
+  font-weight: 700;
+}
+
+.edt-active-reservation-banner__details {
+  font-size: var(--type-body-s-size);
+  color: var(--neutral-700);
+}
+
+.edt-active-reservation-banner__timer {
+  font-size: var(--type-body-s-size);
+  white-space: nowrap;
+}
+
+.edt-active-reservation-banner__timer strong {
+  font-family: var(--font-display, monospace);
+  font-size: var(--type-body-l-size);
+}
+
+.edt-active-reservation-banner__actions {
+  display: flex;
+  align-items: center;
+}
+
+.edt-active-reservation-banner__cta {
+  white-space: nowrap;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--type-body-s-size);
+}
+
+@media (max-width: 640px) {
+  .edt-active-reservation-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .edt-active-reservation-banner__content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .edt-active-reservation-banner__actions {
+    width: 100%;
+  }
+
+  .edt-active-reservation-banner__cta {
+    width: 100%;
+    text-align: center;
+  }
+}

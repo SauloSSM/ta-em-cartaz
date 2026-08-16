@@ -33,6 +33,7 @@ export type PublicEventDetailProps = {
   currentUser?: SessionUser | null;
   onIntentionFormed?: (intention: PurchaseIntention) => void;
   onReservationCreated?: (reservation: ReservationResponse) => void;
+  onNavigateCheckout?: (reservation: ReservationResponse) => void;
 };
 
 type DetailState =
@@ -57,6 +58,7 @@ export function PublicEventDetail({
   currentUser,
   onIntentionFormed,
   onReservationCreated,
+  onNavigateCheckout,
 }: PublicEventDetailProps) {
   const [state, setState] = useState<DetailState>({ status: 'loading' });
   const [selectedSectorId, setSelectedSectorId] = useState<string | null>(null);
@@ -461,6 +463,7 @@ export function PublicEventDetail({
             reservation={activeReservation}
             sectorName={selectedSector?.name}
             eventTitle={event.title}
+            onNavigateCheckout={onNavigateCheckout ? () => onNavigateCheckout(activeReservation) : undefined}
           />
         </section>
       )}

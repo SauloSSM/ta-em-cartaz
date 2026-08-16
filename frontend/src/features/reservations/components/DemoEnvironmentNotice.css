@@ -1,0 +1,39 @@
+/* ==========================================================================
+   DemoEnvironmentNotice Component Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
+   ========================================================================== */
+
+.edt-demo-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--semantic-info-bg);
+  border: 1px solid var(--semantic-info);
+  border-radius: var(--radius-container);
+  color: var(--brand-ink);
+  margin: var(--space-4) 0;
+}
+
+.edt-demo-notice__icon {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.edt-demo-notice__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.edt-demo-notice__title {
+  font-size: var(--type-body-s-size);
+  font-weight: 700;
+  color: var(--semantic-info);
+}
+
+.edt-demo-notice__text {
+  font-size: var(--type-body-s-size);
+  color: var(--neutral-700);
+  line-height: var(--type-body-s-line);
+}

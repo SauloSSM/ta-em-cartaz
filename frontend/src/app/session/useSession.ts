@@ -9,6 +9,7 @@ import {
 
 export type { SessionUser };
 import { clearPurchaseIntention } from '../../features/events/model/purchaseIntention';
+import { clearActiveHold } from '../../features/reservations';
 
 const PURCHASE_INTENT_KEY = 'edt.purchase-intent.v1';
 
@@ -94,6 +95,7 @@ export function useSession() {
       return;
     }
     clearPurchaseIntention();
+    clearActiveHold();
     try {
       sessionStorage.removeItem(PURCHASE_INTENT_KEY);
     } catch {

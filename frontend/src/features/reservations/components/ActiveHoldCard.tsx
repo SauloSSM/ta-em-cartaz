@@ -1,38 +1,40 @@
-import { useState, useEffect } from 'react';
 import type { ReservationResponse } from '../api/reservationsApi';
+import { useReservationTimer } from '../model/useReservationTimer';
 
 export type ActiveHoldCardProps = {
   reservation: ReservationResponse;
   sectorName?: string;
   eventTitle?: string;
+  onNavigateCheckout?: () => void;
+  onExpire?: () => void;
 };
 
-export function ActiveHoldCard({ reservation, sectorName, eventTitle }: ActiveHoldCardProps) {
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(() =>
-    calculateRemainingSeconds(reservation.expiresAt),
-  );
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const remaining = calculateRemainingSeconds(reservation.expiresAt);
-      setRemainingSeconds(remaining);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [reservation.expiresAt]);
-
-  const isExpired = remainingSeconds <= 0;
-  const minutes = Math.floor(Math.max(0, remainingSeconds) / 60);
-  const seconds = Math.max(0, remainingSeconds) % 60;
-  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+export function ActiveHoldCard({
+  reservation,
+  sectorName,
+  eventTitle,
+  onNavigateCheckout,
+  onExpire,
+}: ActiveHoldCardProps) {
+  const {
+    formattedTime,
+    isExpired,
+    announcement,
+  } = useReservationTimer({
+    expiresAt: reservation.expiresAt,
+    serverNow: reservation.serverNow,
+    status: reservation.status,
+    onExpire,
+  });
 
   return (
     <div
       className={`edt-alert ${isExpired ? 'edt-alert--danger' : 'edt-alert--success'}`}
       role={isExpired ? 'alert' : 'status'}
-      aria-live="polite"
+      aria-atomic="true"
       data-testid="active-hold-card"
     >
-      <div className="edt-active-hold__header">
+      <div className="edt-active-hold__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 className="edt-alert__title">
           {isExpired ? 'Reserva Expirada' : 'Ingressos Pré-Reservados (Hold)'}
         </h3>
@@ -55,7 +57,15 @@ export function ActiveHoldCard({ reservation, sectorName, eventTitle }: ActiveHo
             <p>
               Seus ingressos estão garantidos temporariamente por 10 minutos durante o processo de compra.
             </p>
-            <dl className="edt-hold-details" style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.5rem' }}>
+            <dl
+              className="edt-hold-details"
+              style={{
+                marginTop: '0.75rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '0.5rem',
+              }}
+            >
               {eventTitle && (
                 <div>
                   <dt><strong>Evento:</strong></dt>
@@ -81,22 +91,33 @@ export function ActiveHoldCard({ reservation, sectorName, eventTitle }: ActiveHo
                 <dd><strong>{formatCurrency(reservation.totalAmount)}</strong></dd>
               </div>
             </dl>
+
+            {onNavigateCheckout && (
+              <div style={{ marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  className="edt-button edt-button--primary"
+                  onClick={onNavigateCheckout}
+                  data-testid="go-to-checkout-btn"
+                >
+                  Concluir no Checkout →
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      <div
+        className="edt-visually-hidden"
+        role="status"
+        aria-live="polite"
+        data-testid="hold-card-announcement"
+      >
+        {announcement}
+      </div>
     </div>
   );
-}
-
-function calculateRemainingSeconds(expiresAtIso: string): number {
-  try {
-    const expiresMs = new Date(expiresAtIso).getTime();
-    if (Number.isNaN(expiresMs)) return 0;
-    const diffMs = expiresMs - Date.now();
-    return Math.max(0, Math.floor(diffMs / 1000));
-  } catch {
-    return 0;
-  }
 }
 
 function formatCurrency(amount: number): string {

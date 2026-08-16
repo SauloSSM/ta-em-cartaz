@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { SessionUser } from '../../app/api/authApi';
 import { TicketmasterSearch } from '../catalog';
 import {
@@ -17,6 +17,11 @@ import {
   createReservation,
   ReservationClientError,
   type ReservationResponse,
+  ActiveReservationBanner,
+  CheckoutView,
+  saveActiveHold,
+  getActiveHold,
+  clearActiveHold,
 } from '../reservations';
 
 type AuthenticatedSessionProps = {
@@ -27,7 +32,7 @@ type AuthenticatedSessionProps = {
 };
 
 type OrganizerView = 'my-events' | 'catalog' | 'editor' | 'public-catalog' | 'public-detail';
-type CustomerView = 'catalog' | 'detail';
+type CustomerView = 'catalog' | 'detail' | 'checkout';
 
 const roleLabels = {
   ORGANIZER: 'Organizador',
@@ -36,13 +41,53 @@ const roleLabels = {
 } as const;
 
 export function AuthenticatedSession({ user, busy, error, onLogout }: AuthenticatedSessionProps) {
+  const initialStoredHold = user.role === 'CUSTOMER' ? getActiveHold() : null;
+
   const [organizerView, setOrganizerView] = useState<OrganizerView>('my-events');
   const [customerView, setCustomerView] = useState<CustomerView>(() => {
-    return user.role === 'CUSTOMER' && getPurchaseIntention() !== null ? 'detail' : 'catalog';
+    if (user.role === 'CUSTOMER') {
+      if (getPurchaseIntention() !== null) {
+        return 'detail';
+      }
+      if (initialStoredHold && initialStoredHold.reservation.status === 'HOLDING') {
+        const expiresMs = new Date(initialStoredHold.reservation.expiresAt).getTime();
+        const serverNowMs = new Date(initialStoredHold.reservation.serverNow).getTime();
+        if (expiresMs > serverNowMs) {
+          return 'checkout';
+        }
+      }
+    }
+    return 'catalog';
   });
+
   const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
   const [selectedPublicEvent, setSelectedPublicEvent] = useState<PublicEventResponse | null>(null);
-  const [activeReservation, setActiveReservation] = useState<ReservationResponse | null>(null);
+  const [activeReservation, setActiveReservation] = useState<ReservationResponse | null>(() => {
+    if (!initialStoredHold) return null;
+    const expiresMs = new Date(initialStoredHold.reservation.expiresAt).getTime();
+    const serverNowMs = new Date(initialStoredHold.reservation.serverNow).getTime();
+    if (expiresMs <= serverNowMs) {
+      clearActiveHold();
+      return null;
+    }
+    return initialStoredHold.reservation;
+  });
+
+  const [activeHoldMeta, setActiveHoldMeta] = useState<{
+    eventTitle?: string;
+    sectorName?: string;
+    eventDate?: string;
+    eventVenue?: string;
+  } | null>(() => {
+    if (!initialStoredHold) return null;
+    return {
+      eventTitle: initialStoredHold.eventTitle,
+      sectorName: initialStoredHold.sectorName,
+      eventDate: initialStoredHold.eventDate,
+      eventVenue: initialStoredHold.eventVenue,
+    };
+  });
+
   const [restorationError, setRestorationError] = useState<string | null>(null);
   const [isRestoringIntention, setIsRestoringIntention] = useState(false);
   const [restoredEventId, setRestoredEventId] = useState<string | null>(() => {
@@ -75,6 +120,17 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
         clearPurchaseIntention();
         setActiveReservation(reservation);
         setRestoredEventId(intention.eventId);
+        saveActiveHold({
+          reservation,
+          eventTitle: selectedPublicEvent?.title,
+          eventDate: selectedPublicEvent?.startsAt,
+          eventVenue: selectedPublicEvent?.venueName,
+        });
+        setActiveHoldMeta({
+          eventTitle: selectedPublicEvent?.title,
+          eventDate: selectedPublicEvent?.startsAt,
+          eventVenue: selectedPublicEvent?.venueName,
+        });
         setCustomerView('detail');
       })
       .catch((err) => {
@@ -108,9 +164,53 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
     return () => {
       active = false;
     };
-  }, [user.role]);
+  }, [user.role, selectedPublicEvent]);
 
-  const activeEventId = selectedPublicEvent?.id ?? restoredEventId;
+  const activeEventId = selectedPublicEvent?.id ?? restoredEventId ?? activeReservation?.eventId ?? null;
+
+  const handleLogout = useCallback(async () => {
+    clearActiveHold();
+    clearPurchaseIntention();
+    await onLogout();
+  }, [onLogout]);
+
+  const handleReconcile = useCallback(async () => {
+    if (!activeReservation || user.role !== 'CUSTOMER') {
+      return;
+    }
+    try {
+      const reconciled = await createReservation(
+        activeReservation.eventId,
+        activeReservation.sectorId,
+        { quantity: activeReservation.quantity },
+        `reconcile-${activeReservation.id}`,
+      );
+      setActiveReservation(reconciled);
+      saveActiveHold({
+        reservation: reconciled,
+        eventTitle: selectedPublicEvent?.title ?? activeHoldMeta?.eventTitle,
+        eventDate: selectedPublicEvent?.startsAt ?? activeHoldMeta?.eventDate,
+        eventVenue: selectedPublicEvent?.venueName ?? activeHoldMeta?.eventVenue,
+        sectorName: activeHoldMeta?.sectorName,
+      });
+      return reconciled;
+    } catch (err) {
+      if (
+        err instanceof ReservationClientError &&
+        (err.code === 'RESERVATION_EXPIRED' ||
+          err.code === 'INSUFFICIENT_AVAILABILITY' ||
+          err.code === 'SALES_CLOSED')
+      ) {
+        const expiredRes: ReservationResponse = {
+          ...activeReservation,
+          status: 'EXPIRED',
+        };
+        setActiveReservation(expiredRes);
+        clearActiveHold();
+        return expiredRes;
+      }
+    }
+  }, [activeReservation, user.role, selectedPublicEvent, activeHoldMeta]);
 
   return (
     <div className="session-view">
@@ -127,7 +227,7 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
           </div>
         </dl>
         {error === undefined ? null : <p role="alert">{error}</p>}
-        <button type="button" disabled={busy} onClick={() => void onLogout()}>
+        <button type="button" disabled={busy} onClick={() => void handleLogout()}>
           {busy ? 'Saindo…' : 'Sair e trocar de conta'}
         </button>
       </section>
@@ -145,32 +245,83 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
       )}
 
       {user.role === 'CUSTOMER' ? (
-        customerView === 'detail' && activeEventId !== null ? (
-          <PublicEventDetail
-            eventId={activeEventId}
-            initialEvent={selectedPublicEvent ?? undefined}
-            initialReservation={activeReservation}
-            initialErrorMessage={restorationError}
-            currentUser={user}
-            onBackToCatalog={() => {
-              setSelectedPublicEvent(null);
-              setRestoredEventId(null);
-              setActiveReservation(null);
-              setRestorationError(null);
-              setCustomerView('catalog');
-            }}
-          />
-        ) : (
-          <PublicEventCatalog
-            onSelectEvent={(event) => {
-              setSelectedPublicEvent(event);
-              setRestoredEventId(null);
-              setActiveReservation(null);
-              setRestorationError(null);
-              setCustomerView('detail');
-            }}
-          />
-        )
+        <>
+          {/* Banner de acesso persistente "Continuar reserva" quando houver hold ativo nas telas de catálogo e detalhe */}
+          {customerView !== 'checkout' && activeReservation && activeReservation.status === 'HOLDING' && (
+            <ActiveReservationBanner
+              reservation={activeReservation}
+              eventTitle={selectedPublicEvent?.title ?? activeHoldMeta?.eventTitle}
+              sectorName={activeHoldMeta?.sectorName}
+              onContinue={() => setCustomerView('checkout')}
+              onExpire={() => {
+                setActiveReservation(null);
+                clearActiveHold();
+              }}
+            />
+          )}
+
+          {customerView === 'checkout' && activeReservation !== null ? (
+            <CheckoutView
+              reservation={activeReservation}
+              eventTitle={selectedPublicEvent?.title ?? activeHoldMeta?.eventTitle}
+              eventDate={selectedPublicEvent?.startsAt ?? activeHoldMeta?.eventDate}
+              eventVenue={selectedPublicEvent?.venueName ?? activeHoldMeta?.eventVenue}
+              sectorName={activeHoldMeta?.sectorName}
+              onBackToEvent={() => {
+                if (activeEventId) {
+                  setCustomerView('detail');
+                } else {
+                  setCustomerView('catalog');
+                }
+              }}
+              onBackToCatalog={() => {
+                setCustomerView('catalog');
+              }}
+              onReconcile={handleReconcile}
+            />
+          ) : customerView === 'detail' && activeEventId !== null ? (
+            <PublicEventDetail
+              eventId={activeEventId}
+              initialEvent={selectedPublicEvent ?? undefined}
+              initialReservation={activeReservation}
+              initialErrorMessage={restorationError}
+              currentUser={user}
+              onBackToCatalog={() => {
+                setSelectedPublicEvent(null);
+                setRestoredEventId(null);
+                setRestorationError(null);
+                setCustomerView('catalog');
+              }}
+              onReservationCreated={(reservation) => {
+                setActiveReservation(reservation);
+                saveActiveHold({
+                  reservation,
+                  eventTitle: selectedPublicEvent?.title,
+                  eventDate: selectedPublicEvent?.startsAt,
+                  eventVenue: selectedPublicEvent?.venueName,
+                });
+                setActiveHoldMeta({
+                  eventTitle: selectedPublicEvent?.title,
+                  eventDate: selectedPublicEvent?.startsAt,
+                  eventVenue: selectedPublicEvent?.venueName,
+                });
+              }}
+              onNavigateCheckout={(reservation) => {
+                setActiveReservation(reservation);
+                setCustomerView('checkout');
+              }}
+            />
+          ) : (
+            <PublicEventCatalog
+              onSelectEvent={(event) => {
+                setSelectedPublicEvent(event);
+                setRestoredEventId(null);
+                setRestorationError(null);
+                setCustomerView('detail');
+              }}
+            />
+          )}
+        </>
       ) : user.role === 'ORGANIZER' ? (
         organizerView === 'editor' && selectedEvent !== null ? (
           <DraftEventEditor

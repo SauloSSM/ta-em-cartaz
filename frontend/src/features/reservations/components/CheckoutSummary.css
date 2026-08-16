@@ -1,0 +1,110 @@
+/* ==========================================================================
+   CheckoutSummary Component Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
+   ========================================================================== */
+
+.edt-checkout-summary {
+  margin: var(--space-4) 0;
+}
+
+.edt-checkout-summary__title {
+  font-size: var(--type-heading-m-size);
+  margin-bottom: var(--space-3);
+  font-weight: 700;
+  color: var(--brand-ink);
+}
+
+.edt-checkout-summary__card {
+  padding: var(--space-6);
+  border-radius: var(--radius-container);
+  background-color: #FFFFFF;
+  border: 1px solid var(--neutral-300);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edt-checkout-summary__event-info {
+  border-bottom: 1px solid var(--neutral-200);
+  padding-bottom: var(--space-3);
+}
+
+.edt-checkout-summary__event-title {
+  font-size: var(--type-body-l-size);
+  font-weight: 700;
+  color: var(--brand-ink);
+  margin-bottom: var(--space-1);
+}
+
+.edt-checkout-summary__event-meta {
+  font-size: var(--type-body-s-size);
+  color: var(--neutral-700);
+}
+
+.edt-checkout-summary__list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.edt-checkout-summary__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--type-body-m-size);
+  padding: var(--space-1) 0;
+  border-bottom: 1px dashed var(--neutral-200);
+}
+
+.edt-checkout-summary__row dt {
+  color: var(--neutral-700);
+}
+
+.edt-checkout-summary__row dd {
+  color: var(--brand-ink);
+  text-align: right;
+}
+
+.edt-checkout-summary__row--total {
+  border-bottom: none;
+  border-top: 2px solid var(--brand-ink);
+  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: var(--type-body-l-size);
+}
+
+.edt-checkout-summary__row--total dt {
+  font-weight: 700;
+  color: var(--brand-ink);
+}
+
+.edt-checkout-summary__total-value {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  font-weight: 700;
+  color: var(--brand-orange, #F25709);
+}
+
+.edt-checkout-summary__disclaimer {
+  font-size: var(--type-label-size);
+  color: var(--neutral-500);
+  line-height: var(--type-label-line);
+}
+
+.edt-badge--holding {
+  background-color: var(--semantic-info-bg);
+  color: var(--semantic-info);
+  border: 1px solid var(--semantic-info);
+}
+
+.edt-badge--confirmed {
+  background-color: var(--semantic-success-bg);
+  color: var(--semantic-success);
+  border: 1px solid var(--semantic-success);
+}
+
+.edt-badge--expired {
+  background-color: var(--neutral-100);
+  color: var(--neutral-700);
+  border: 1px solid var(--neutral-300);
+}

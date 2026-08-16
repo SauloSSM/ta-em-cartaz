@@ -1,0 +1,113 @@
+/* ==========================================================================
+   ReservationTimer Component Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & EXPERIENCE.md
+   ========================================================================== */
+
+.edt-reservation-timer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-radius: var(--radius-container);
+  border: 2px solid var(--neutral-300);
+  background-color: var(--brand-paper-soft);
+  color: var(--brand-ink);
+  transition: border-color var(--motion-base) var(--ease-standard),
+              background-color var(--motion-base) var(--ease-standard);
+}
+
+.edt-reservation-timer__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.edt-reservation-timer__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.edt-reservation-timer__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.edt-reservation-timer__title {
+  font-size: var(--type-body-s-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+}
+
+.edt-reservation-timer__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--type-label-size);
+  font-weight: 700;
+  width: fit-content;
+}
+
+.edt-reservation-timer__countdown {
+  font-family: var(--font-display, monospace);
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Estados canônicos --- */
+.edt-reservation-timer--normal {
+  border-color: var(--semantic-success);
+  background-color: var(--semantic-success-bg);
+}
+
+.edt-reservation-timer__badge--normal {
+  background-color: var(--semantic-success);
+  color: #FFFFFF;
+}
+
+.edt-reservation-timer--warning {
+  border-color: var(--semantic-warning);
+  background-color: var(--semantic-warning-bg);
+}
+
+.edt-reservation-timer__badge--warning {
+  background-color: var(--semantic-warning);
+  color: #FFFFFF;
+}
+
+.edt-reservation-timer--critical {
+  border-color: var(--semantic-danger);
+  background-color: var(--semantic-danger-bg);
+}
+
+.edt-reservation-timer__badge--critical {
+  background-color: var(--semantic-danger);
+  color: #FFFFFF;
+}
+
+.edt-reservation-timer--expired {
+  border-color: var(--neutral-700);
+  background-color: var(--neutral-100);
+  color: var(--neutral-700);
+}
+
+.edt-reservation-timer__badge--expired {
+  background-color: var(--neutral-700);
+  color: #FFFFFF;
+}
+
+@media (max-width: 480px) {
+  .edt-reservation-timer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .edt-reservation-timer__display {
+    width: 100%;
+    text-align: right;
+  }
+}
