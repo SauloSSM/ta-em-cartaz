@@ -178,9 +178,10 @@ paths:
     get:
       operationId: getEvent
       summary: Consulta os dados de um evento por ID
-      description: Requer sessão autenticada. Se o evento estiver em DRAFT, somente o Organizer proprietário pode acessá-lo.
+      description: Acesso público para eventos publicados (PUBLISHED). Se o evento estiver em rascunho (DRAFT), somente o Organizer proprietário pode acessá-lo.
       security:
         - SessionCookie: []
+        - {}
       parameters:
         - name: id
           in: path
@@ -303,9 +304,10 @@ paths:
     get:
       operationId: listTicketSectors
       summary: Lista os setores de um evento
-      description: Requer sessão autenticada. Se o evento estiver em DRAFT, somente o Organizer proprietário pode acessá-lo.
+      description: Acesso público para eventos publicados (PUBLISHED). Se o evento estiver em rascunho (DRAFT), somente o Organizer proprietário pode acessá-lo.
       security:
         - SessionCookie: []
+        - {}
       parameters:
         - name: eventId
           in: path

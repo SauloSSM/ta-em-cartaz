@@ -7,3 +7,7 @@ export * from './components/SectorEditor';
 export * from './components/PublicationChecklist';
 export * from './components/EventCard';
 export * from './components/PublicEventCatalog';
+export * from './components/QuantityStepper';
+export * from './components/TicketSectorCard';
+export * from './components/PublicEventDetail';
+export * from './model/purchaseIntention';

@@ -117,7 +117,6 @@ public class EventsController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EventResponse> getEvent(
             @PathVariable UUID id,
             @AuthenticationPrincipal SessionUser sessionUser
@@ -172,7 +171,6 @@ public class EventsController {
     }
 
     @GetMapping("/{eventId}/sectors")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TicketSectorListResponse> listTicketSectors(
             @PathVariable UUID eventId,
             @AuthenticationPrincipal SessionUser sessionUser

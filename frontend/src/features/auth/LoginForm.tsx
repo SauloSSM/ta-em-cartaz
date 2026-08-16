@@ -4,11 +4,12 @@ type LoginFormProps = {
   email: string;
   busy: boolean;
   error?: string;
+  notice?: string;
   onEmailChange: (email: string) => void;
   onLogin: (password: string) => Promise<void>;
 };
 
-export function LoginForm({ email, busy, error, onEmailChange, onLogin }: LoginFormProps) {
+export function LoginForm({ email, busy, error, notice, onEmailChange, onLogin }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -29,6 +30,11 @@ export function LoginForm({ email, busy, error, onEmailChange, onLogin }: LoginF
     <section aria-labelledby="login-title">
       <h2 id="login-title">Entrar com conta provisionada</h2>
       <p>Use uma das contas fornecidas para a avaliação.</p>
+      {notice && (
+        <div className="edt-alert edt-alert--info" role="status" data-testid="login-notice-banner">
+          <p>{notice}</p>
+        </div>
+      )}
       <form
         onSubmit={handleSubmit}
         aria-busy={busy}

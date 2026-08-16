@@ -1178,6 +1178,126 @@ class EventsEndpointsIntegrationTest {
         assertThat(searchNoMatchResponse.body()).isEqualTo("{\"events\":[]}");
     }
 
+    @Test
+    void publicEventDetailAndSectorsAccessFlow() throws Exception {
+        String csrf = bootstrapCsrf();
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+
+        // 1. Criar e publicar um evento com setores
+        String eventPayload = """
+                {
+                  "externalId": "tm-gastro-1",
+                  "externalSource": "TICKETMASTER",
+                  "title": "Festival Gastronômico 2026",
+                  "category": "Gastronomia",
+                  "description": "O melhor da gastronomia regional e internacional",
+                  "imageUrl": "https://example.com/gastronomia.jpg"
+                }
+                """;
+        HttpResponse<String> createResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                eventPayload
+        );
+        assertThat(createResponse.statusCode()).isEqualTo(201);
+        UUID publishedEventId = UUID.fromString(extractJsonField(createResponse.body(), "id"));
+
+        put(
+                "/api/v1/events/" + publishedEventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Festival Gastronômico 2026",
+                  "venueName": "Memorial da América Latina",
+                  "venueAddress": "Av. Auro Soares de Moura Andrade, 664",
+                  "startsAt": "2026-12-10T18:00:00Z"
+                }
+                """
+        );
+
+        post(
+                "/api/v1/events/" + publishedEventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Entrada Geral\",\"description\":\"Acesso a todos os quiosques\",\"capacity\":1000,\"price\":80.00}"
+        );
+        post(
+                "/api/v1/events/" + publishedEventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Área VIP Degustação\",\"description\":\"Área coberta com degustação inclusa\",\"capacity\":200,\"price\":250.00}"
+        );
+
+        post(
+                "/api/v1/events/" + publishedEventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+
+        // 2. Criar um evento DRAFT que não será publicado
+        HttpResponse<String> draftCreateResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Evento Exclusivo Secreto DRAFT\"}"
+        );
+        UUID draftEventId = UUID.fromString(extractJsonField(draftCreateResponse.body(), "id"));
+
+        post(
+                "/api/v1/events/" + draftEventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Setor Secreto\",\"capacity\":50,\"price\":500.00}"
+        );
+
+        // 3. Consulta pública anônima do evento PUBLISHED -> 200 OK
+        HttpResponse<String> anonEventResponse = get("/api/v1/events/" + publishedEventId, "");
+        assertThat(anonEventResponse.statusCode()).isEqualTo(200);
+        assertThat(anonEventResponse.body()).contains("\"title\":\"Festival Gastronômico 2026\"");
+        assertThat(anonEventResponse.body()).contains("\"venueName\":\"Memorial da América Latina\"");
+        assertThat(anonEventResponse.body()).contains("\"venueAddress\":\"Av. Auro Soares de Moura Andrade, 664\"");
+        assertThat(anonEventResponse.body()).contains("\"status\":\"PUBLISHED\"");
+
+        // 4. Consulta pública anônima dos setores do evento PUBLISHED -> 200 OK
+        HttpResponse<String> anonSectorsResponse = get("/api/v1/events/" + publishedEventId + "/sectors", "");
+        assertThat(anonSectorsResponse.statusCode()).isEqualTo(200);
+        assertThat(anonSectorsResponse.body()).contains("\"name\":\"Entrada Geral\"");
+        assertThat(anonSectorsResponse.body()).contains("\"availableQuantity\":1000");
+        assertThat(anonSectorsResponse.body()).contains("\"price\":80.00");
+        assertThat(anonSectorsResponse.body()).contains("\"name\":\"Área VIP Degustação\"");
+        assertThat(anonSectorsResponse.body()).contains("\"availableQuantity\":200");
+        assertThat(anonSectorsResponse.body()).contains("\"price\":250.00");
+
+        // 5. Tentativa anônima de consultar evento DRAFT -> 403 Forbidden
+        HttpResponse<String> anonDraftResponse = get("/api/v1/events/" + draftEventId, "");
+        assertThat(anonDraftResponse.statusCode()).isEqualTo(403);
+        assertThat(anonDraftResponse.body()).contains("\"code\":\"EVENT_FORBIDDEN\"");
+
+        // 6. Tentativa anônima de consultar setores de evento DRAFT -> 403 Forbidden
+        HttpResponse<String> anonDraftSectorsResponse = get("/api/v1/events/" + draftEventId + "/sectors", "");
+        assertThat(anonDraftSectorsResponse.statusCode()).isEqualTo(403);
+        assertThat(anonDraftSectorsResponse.body()).contains("\"code\":\"EVENT_FORBIDDEN\"");
+
+        // 7. Tentativa de Customer consultar evento DRAFT -> 403 Forbidden
+        HttpResponse<String> customerDraftResponse = get("/api/v1/events/" + draftEventId, "EDT_SESSION=" + customerSession);
+        assertThat(customerDraftResponse.statusCode()).isEqualTo(403);
+        assertThat(customerDraftResponse.body()).contains("\"code\":\"EVENT_FORBIDDEN\"");
+
+        // 8. Consulta de evento inexistente -> 404 Not Found
+        UUID randomId = UUID.randomUUID();
+        HttpResponse<String> notFoundEventResponse = get("/api/v1/events/" + randomId, "");
+        assertThat(notFoundEventResponse.statusCode()).isEqualTo(404);
+        assertThat(notFoundEventResponse.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
+
+        HttpResponse<String> notFoundSectorsResponse = get("/api/v1/events/" + randomId + "/sectors", "");
+        assertThat(notFoundSectorsResponse.statusCode()).isEqualTo(404);
+        assertThat(notFoundSectorsResponse.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
+    }
+
     private String bootstrapCsrf() throws Exception {
         HttpResponse<String> response = get("/api/v1/auth/session", "");
         return cookieValue(response, "XSRF-TOKEN");

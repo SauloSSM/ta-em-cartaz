@@ -93,7 +93,7 @@ class EventsOpenApiContractTest {
         Map<String, Object> getEvent = assertOperation(
                 paths, "/api/v1/events/{id}", "get", "getEvent", Set.of("200", "401", "403", "404"));
         assertThat(getEvent).doesNotContainKey("requestBody");
-        assertSecurity(getEvent, Set.of(Set.of("SessionCookie")));
+        assertSecurity(getEvent, Set.of(Set.of("SessionCookie"), Set.of()));
         assertResponseSchema(getEvent, "200", "EventResponse");
         assertResponseReference(getEvent, "401", "AuthUnauthenticated");
         assertResponseReference(getEvent, "403", "AuthForbidden");
@@ -137,7 +137,7 @@ class EventsOpenApiContractTest {
         Map<String, Object> listSectors = assertOperation(
                 paths, "/api/v1/events/{eventId}/sectors", "get", "listTicketSectors", Set.of("200", "401", "403", "404"));
         assertThat(listSectors).doesNotContainKey("requestBody");
-        assertSecurity(listSectors, Set.of(Set.of("SessionCookie")));
+        assertSecurity(listSectors, Set.of(Set.of("SessionCookie"), Set.of()));
         assertResponseSchema(listSectors, "200", "TicketSectorListResponse");
         assertResponseReference(listSectors, "401", "AuthUnauthenticated");
         assertResponseReference(listSectors, "403", "AuthForbidden");

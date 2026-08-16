@@ -501,6 +501,173 @@ describe('App session flow', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
   });
+
+  it('visitante anônimo navega do catálogo para detalhe do evento (S02), seleciona setor/quantidade e é encaminhado ao login com intenção preservada', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>()
+      // 1. Session check: unauthenticated
+      .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
+      // 2. Initial catalog load
+      .mockResolvedValueOnce(
+        jsonResponse({
+          events: [
+            {
+              id: 'ev-flow-1',
+              title: 'Lollapalooza Brasil 2026',
+              description: 'Mega festival em São Paulo',
+              imageUrl: 'https://images.example.com/lolla.jpg',
+              category: 'Festival',
+              status: 'PUBLISHED',
+              venueName: 'Autódromo de Interlagos',
+              venueAddress: 'São Paulo, SP',
+              startsAt: '2026-11-20T20:00:00Z',
+              startingPrice: 200.0,
+              salesClosed: false,
+              createdAt: '2026-08-15T10:00:00Z',
+              updatedAt: '2026-08-15T12:00:00Z',
+            },
+          ],
+        }),
+      )
+      // 3. List sectors for event
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sectors: [
+            {
+              id: 'sec-lolla-pista',
+              eventId: 'ev-flow-1',
+              name: 'Pista Geral',
+              description: 'Acesso aos 4 palcos',
+              capacity: 1000,
+              availableQuantity: 1000,
+              price: 200.0,
+              createdAt: '2026-08-15T10:00:00Z',
+              updatedAt: '2026-08-15T12:00:00Z',
+            },
+          ],
+        }),
+      );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    // 1. Catálogo público é exibido
+    expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
+    expect(await screen.findByText('Lollapalooza Brasil 2026')).toBeDefined();
+
+    // 2. Clica no botão "Ver detalhes" do card
+    const viewDetailBtn = screen.getByRole('button', { name: /Ver detalhes de Lollapalooza Brasil 2026/ });
+    await user.click(viewDetailBtn);
+
+    // 3. Superfície S02 (Detalhe) é exibida
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lollapalooza Brasil 2026' })).toBeDefined();
+    expect(screen.getAllByText('Pista Geral').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/200,00/).length).toBeGreaterThanOrEqual(1);
+
+    // 4. Ajusta a quantidade para 2
+    const incBtn = screen.getByRole('button', { name: 'Aumentar quantidade' });
+    await user.click(incBtn);
+    expect(screen.getByTestId('quantity-stepper-value').textContent).toContain('2');
+    expect(screen.getAllByText(/400,00/).length).toBeGreaterThanOrEqual(1);
+
+    // 5. Clica em "Reservar Ingressos"
+    const reserveBtn = screen.getByRole('button', { name: /Reservar 2 ingressos no setor Pista Geral/ });
+    await user.click(reserveBtn);
+
+    // 6. Intenção de compra é persistida em sessionStorage
+    const storedIntentionRaw = sessionStorage.getItem('edt_purchase_intention');
+    expect(storedIntentionRaw).not.toBeNull();
+    const storedIntention = JSON.parse(storedIntentionRaw!);
+    expect(storedIntention.eventId).toBe('ev-flow-1');
+    expect(storedIntention.ticketSectorId).toBe('sec-lolla-pista');
+    expect(storedIntention.quantity).toBe(2);
+
+    // 7. Usuário é encaminhado para a tela de login com banner informativo contextual
+    expect(await screen.findByRole('heading', { level: 2, name: 'Entrar com conta provisionada' })).toBeDefined();
+    expect(screen.getByTestId('login-notice-banner').textContent).toContain(
+      'Para continuar com a compra dos seus ingressos, acesse sua conta de Cliente (CUSTOMER)',
+    );
+  });
+
+  it('cliente autenticado (CUSTOMER) navega para o detalhe e forma intenção com confirmação visual', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>()
+      // 1. Session check: authenticated as CUSTOMER
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000002',
+            email: 'customer.one@demo.elitedevticket.local',
+            role: 'CUSTOMER',
+          },
+        }),
+      )
+      // 2. Initial catalog load
+      .mockResolvedValueOnce(
+        jsonResponse({
+          events: [
+            {
+              id: 'ev-cust-1',
+              title: 'Jazz & Blues Night 2026',
+              category: 'Jazz',
+              status: 'PUBLISHED',
+              venueName: 'Blue Note SP',
+              startsAt: '2026-12-05T21:00:00Z',
+              startingPrice: 90.0,
+              salesClosed: false,
+              createdAt: '2026-08-15T10:00:00Z',
+              updatedAt: '2026-08-15T12:00:00Z',
+            },
+          ],
+        }),
+      )
+      // 3. List sectors
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sectors: [
+            {
+              id: 'sec-mesa',
+              eventId: 'ev-cust-1',
+              name: 'Mesa Central',
+              capacity: 40,
+              availableQuantity: 40,
+              price: 90.0,
+              createdAt: '2026-08-15T10:00:00Z',
+              updatedAt: '2026-08-15T12:00:00Z',
+            },
+          ],
+        }),
+      );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByText('customer.one@demo.elitedevticket.local')).toBeDefined();
+    expect(screen.getByText('Cliente')).toBeDefined();
+
+    // Clica em "Ver detalhes"
+    const viewDetailBtn = await screen.findByRole('button', { name: /Ver detalhes de Jazz & Blues Night 2026/ });
+    await user.click(viewDetailBtn);
+
+    // Detalhe S02 é exibido
+    expect(await screen.findByRole('heading', { level: 1, name: 'Jazz & Blues Night 2026' })).toBeDefined();
+    expect(screen.getAllByText('Mesa Central').length).toBeGreaterThanOrEqual(1);
+
+    // Clica em "Reservar Ingressos"
+    const reserveBtn = screen.getByRole('button', { name: /Reservar 1 ingresso no setor Mesa Central/ });
+    await user.click(reserveBtn);
+
+    // Feedback de intenção registrada é exibido
+    expect(await screen.findByTestId('intention-success-alert')).toBeDefined();
+    expect(screen.getByTestId('intention-success-alert').textContent).toContain(
+      'Intenção de compra registrada com sucesso para o setor Mesa Central (1 ingresso)',
+    );
+
+    // Botão de voltar ao catálogo funciona
+    const backBtn = screen.getByRole('button', { name: 'Voltar para o catálogo de eventos' });
+    await user.click(backBtn);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
+  });
 });
 
 function jsonResponse(body: unknown, status = 200) {

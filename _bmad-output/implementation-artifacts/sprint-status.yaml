@@ -53,9 +53,9 @@ development_status:
   2-6-gerenciar-event-publicado-sem-quebrar-compromissos-existentes: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-navegar-e-buscar-catálogo-público-de-events-publicados: done
-  3-2-consultar-detalhe-público-e-formar-intenção-de-compra: backlog
+  3-2-consultar-detalhe-público-e-formar-intenção-de-compra: done
   epic-3-retrospective: optional
 
   epic-4: backlog

@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import type { SessionUser } from '../../app/api/authApi';
 import { TicketmasterSearch } from '../catalog';
-import { DraftEventEditor, MyEventsList, PublicEventCatalog, type EventResponse } from '../events';
+import {
+  DraftEventEditor,
+  MyEventsList,
+  PublicEventCatalog,
+  PublicEventDetail,
+  type EventResponse,
+  type PublicEventResponse,
+} from '../events';
 
 type AuthenticatedSessionProps = {
   user: SessionUser;
@@ -10,7 +17,8 @@ type AuthenticatedSessionProps = {
   onLogout: () => Promise<void>;
 };
 
-type OrganizerView = 'my-events' | 'catalog' | 'editor' | 'public-catalog';
+type OrganizerView = 'my-events' | 'catalog' | 'editor' | 'public-catalog' | 'public-detail';
+type CustomerView = 'catalog' | 'detail';
 
 const roleLabels = {
   ORGANIZER: 'Organizador',
@@ -20,7 +28,9 @@ const roleLabels = {
 
 export function AuthenticatedSession({ user, busy, error, onLogout }: AuthenticatedSessionProps) {
   const [organizerView, setOrganizerView] = useState<OrganizerView>('my-events');
+  const [customerView, setCustomerView] = useState<CustomerView>('catalog');
   const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
+  const [selectedPublicEvent, setSelectedPublicEvent] = useState<PublicEventResponse | null>(null);
 
   return (
     <div className="session-view">
@@ -43,7 +53,24 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
       </section>
 
       {user.role === 'CUSTOMER' ? (
-        <PublicEventCatalog />
+        customerView === 'detail' && selectedPublicEvent !== null ? (
+          <PublicEventDetail
+            eventId={selectedPublicEvent.id}
+            initialEvent={selectedPublicEvent}
+            currentUser={user}
+            onBackToCatalog={() => {
+              setSelectedPublicEvent(null);
+              setCustomerView('catalog');
+            }}
+          />
+        ) : (
+          <PublicEventCatalog
+            onSelectEvent={(event) => {
+              setSelectedPublicEvent(event);
+              setCustomerView('detail');
+            }}
+          />
+        )
       ) : user.role === 'ORGANIZER' ? (
         organizerView === 'editor' && selectedEvent !== null ? (
           <DraftEventEditor
@@ -74,6 +101,18 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
               }}
             />
           </div>
+        ) : organizerView === 'public-detail' && selectedPublicEvent !== null ? (
+          <div className="public-catalog-wrapper">
+            <PublicEventDetail
+              eventId={selectedPublicEvent.id}
+              initialEvent={selectedPublicEvent}
+              currentUser={user}
+              onBackToCatalog={() => {
+                setSelectedPublicEvent(null);
+                setOrganizerView('public-catalog');
+              }}
+            />
+          </div>
         ) : organizerView === 'public-catalog' ? (
           <div className="public-catalog-wrapper">
             <button
@@ -83,7 +122,12 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
             >
               ← Voltar para Meus Eventos
             </button>
-            <PublicEventCatalog />
+            <PublicEventCatalog
+              onSelectEvent={(event) => {
+                setSelectedPublicEvent(event);
+                setOrganizerView('public-detail');
+              }}
+            />
           </div>
         ) : (
           <div>

@@ -1,19 +1,29 @@
 import { useState, useEffect } from 'react';
 import { AuthenticatedSession, LoginForm } from '../features/auth';
-import { PublicEventCatalog } from '../features/events';
+import {
+  PublicEventCatalog,
+  PublicEventDetail,
+  type PublicEventResponse,
+} from '../features/events';
 import { useSession, type SessionState } from './session/useSession';
 
 export type AppProps = {
-  initialAnonymousView?: 'catalog' | 'login';
+  initialAnonymousView?: 'catalog' | 'login' | 'detail';
 };
 
 export function App({ initialAnonymousView = 'catalog' }: AppProps) {
   const { state, setEmail, authenticate, endSession, retryBootstrap } = useSession();
-  const [anonymousView, setAnonymousView] = useState<'catalog' | 'login'>(initialAnonymousView);
+  const [anonymousView, setAnonymousView] = useState<'catalog' | 'login' | 'detail'>(initialAnonymousView);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedEventData, setSelectedEventData] = useState<PublicEventResponse | null>(null);
+  const [loginNotice, setLoginNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.status === 'logging-out') {
       setAnonymousView('login');
+      setLoginNotice(null);
+      setSelectedEventId(null);
+      setSelectedEventData(null);
     }
   }, [state.status]);
 
@@ -30,16 +40,23 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
           <nav aria-label="Navegação principal" className="edt-top-nav">
             <button
               type="button"
-              className={`edt-nav-link ${anonymousView === 'catalog' ? 'edt-nav-link--active' : ''}`}
-              onClick={() => setAnonymousView('catalog')}
-              aria-current={anonymousView === 'catalog' ? 'page' : undefined}
+              className={`edt-nav-link ${anonymousView === 'catalog' || anonymousView === 'detail' ? 'edt-nav-link--active' : ''}`}
+              onClick={() => {
+                setSelectedEventId(null);
+                setSelectedEventData(null);
+                setAnonymousView('catalog');
+              }}
+              aria-current={anonymousView === 'catalog' || anonymousView === 'detail' ? 'page' : undefined}
             >
               Catálogo de Eventos
             </button>
             <button
               type="button"
               className={`edt-nav-link ${anonymousView === 'login' ? 'edt-nav-link--active' : ''}`}
-              onClick={() => setAnonymousView('login')}
+              onClick={() => {
+                setLoginNotice(null);
+                setAnonymousView('login');
+              }}
               aria-current={anonymousView === 'login' ? 'page' : undefined}
             >
               Acessar conta
@@ -52,7 +69,27 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
         <SessionContent
           state={state}
           anonymousView={anonymousView}
-          onSelectView={setAnonymousView}
+          selectedEventId={selectedEventId}
+          selectedEventData={selectedEventData}
+          loginNotice={loginNotice}
+          onSelectCatalog={() => {
+            setSelectedEventId(null);
+            setSelectedEventData(null);
+            setAnonymousView('catalog');
+          }}
+          onSelectDetail={(event) => {
+            setSelectedEventData(event);
+            setSelectedEventId(event.id);
+            setAnonymousView('detail');
+          }}
+          onProceedToLogin={(notice) => {
+            setLoginNotice(notice);
+            setAnonymousView('login');
+          }}
+          onSelectLogin={() => {
+            setLoginNotice(null);
+            setAnonymousView('login');
+          }}
           onEmailChange={setEmail}
           onLogin={authenticate}
           onLogout={endSession}
@@ -65,8 +102,14 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
 
 type SessionContentProps = {
   state: SessionState;
-  anonymousView: 'catalog' | 'login';
-  onSelectView: (view: 'catalog' | 'login') => void;
+  anonymousView: 'catalog' | 'login' | 'detail';
+  selectedEventId: string | null;
+  selectedEventData: PublicEventResponse | null;
+  loginNotice: string | null;
+  onSelectCatalog: () => void;
+  onSelectDetail: (event: PublicEventResponse) => void;
+  onProceedToLogin: (notice: string) => void;
+  onSelectLogin: () => void;
   onEmailChange: (email: string) => void;
   onLogin: (password: string) => Promise<void>;
   onLogout: () => Promise<void>;
@@ -76,7 +119,13 @@ type SessionContentProps = {
 function SessionContent({
   state,
   anonymousView,
-  onSelectView,
+  selectedEventId,
+  selectedEventData,
+  loginNotice,
+  onSelectCatalog,
+  onSelectDetail,
+  onProceedToLogin,
+  onSelectLogin,
   onEmailChange,
   onLogin,
   onLogout,
@@ -96,18 +145,51 @@ function SessionContent({
         </section>
       );
     case 'anonymous':
-      if (anonymousView === 'catalog') {
-        return <PublicEventCatalog onLoginClick={() => onSelectView('login')} />;
+      if (anonymousView === 'detail' && selectedEventId) {
+        return (
+          <PublicEventDetail
+            eventId={selectedEventId}
+            initialEvent={selectedEventData ?? undefined}
+            currentUser={null}
+            onBackToCatalog={onSelectCatalog}
+            onProceedToLogin={onProceedToLogin}
+          />
+        );
       }
-      return <LoginForm email={state.email} busy={false} onEmailChange={onEmailChange} onLogin={onLogin} />;
+      if (anonymousView === 'catalog') {
+        return (
+          <PublicEventCatalog
+            onSelectEvent={onSelectDetail}
+            onLoginClick={onSelectLogin}
+          />
+        );
+      }
+      return (
+        <LoginForm
+          email={state.email}
+          busy={false}
+          notice={loginNotice ?? undefined}
+          onEmailChange={onEmailChange}
+          onLogin={onLogin}
+        />
+      );
     case 'authenticating':
-      return <LoginForm email={state.email} busy onEmailChange={onEmailChange} onLogin={onLogin} />;
+      return (
+        <LoginForm
+          email={state.email}
+          busy
+          notice={loginNotice ?? undefined}
+          onEmailChange={onEmailChange}
+          onLogin={onLogin}
+        />
+      );
     case 'authentication-error':
       return (
         <LoginForm
           email={state.email}
           busy={false}
           error={state.message}
+          notice={loginNotice ?? undefined}
           onEmailChange={onEmailChange}
           onLogin={onLogin}
         />
