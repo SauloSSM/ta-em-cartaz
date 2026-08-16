@@ -28,6 +28,7 @@ import {
   TicketDetail,
   type MyTicketResponse,
 } from '../tickets';
+import { GateView } from '../gate';
 
 type AuthenticatedSessionProps = {
   user: SessionUser;
@@ -462,6 +463,8 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
             </div>
           </div>
         )
+      ) : user.role === 'GATE' ? (
+        <GateView user={user} />
       ) : null}
     </div>
   );

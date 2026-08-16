@@ -7,6 +7,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -1296,6 +1297,92 @@ class EventsEndpointsIntegrationTest {
         HttpResponse<String> notFoundSectorsResponse = get("/api/v1/events/" + randomId + "/sectors", "");
         assertThat(notFoundSectorsResponse.statusCode()).isEqualTo(404);
         assertThat(notFoundSectorsResponse.body()).contains("\"code\":\"EVENT_NOT_FOUND\"");
+    }
+
+    @Test
+    @DisplayName("Story 7.1 — Usuário com papel GATE lista apenas eventos PUBLISHED e recebe 403 ao acessar DRAFT")
+    void gateUserListsOnlyPublishedEventsAndCannotAccessDrafts() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // Create draft event
+        HttpResponse<String> draftCreateResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Draft Event For Gate Test\"}"
+        );
+        assertThat(draftCreateResponse.statusCode()).isEqualTo(201);
+        UUID draftEventId = UUID.fromString(extractJsonField(draftCreateResponse.body(), "id"));
+
+        // Create published event
+        HttpResponse<String> pubCreateResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Published Event For Gate Test",
+                  "externalSource": "TICKETMASTER",
+                  "externalId": "tm-gate-123"
+                }
+                """
+        );
+        assertThat(pubCreateResponse.statusCode()).isEqualTo(201);
+        UUID pubEventId = UUID.fromString(extractJsonField(pubCreateResponse.body(), "id"));
+
+        HttpResponse<String> updateResponse = put(
+                "/api/v1/events/" + pubEventId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                """
+                {
+                  "title": "Published Event For Gate Test",
+                  "venueName": "Gate Arena",
+                  "venueAddress": "Av. Portaria, 100",
+                  "startsAt": "2026-12-01T20:00:00Z"
+                }
+                """
+        );
+        assertThat(updateResponse.statusCode()).isEqualTo(200);
+        HttpResponse<String> sectorResponse = post(
+                "/api/v1/events/" + pubEventId + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Geral\",\"capacity\":200,\"price\":50.00}"
+        );
+        assertThat(sectorResponse.statusCode()).isEqualTo(201);
+        HttpResponse<String> publishResponse = post(
+                "/api/v1/events/" + pubEventId + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(publishResponse.statusCode()).isEqualTo(200);
+
+        // Login as GATE
+        String gateSession = loginSession("gate@demo.elitedevticket.local");
+
+        // 1. GATE lists published events via GET /api/v1/events
+        HttpResponse<String> gateEventsResponse = get("/api/v1/events", "EDT_SESSION=" + gateSession);
+        assertThat(gateEventsResponse.statusCode()).isEqualTo(200);
+        assertThat(gateEventsResponse.body()).contains("Published Event For Gate Test");
+        assertThat(gateEventsResponse.body()).doesNotContain("Draft Event For Gate Test");
+
+        // 2. GATE attempts to access DRAFT event directly -> 403 Forbidden
+        HttpResponse<String> gateDraftResponse = get("/api/v1/events/" + draftEventId, "EDT_SESSION=" + gateSession);
+        assertThat(gateDraftResponse.statusCode()).isEqualTo(403);
+        assertThat(gateDraftResponse.body()).contains("\"code\":\"EVENT_FORBIDDEN\"");
+
+        // 3. GATE attempts to access DRAFT sectors -> 403 Forbidden
+        HttpResponse<String> gateDraftSectorsResponse = get("/api/v1/events/" + draftEventId + "/sectors", "EDT_SESSION=" + gateSession);
+        assertThat(gateDraftSectorsResponse.statusCode()).isEqualTo(403);
+        assertThat(gateDraftSectorsResponse.body()).contains("\"code\":\"EVENT_FORBIDDEN\"");
+
+        // 4. GATE accesses published event directly -> 200 OK
+        HttpResponse<String> gatePubResponse = get("/api/v1/events/" + pubEventId, "EDT_SESSION=" + gateSession);
+        assertThat(gatePubResponse.statusCode()).isEqualTo(200);
+        assertThat(gatePubResponse.body()).contains("Published Event For Gate Test");
     }
 
     private String bootstrapCsrf() throws Exception {

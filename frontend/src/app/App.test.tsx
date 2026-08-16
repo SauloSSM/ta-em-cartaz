@@ -203,16 +203,26 @@ describe('App session flow', () => {
     sessionStorage.setItem('edt.purchase-intent.v1', '{"eventId":"future"}');
     sessionStorage.setItem('unrelated.preference', 'keep');
     localStorage.setItem('unrelated.local-preference', 'keep');
-    globalThis.fetch = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({
-        authenticated: true,
-        user: {
-          id: '00000000-0000-0000-0000-000000000004',
-          email: 'gate@demo.elitedevticket.local',
-          role: 'GATE',
-        },
-      }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000004',
+            email: 'gate@demo.elitedevticket.local',
+            role: 'GATE',
+          },
+        }));
+      }
+      if (url.includes('/api/v1/auth/logout')) {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      if (url.includes('/api/v1/events')) {
+        return Promise.resolve(jsonResponse({ events: [] }));
+      }
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
     const user = userEvent.setup();
     render(<App />);
 
@@ -230,17 +240,31 @@ describe('App session flow', () => {
     document.cookie = 'XSRF-TOKEN=csrf; Path=/';
     sessionStorage.setItem('edt.purchase-intent.v1', '{"eventId":"future"}');
     let completeLogout!: (response: Response) => void;
-    globalThis.fetch = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({
-        authenticated: true,
-        user: {
-          id: '00000000-0000-0000-0000-000000000004',
-          email: 'gate@demo.elitedevticket.local',
-          role: 'GATE',
-        },
-      }))
-      .mockReturnValueOnce(new Promise((resolve) => { completeLogout = resolve; }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    let logoutAttemptCount = 0;
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000004',
+            email: 'gate@demo.elitedevticket.local',
+            role: 'GATE',
+          },
+        }));
+      }
+      if (url.includes('/api/v1/auth/logout')) {
+        logoutAttemptCount++;
+        if (logoutAttemptCount === 1) {
+          return new Promise((resolve) => { completeLogout = resolve; });
+        }
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      if (url.includes('/api/v1/events')) {
+        return Promise.resolve(jsonResponse({ events: [] }));
+      }
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
     const user = userEvent.setup();
     render(<App />);
 
@@ -252,7 +276,7 @@ describe('App session flow', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       'Não foi possível encerrar a sessão. Tente novamente.',
     );
-    expect(screen.getByText('gate@demo.elitedevticket.local')).toBeTruthy();
+    expect(screen.getAllByText('gate@demo.elitedevticket.local').length).toBeGreaterThan(0);
     expect(sessionStorage.getItem('edt.purchase-intent.v1')).toBe('{"eventId":"future"}');
     const retry = screen.getByRole('button', { name: 'Sair e trocar de conta' }) as HTMLButtonElement;
     expect(retry.disabled).toBe(false);
@@ -266,16 +290,26 @@ describe('App session flow', () => {
     document.cookie = 'XSRF-TOKEN=csrf; Path=/';
     sessionStorage.setItem('edt.purchase-intent.v1', '{"eventId":"future"}');
     sessionStorage.setItem('unrelated.preference', 'keep');
-    globalThis.fetch = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({
-        authenticated: true,
-        user: {
-          id: '00000000-0000-0000-0000-000000000004',
-          email: 'gate@demo.elitedevticket.local',
-          role: 'GATE',
-        },
-      }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000004',
+            email: 'gate@demo.elitedevticket.local',
+            role: 'GATE',
+          },
+        }));
+      }
+      if (url.includes('/api/v1/auth/logout')) {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      if (url.includes('/api/v1/events')) {
+        return Promise.resolve(jsonResponse({ events: [] }));
+      }
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
     const originalRemoveItem = Storage.prototype.removeItem;
     const removeItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function (this: Storage, key) {
       if (this === sessionStorage && key === 'edt.purchase-intent.v1') {
@@ -964,6 +998,147 @@ describe('App session flow', () => {
     await user.click(backBtn);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
+  });
+
+  it('usuário GATE autenticado acessa a área da Portaria, sem acesso a Meus Eventos ou Meus Ingressos', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(
+          jsonResponse({
+            authenticated: true,
+            user: {
+              id: '00000000-0000-0000-0000-000000000004',
+              email: 'gate@demo.elitedevticket.local',
+              role: 'GATE',
+            },
+          })
+        );
+      }
+      if (url.includes('/api/v1/events')) {
+        return Promise.resolve(
+          jsonResponse({
+            events: [
+              {
+                id: '11111111-1111-1111-1111-111111111111',
+                title: 'Show da Portaria 2026',
+                status: 'PUBLISHED',
+                venueName: 'Espaço Unimed',
+                startsAt: '2026-11-20T21:00:00Z',
+                startingPrice: 120.0,
+                salesClosed: false,
+                createdAt: '2026-08-01T10:00:00Z',
+                updatedAt: '2026-08-01T10:00:00Z',
+              },
+            ],
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ events: [] }));
+    });
+
+    render(<App />);
+
+    await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
+    expect(screen.getByText('Portaria').textContent).toBe('Portaria');
+    expect(screen.getByTestId('gate-view-root')).toBeDefined();
+    expect(screen.getByText(/Controle de Portaria/i)).toBeDefined();
+
+    // Verify Organizer / Customer surfaces are NOT rendered
+    expect(screen.queryByRole('heading', { level: 2, name: 'Meus Eventos' })).toBeNull();
+    expect(screen.queryByTestId('customer-nav-catalog-btn')).toBeNull();
+    expect(screen.queryByTestId('customer-nav-my-tickets-btn')).toBeNull();
+  });
+
+  it('usuário GATE seleciona evento publicado e pode trocar a seleção', async () => {
+    const user = userEvent.setup();
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(
+          jsonResponse({
+            authenticated: true,
+            user: {
+              id: '00000000-0000-0000-0000-000000000004',
+              email: 'gate@demo.elitedevticket.local',
+              role: 'GATE',
+            },
+          })
+        );
+      }
+      if (url.includes('/api/v1/events')) {
+        return Promise.resolve(
+          jsonResponse({
+            events: [
+              {
+                id: '11111111-1111-1111-1111-111111111111',
+                title: 'Show da Portaria 2026',
+                status: 'PUBLISHED',
+                venueName: 'Espaço Unimed',
+                startsAt: '2026-11-20T21:00:00Z',
+                startingPrice: 120.0,
+                salesClosed: false,
+                createdAt: '2026-08-01T10:00:00Z',
+                updatedAt: '2026-08-01T10:00:00Z',
+              },
+            ],
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ events: [] }));
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('Show da Portaria 2026')).toBeDefined();
+
+    const selectBtn = screen.getByTestId('gate-select-event-btn-11111111-1111-1111-1111-111111111111');
+    await user.click(selectBtn);
+
+    // Selected event banner appears prominently
+    expect(screen.getByTestId('gate-selected-event-banner')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 3, name: 'Show da Portaria 2026' })).toBeDefined();
+    expect(screen.getByTestId('gate-operational-ready')).toBeDefined();
+
+    // Click "Trocar evento"
+    const changeBtn = screen.getByTestId('gate-change-event-btn');
+    await user.click(changeBtn);
+
+    // Returns to selector
+    expect(screen.queryByTestId('gate-selected-event-banner')).toBeNull();
+    expect(await screen.findByText('Show da Portaria 2026')).toBeDefined();
+  });
+
+  it('usuário GATE visualiza estado vazio quando não há eventos publicados', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(
+          jsonResponse({
+            authenticated: true,
+            user: {
+              id: '00000000-0000-0000-0000-000000000004',
+              email: 'gate@demo.elitedevticket.local',
+              role: 'GATE',
+            },
+          })
+        );
+      }
+      if (url.includes('/api/v1/events')) {
+        return Promise.resolve(
+          jsonResponse({
+            events: [],
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ events: [] }));
+    });
+
+    render(<App />);
+
+    expect(
+      await screen.findByText('Nenhum evento publicado disponível para controle de portaria no momento.')
+    ).toBeDefined();
   });
 });
 

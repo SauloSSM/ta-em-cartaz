@@ -78,8 +78,8 @@ development_status:
   6-3-compartilhar-ticket-em-página-pública-permanente: done
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-selecionar-contexto-de-trabalho-da-gate: backlog
+  epic-7: in-progress
+  7-1-selecionar-contexto-de-trabalho-da-gate: done
   7-2-validar-código-manual-com-resultado-atômico-e-auditável: backlog
   7-3-garantir-replay-e-concorrência-seguros-da-validação: backlog
   7-4-operar-câmera-qr-e-resultado-gate-em-interface-acessível: backlog
