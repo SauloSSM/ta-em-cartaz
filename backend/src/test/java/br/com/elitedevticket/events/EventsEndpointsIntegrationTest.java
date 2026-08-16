@@ -1079,6 +1079,105 @@ class EventsEndpointsIntegrationTest {
         return cookieValue(login, "EDT_SESSION");
     }
 
+    @Test
+    void anonymousCanListPublicPublishedEventsAndSearchByTitle() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Create event 1
+        String event1Payload = """
+                {
+                  "externalId": "tm-rock-1",
+                  "externalSource": "TICKETMASTER",
+                  "title": "Festival Primavera Rock 2026",
+                  "category": "Rock",
+                  "description": "Festival ao ar livre"
+                }
+                """;
+        HttpResponse<String> create1Response = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                event1Payload
+        );
+        assertThat(create1Response.statusCode()).isEqualTo(201);
+        UUID event1Id = UUID.fromString(extractJsonField(create1Response.body(), "id"));
+
+        // Update event 1 with full details
+        String update1Payload = """
+                {
+                  "title": "Festival Primavera Rock 2026",
+                  "venueName": "Parque Ibirapuera",
+                  "venueAddress": "Av. Pedro Álvares Cabral, s/n",
+                  "startsAt": "2026-11-20T20:00:00Z"
+                }
+                """;
+        put("/api/v1/events/" + event1Id, "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf, csrf, update1Payload);
+
+        // Add sectors with different prices
+        post(
+                "/api/v1/events/" + event1Id + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Pista\",\"capacity\":500,\"price\":120.00}"
+        );
+        post(
+                "/api/v1/events/" + event1Id + "/sectors",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"name\":\"Camarote\",\"capacity\":100,\"price\":350.00}"
+        );
+
+        // Publish event 1
+        HttpResponse<String> publishResponse = post(
+                "/api/v1/events/" + event1Id + "/publish",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                ""
+        );
+        assertThat(publishResponse.statusCode()).isEqualTo(200);
+
+        // 2. Create event 2 and leave as DRAFT
+        String event2Payload = """
+                {
+                  "title": "Evento Rascunho Oculto",
+                  "category": "Jazz"
+                }
+                """;
+        HttpResponse<String> create2Response = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                event2Payload
+        );
+        assertThat(create2Response.statusCode()).isEqualTo(201);
+        UUID event2Id = UUID.fromString(extractJsonField(create2Response.body(), "id"));
+
+        // 3. Anonymous request to GET /api/v1/events
+        HttpResponse<String> publicListResponse = get("/api/v1/events", "");
+        assertThat(publicListResponse.statusCode()).isEqualTo(200);
+        assertThat(publicListResponse.body()).contains("\"events\":[");
+        assertThat(publicListResponse.body()).contains(event1Id.toString());
+        assertThat(publicListResponse.body()).contains("Festival Primavera Rock 2026");
+        assertThat(publicListResponse.body()).contains("\"startingPrice\":120.00");
+        assertThat(publicListResponse.body()).contains("\"salesClosed\":false");
+        assertThat(publicListResponse.body()).contains("\"status\":\"PUBLISHED\"");
+        // DRAFT must NEVER be present
+        assertThat(publicListResponse.body()).doesNotContain(event2Id.toString());
+        assertThat(publicListResponse.body()).doesNotContain("Evento Rascunho Oculto");
+
+        // 4. Search with matching keyword
+        HttpResponse<String> searchMatchResponse = get("/api/v1/events?search=Primavera", "");
+        assertThat(searchMatchResponse.statusCode()).isEqualTo(200);
+        assertThat(searchMatchResponse.body()).contains(event1Id.toString());
+        assertThat(searchMatchResponse.body()).contains("Festival Primavera Rock 2026");
+
+        // 5. Search with non-matching keyword
+        HttpResponse<String> searchNoMatchResponse = get("/api/v1/events?search=Inexistente123456", "");
+        assertThat(searchNoMatchResponse.statusCode()).isEqualTo(200);
+        assertThat(searchNoMatchResponse.body()).isEqualTo("{\"events\":[]}");
+    }
+
     private String bootstrapCsrf() throws Exception {
         HttpResponse<String> response = get("/api/v1/auth/session", "");
         return cookieValue(response, "XSRF-TOKEN");

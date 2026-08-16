@@ -9,5 +9,6 @@ public interface EventRepository {
     Event save(Event event);
     Optional<Event> findById(UUID id);
     List<Event> findByOrganizerId(UUID organizerId);
+    List<Event> findPublished(String titleSearch);
     void deleteById(UUID id);
 }

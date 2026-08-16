@@ -62,7 +62,7 @@ describe('App session flow', () => {
         timestamp: '2026-08-14T12:00:00Z',
       }, 401));
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialAnonymousView="login" />);
     const email = await screen.findByLabelText('E-mail');
 
     await user.type(email, 'customer.one@demo.elitedevticket.local');
@@ -81,7 +81,7 @@ describe('App session flow', () => {
   it('revela e oculta a senha com nome, estado e foco acessíveis', async () => {
     globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ authenticated: false }));
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialAnonymousView="login" />);
     const password = await screen.findByLabelText('Senha') as HTMLInputElement;
     const reveal = screen.getByRole('button', { name: 'Mostrar senha' });
 
@@ -105,7 +105,7 @@ describe('App session flow', () => {
       .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
       .mockReturnValueOnce(new Promise((resolve) => { completeLogin = resolve; }));
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialAnonymousView="login" />);
     await user.type(await screen.findByLabelText('E-mail'), 'customer.one@demo.elitedevticket.local');
     await user.type(screen.getByLabelText('Senha'), 'password');
 
@@ -130,7 +130,7 @@ describe('App session flow', () => {
       .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
       .mockResolvedValueOnce(jsonResponse({ message: 'detalhe interno' }, 500));
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialAnonymousView="login" />);
     const email = await screen.findByLabelText('E-mail') as HTMLInputElement;
     await user.type(email, 'customer.one@demo.elitedevticket.local');
     await user.type(screen.getByLabelText('Senha'), 'secret');
@@ -160,7 +160,7 @@ describe('App session flow', () => {
         },
       }));
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialAnonymousView="login" />);
 
     expect((await screen.findByRole('alert')).textContent).toBe(
       'Não foi possível verificar sua sessão. Tente novamente.',
@@ -188,7 +188,7 @@ describe('App session flow', () => {
         },
       }));
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialAnonymousView="login" />);
 
     await user.type(await screen.findByLabelText('E-mail'), 'customer.one@demo.elitedevticket.local');
     await user.type(screen.getByLabelText('Senha'), 'password');
@@ -415,6 +415,91 @@ describe('App session flow', () => {
 
     // 9. Surface S09 is rendered
     expect(await screen.findByRole('heading', { level: 2, name: 'Meus Eventos' })).toBeDefined();
+  });
+
+  it('visitante anônimo acessa o catálogo público por padrão e busca eventos publicados', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>()
+      // 1. Session check: unauthenticated
+      .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
+      // 2. Initial public catalog load
+      .mockResolvedValueOnce(jsonResponse({
+        events: [
+          {
+            id: 'ev-pub-1',
+            title: 'Festival Primavera Sound 2026',
+            description: 'Festival incrível',
+            imageUrl: 'https://images.example.com/primavera.jpg',
+            category: 'Festival',
+            status: 'PUBLISHED',
+            venueName: 'Autódromo de Interlagos',
+            venueAddress: 'São Paulo, SP',
+            startsAt: '2026-11-20T20:00:00Z',
+            startingPrice: 150.0,
+            salesClosed: false,
+            createdAt: '2026-08-15T10:00:00Z',
+            updatedAt: '2026-08-15T12:00:00Z',
+          },
+        ],
+      }))
+      // 3. Search public events
+      .mockResolvedValueOnce(jsonResponse({
+        events: [
+          {
+            id: 'ev-pub-1',
+            title: 'Festival Primavera Sound 2026',
+            category: 'Festival',
+            status: 'PUBLISHED',
+            startingPrice: 150.0,
+            salesClosed: false,
+            createdAt: '2026-08-15T10:00:00Z',
+            updatedAt: '2026-08-15T12:00:00Z',
+          },
+        ],
+      }));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Renders public catalog by default
+    expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
+    expect(await screen.findByText('Festival Primavera Sound 2026')).toBeDefined();
+    expect(screen.getByText(/A partir de/)).toBeDefined();
+
+    // Type in search
+    const searchInput = screen.getByPlaceholderText('Buscar eventos por título...');
+    await user.type(searchInput, 'Primavera');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(await screen.findByText(/1 evento encontrado para “Primavera”/)).toBeDefined();
+  });
+
+  it('visitante anônimo navega do catálogo para a tela de login pelo menu de navegação', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>()
+      // 1. Session check: unauthenticated
+      .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
+      // 2. Initial catalog load
+      .mockResolvedValueOnce(jsonResponse({ events: [] }));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Starts on catalog
+    expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
+
+    // Click "Acessar conta" in top navigation
+    const loginNavBtn = screen.getByRole('button', { name: 'Acessar conta' });
+    await user.click(loginNavBtn);
+
+    // Shows login form
+    expect(await screen.findByRole('heading', { level: 2, name: 'Entrar com conta provisionada' })).toBeDefined();
+    expect(screen.getByLabelText('E-mail')).toBeDefined();
+    expect(screen.getByLabelText('Senha')).toBeDefined();
+
+    // Switch back to catalog
+    const catalogNavBtn = screen.getByRole('button', { name: 'Catálogo de Eventos' });
+    await user.click(catalogNavBtn);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
   });
 });
 

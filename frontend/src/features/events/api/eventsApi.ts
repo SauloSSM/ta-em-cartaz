@@ -40,6 +40,26 @@ export type EventListResponse = {
   events: EventResponse[];
 };
 
+export type PublicEventResponse = {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  category?: string;
+  status: EventStatus;
+  venueName?: string;
+  venueAddress?: string;
+  startsAt?: string;
+  startingPrice: number;
+  salesClosed: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PublicEventListResponse = {
+  events: PublicEventResponse[];
+};
+
 export type TicketSectorResponse = {
   id: string;
   eventId: string;
@@ -190,6 +210,17 @@ export async function deleteDraftEvent(id: string): Promise<void> {
   if (response.status !== 204) {
     throw await toApiError(response);
   }
+}
+
+export async function listPublicEvents(search?: string): Promise<PublicEventListResponse> {
+  const query = search && search.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+  const payload = await requestJson(`/api/v1/events${query}`, {
+    method: 'GET',
+  });
+  if (!isPublicEventListResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
 }
 
 export async function publishEvent(id: string): Promise<EventResponse> {
@@ -377,6 +408,46 @@ function isEventListResponse(value: unknown): value is EventListResponse {
     return false;
   }
   return Array.isArray(value.events) && value.events.every(isEventResponse);
+}
+
+export function isPublicEventResponse(value: unknown): value is PublicEventResponse {
+  if (!isRecord(value) || !hasOnlyKeys(value, [
+    'id',
+    'title',
+    'description',
+    'imageUrl',
+    'category',
+    'status',
+    'venueName',
+    'venueAddress',
+    'startsAt',
+    'startingPrice',
+    'salesClosed',
+    'createdAt',
+    'updatedAt',
+  ])) {
+    return false;
+  }
+  return typeof value.id === 'string'
+    && typeof value.title === 'string'
+    && (value.status === 'DRAFT' || value.status === 'PUBLISHED')
+    && typeof value.startingPrice === 'number'
+    && typeof value.salesClosed === 'boolean'
+    && typeof value.createdAt === 'string'
+    && typeof value.updatedAt === 'string'
+    && (value.description === undefined || typeof value.description === 'string')
+    && (value.imageUrl === undefined || typeof value.imageUrl === 'string')
+    && (value.category === undefined || typeof value.category === 'string')
+    && (value.venueName === undefined || typeof value.venueName === 'string')
+    && (value.venueAddress === undefined || typeof value.venueAddress === 'string')
+    && (value.startsAt === undefined || typeof value.startsAt === 'string');
+}
+
+export function isPublicEventListResponse(value: unknown): value is PublicEventListResponse {
+  if (!isRecord(value) || !hasExactKeys(value, ['events'])) {
+    return false;
+  }
+  return Array.isArray(value.events) && value.events.every(isPublicEventResponse);
 }
 
 function isTicketSectorResponse(value: unknown): value is TicketSectorResponse {

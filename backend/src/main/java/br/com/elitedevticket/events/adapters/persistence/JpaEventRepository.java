@@ -37,6 +37,23 @@ class JpaEventRepository implements EventRepository {
     }
 
     @Override
+    public List<Event> findPublished(String titleSearch) {
+        if (titleSearch == null || titleSearch.isBlank()) {
+            return repository.findByStatusOrderByStartsAtAscCreatedAtDesc(br.com.elitedevticket.events.domain.EventStatus.PUBLISHED)
+                    .stream()
+                    .map(EventEntity::toDomain)
+                    .toList();
+        }
+        return repository.findByStatusAndTitleContainingIgnoreCaseOrderByStartsAtAscCreatedAtDesc(
+                        br.com.elitedevticket.events.domain.EventStatus.PUBLISHED,
+                        titleSearch.trim()
+                )
+                .stream()
+                .map(EventEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public void deleteById(UUID id) {
         repository.deleteById(id);
     }

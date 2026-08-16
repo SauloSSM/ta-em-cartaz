@@ -65,6 +65,15 @@ class ListMyEventsUseCaseTest {
         }
 
         @Override
+        public List<Event> findPublished(String titleSearch) {
+            return store.values().stream()
+                    .filter(e -> e.status() == EventStatus.PUBLISHED)
+                    .filter(e -> titleSearch == null || titleSearch.isBlank()
+                            || (e.title() != null && e.title().toLowerCase().contains(titleSearch.trim().toLowerCase())))
+                    .toList();
+        }
+
+        @Override
         public void deleteById(UUID id) {
             store.remove(id);
         }

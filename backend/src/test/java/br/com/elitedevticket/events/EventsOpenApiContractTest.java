@@ -11,6 +11,8 @@ import br.com.elitedevticket.events.http.EventErrorCode;
 import br.com.elitedevticket.events.http.EventListResponse;
 import br.com.elitedevticket.events.http.EventResponse;
 import br.com.elitedevticket.events.http.EventsController;
+import br.com.elitedevticket.events.http.PublicEventListResponse;
+import br.com.elitedevticket.events.http.PublicEventResponse;
 import br.com.elitedevticket.events.http.TicketSectorListResponse;
 import br.com.elitedevticket.events.http.TicketSectorResponse;
 import br.com.elitedevticket.events.http.UpdateDraftEventRequest;
@@ -44,6 +46,8 @@ class EventsOpenApiContractTest {
             Map.entry("UpdateDraftEventRequest", UpdateDraftEventRequest.class),
             Map.entry("EventResponse", EventResponse.class),
             Map.entry("EventListResponse", EventListResponse.class),
+            Map.entry("PublicEventResponse", PublicEventResponse.class),
+            Map.entry("PublicEventListResponse", PublicEventListResponse.class),
             Map.entry("TicketSectorResponse", TicketSectorResponse.class),
             Map.entry("TicketSectorListResponse", TicketSectorListResponse.class),
             Map.entry("CreateTicketSectorRequest", CreateTicketSectorRequest.class),
@@ -57,6 +61,14 @@ class EventsOpenApiContractTest {
         assertControllerMappings();
         Map<String, Object> contract = loadContract();
         Map<String, Object> paths = map(contract.get("paths"));
+
+        // GET /api/v1/events
+        Map<String, Object> listPublic = assertOperation(
+                paths, "/api/v1/events", "get", "listPublicEvents", Set.of("200", "400"));
+        assertThat(listPublic).doesNotContainKey("requestBody");
+        assertSecurity(listPublic, Set.of(Set.of("SessionCookie"), Set.of()));
+        assertResponseSchema(listPublic, "200", "PublicEventListResponse");
+        assertResponseReference(listPublic, "400", "AuthInvalidRequest");
 
         // POST /api/v1/events/drafts
         Map<String, Object> createDraft = assertOperation(
@@ -172,6 +184,8 @@ class EventsOpenApiContractTest {
         assertRecordSchema(schemas, "UpdateDraftEventRequest", UpdateDraftEventRequest.class);
         assertRecordSchema(schemas, "EventResponse", EventResponse.class);
         assertRecordSchema(schemas, "EventListResponse", EventListResponse.class);
+        assertRecordSchema(schemas, "PublicEventResponse", PublicEventResponse.class);
+        assertRecordSchema(schemas, "PublicEventListResponse", PublicEventListResponse.class);
         assertRecordSchema(schemas, "TicketSectorResponse", TicketSectorResponse.class);
         assertRecordSchema(schemas, "TicketSectorListResponse", TicketSectorListResponse.class);
         assertRecordSchema(schemas, "CreateTicketSectorRequest", CreateTicketSectorRequest.class);
@@ -205,6 +219,7 @@ class EventsOpenApiContractTest {
         });
 
         assertThat(actual).containsExactlyInAnyOrder(
+                "GET  -> listPublicEvents",
                 "POST /drafts -> createDraftEvent",
                 "GET /mine -> listMyEvents",
                 "GET /{id} -> getEvent",

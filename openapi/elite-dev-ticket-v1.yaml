@@ -105,6 +105,30 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
         '503':
           $ref: '#/components/responses/CatalogUnavailable'
+  /api/v1/events:
+    get:
+      operationId: listPublicEvents
+      summary: Lista e pesquisa eventos públicos publicados
+      description: Acesso público sem autenticação. Retorna exclusivamente eventos com status PUBLISHED. Permite busca textual simples por título.
+      security:
+        - SessionCookie: []
+        - {}
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Termo de busca textual opcional para filtrar eventos publicados por título.
+      responses:
+        '200':
+          description: Lista de eventos publicados recuperada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEventListResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
   /api/v1/events/drafts:
     post:
       operationId: createDraftEvent
@@ -630,6 +654,50 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EventResponse'
+    PublicEventResponse:
+      type: object
+      additionalProperties: false
+      required: [id, title, status, startingPrice, salesClosed, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        category:
+          type: string
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        venueName:
+          type: string
+        venueAddress:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        startingPrice:
+          type: number
+        salesClosed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PublicEventListResponse:
+      type: object
+      additionalProperties: false
+      required: [events]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicEventResponse'
     UpdateDraftEventRequest:
       type: object
       additionalProperties: false

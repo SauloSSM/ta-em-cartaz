@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SessionUser } from '../../app/api/authApi';
 import { TicketmasterSearch } from '../catalog';
-import { DraftEventEditor, MyEventsList, type EventResponse } from '../events';
+import { DraftEventEditor, MyEventsList, PublicEventCatalog, type EventResponse } from '../events';
 
 type AuthenticatedSessionProps = {
   user: SessionUser;
@@ -10,7 +10,7 @@ type AuthenticatedSessionProps = {
   onLogout: () => Promise<void>;
 };
 
-type OrganizerView = 'my-events' | 'catalog' | 'editor';
+type OrganizerView = 'my-events' | 'catalog' | 'editor' | 'public-catalog';
 
 const roleLabels = {
   ORGANIZER: 'Organizador',
@@ -42,7 +42,9 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
         </button>
       </section>
 
-      {user.role === 'ORGANIZER' ? (
+      {user.role === 'CUSTOMER' ? (
+        <PublicEventCatalog />
+      ) : user.role === 'ORGANIZER' ? (
         organizerView === 'editor' && selectedEvent !== null ? (
           <DraftEventEditor
             event={selectedEvent}
@@ -72,14 +74,36 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
               }}
             />
           </div>
+        ) : organizerView === 'public-catalog' ? (
+          <div className="public-catalog-wrapper">
+            <button
+              type="button"
+              className="catalog-back-to-list-btn"
+              onClick={() => setOrganizerView('my-events')}
+            >
+              ← Voltar para Meus Eventos
+            </button>
+            <PublicEventCatalog />
+          </div>
         ) : (
-          <MyEventsList
-            onNewEvent={() => setOrganizerView('catalog')}
-            onSelectEvent={(event) => {
-              setSelectedEvent(event);
-              setOrganizerView('editor');
-            }}
-          />
+          <div>
+            <MyEventsList
+              onNewEvent={() => setOrganizerView('catalog')}
+              onSelectEvent={(event) => {
+                setSelectedEvent(event);
+                setOrganizerView('editor');
+              }}
+            />
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <button
+                type="button"
+                className="edt-button edt-button--secondary"
+                onClick={() => setOrganizerView('public-catalog')}
+              >
+                Ver Catálogo Público de Eventos
+              </button>
+            </div>
+          </div>
         )
       ) : null}
     </div>

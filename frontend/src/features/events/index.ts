@@ -5,3 +5,5 @@ export * from './components/DeleteConfirmDialog';
 export * from './components/SectorManager';
 export * from './components/SectorEditor';
 export * from './components/PublicationChecklist';
+export * from './components/EventCard';
+export * from './components/PublicEventCatalog';

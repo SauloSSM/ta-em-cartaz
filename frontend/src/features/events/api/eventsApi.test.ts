@@ -10,6 +10,9 @@ import {
   updateTicketSector,
   deleteTicketSector,
   publishEvent,
+  listPublicEvents,
+  isPublicEventResponse,
+  isPublicEventListResponse,
   EventClientError,
 } from './eventsApi';
 
@@ -562,6 +565,108 @@ describe('eventsApi', () => {
       );
 
       await expect(publishEvent('ev-missing-fields')).rejects.toThrow(EventClientError);
+    });
+  });
+
+  describe('listPublicEvents', () => {
+    it('fetches published events without search parameter', async () => {
+      const mockPublicList = {
+        events: [
+          {
+            id: 'ev-pub-1',
+            title: 'Lollapalooza 2026',
+            description: 'Festival de música alternativa',
+            imageUrl: 'https://images.example.com/lolla.jpg',
+            category: 'Festival',
+            status: 'PUBLISHED' as const,
+            venueName: 'Autódromo de Interlagos',
+            venueAddress: 'Av. Senador Teotônio Vilela, 261',
+            startsAt: '2026-11-20T18:00:00Z',
+            startingPrice: 250.0,
+            salesClosed: false,
+            createdAt: '2026-08-15T10:00:00Z',
+            updatedAt: '2026-08-15T12:00:00Z',
+          },
+        ],
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockPublicList),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await listPublicEvents();
+
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/events', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      expect(result).toEqual(mockPublicList);
+    });
+
+    it('fetches published events with encoded search query parameter', async () => {
+      const mockPublicList = { events: [] };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockPublicList),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await listPublicEvents('Rock in Rio & Jazz');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/events?search=Rock%20in%20Rio%20%26%20Jazz',
+        {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: {
+            Accept: 'application/json',
+          },
+        },
+      );
+      expect(result).toEqual({ events: [] });
+    });
+
+    it('throws EventClientError on invalid payload structure', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ wrongKey: [] }),
+        }),
+      );
+
+      await expect(listPublicEvents()).rejects.toThrow(EventClientError);
+    });
+  });
+
+  describe('isPublicEventResponse and isPublicEventListResponse', () => {
+    it('validates a correct public event response object', () => {
+      const valid = {
+        id: 'ev-1',
+        title: 'Show',
+        status: 'PUBLISHED',
+        startingPrice: 100,
+        salesClosed: false,
+        createdAt: '2026-08-15T12:00:00Z',
+        updatedAt: '2026-08-15T12:00:00Z',
+      };
+      expect(isPublicEventResponse(valid)).toBe(true);
+      expect(isPublicEventListResponse({ events: [valid] })).toBe(true);
+    });
+
+    it('rejects an invalid public event response object', () => {
+      expect(isPublicEventResponse(null)).toBe(false);
+      expect(isPublicEventResponse({ id: 'ev-1', title: 'Show' })).toBe(false);
+      expect(isPublicEventListResponse({ events: [{ id: 'invalid' }] })).toBe(false);
     });
   });
 });

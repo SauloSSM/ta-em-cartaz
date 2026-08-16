@@ -7,6 +7,7 @@ import br.com.elitedevticket.events.application.DeleteDraftEventUseCase;
 import br.com.elitedevticket.events.application.DeleteTicketSectorUseCase;
 import br.com.elitedevticket.events.application.GetEventUseCase;
 import br.com.elitedevticket.events.application.ListMyEventsUseCase;
+import br.com.elitedevticket.events.application.ListPublicEventsUseCase;
 import br.com.elitedevticket.events.application.ListTicketSectorsUseCase;
 import br.com.elitedevticket.events.application.PublishEventUseCase;
 import br.com.elitedevticket.events.application.UpdateDraftEventUseCase;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -42,6 +44,7 @@ public class EventsController {
     private final UpdateTicketSectorUseCase updateTicketSectorUseCase;
     private final DeleteTicketSectorUseCase deleteTicketSectorUseCase;
     private final ListTicketSectorsUseCase listTicketSectorsUseCase;
+    private final ListPublicEventsUseCase listPublicEventsUseCase;
 
     public EventsController(
             CreateDraftEventUseCase createDraftEventUseCase,
@@ -53,7 +56,8 @@ public class EventsController {
             CreateTicketSectorUseCase createTicketSectorUseCase,
             UpdateTicketSectorUseCase updateTicketSectorUseCase,
             DeleteTicketSectorUseCase deleteTicketSectorUseCase,
-            ListTicketSectorsUseCase listTicketSectorsUseCase
+            ListTicketSectorsUseCase listTicketSectorsUseCase,
+            ListPublicEventsUseCase listPublicEventsUseCase
     ) {
         this.createDraftEventUseCase = createDraftEventUseCase;
         this.getEventUseCase = getEventUseCase;
@@ -65,6 +69,17 @@ public class EventsController {
         this.updateTicketSectorUseCase = updateTicketSectorUseCase;
         this.deleteTicketSectorUseCase = deleteTicketSectorUseCase;
         this.listTicketSectorsUseCase = listTicketSectorsUseCase;
+        this.listPublicEventsUseCase = listPublicEventsUseCase;
+    }
+
+    @GetMapping("")
+    public ResponseEntity<PublicEventListResponse> listPublicEvents(
+            @RequestParam(required = false) String search
+    ) {
+        List<PublicEventResponse> events = listPublicEventsUseCase.execute(search).stream()
+                .map(item -> PublicEventResponse.of(item.event(), item.startingPrice(), item.salesClosed()))
+                .toList();
+        return ResponseEntity.ok(new PublicEventListResponse(events));
     }
 
     @PostMapping("/drafts")
