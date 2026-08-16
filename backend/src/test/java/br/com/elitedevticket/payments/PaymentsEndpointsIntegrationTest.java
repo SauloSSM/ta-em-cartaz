@@ -502,6 +502,407 @@ class PaymentsEndpointsIntegrationTest {
         assertThat(count).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("APPROVED válido: persiste Payment APPROVED, confirma Reservation e emite exatamente N Tickets atomicamente no PostgreSQL")
+    void customerCanProcessSimulatedApprovedPaymentSuccessfully() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Criar evento e setor publicado com 100 lugares a R$ 250,00
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Festival Rock In Rio Approved",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista Premium",
+                100,
+                "250.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // 2. Customer cria hold de 2 ingressos (R$ 500.00)
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        assertThat(resResponse.statusCode()).isEqualTo(201);
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        // 3. Customer processa tentativa simulada APPROVED
+        String paymentAttemptId = UUID.randomUUID().toString();
+        HttpResponse<String> payResponse = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+
+        assertThat(payResponse.statusCode()).isEqualTo(200);
+        assertThat(payResponse.body()).contains("\"id\":\"" + paymentAttemptId + "\"");
+        assertThat(payResponse.body()).contains("\"reservationId\":\"" + reservationId + "\"");
+        assertThat(payResponse.body()).contains("\"status\":\"APPROVED\"");
+        assertThat(payResponse.body()).contains("\"amount\":500.00");
+        assertThat(payResponse.body()).contains("\"currency\":\"BRL\"");
+        assertThat(payResponse.body()).contains("\"provider\":\"FAKE\"");
+        assertThat(payResponse.body()).doesNotContain("\"declineReason\"");
+
+        // 4. Verificações no PostgreSQL:
+        // a) Payment APPROVED persistido com snapshots corretos
+        String paymentStatus = jdbcTemplate.queryForObject(
+                "SELECT status FROM payments WHERE id = ?",
+                String.class,
+                UUID.fromString(paymentAttemptId)
+        );
+        assertThat(paymentStatus).isEqualTo("APPROVED");
+
+        BigDecimal paymentAmount = jdbcTemplate.queryForObject(
+                "SELECT amount FROM payments WHERE id = ?",
+                BigDecimal.class,
+                UUID.fromString(paymentAttemptId)
+        );
+        assertThat(paymentAmount).isEqualByComparingTo(new BigDecimal("500.00"));
+
+        // b) Reservation transicionou para CONFIRMED com confirmed_at preenchido
+        String resStatus = jdbcTemplate.queryForObject(
+                "SELECT status FROM reservations WHERE id = ?",
+                String.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(resStatus).isEqualTo("CONFIRMED");
+
+        Instant confirmedAt = jdbcTemplate.queryForObject(
+                "SELECT confirmed_at FROM reservations WHERE id = ?",
+                Instant.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(confirmedAt).isNotNull();
+
+        // c) Nenhum decremento adicional de estoque (continua 98, pois já havia sido reservado no hold)
+        Integer stock = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stock).isEqualTo(98);
+
+        // d) Exatamente 2 Tickets emitidos no banco, ordinais 1 e 2, status VALID
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(2);
+
+        List<Integer> ordinals = jdbcTemplate.queryForList(
+                "SELECT ordinal FROM tickets WHERE reservation_id = ? ORDER BY ordinal ASC",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ordinals).containsExactly(1, 2);
+
+        List<String> statuses = jdbcTemplate.queryForList(
+                "SELECT status FROM tickets WHERE reservation_id = ?",
+                String.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(statuses).containsOnly("VALID");
+
+        List<String> validationTokens = jdbcTemplate.queryForList(
+                "SELECT validation_token FROM tickets WHERE reservation_id = ?",
+                String.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(validationTokens).hasSize(2);
+        assertThat(validationTokens.get(0)).isNotEqualTo(validationTokens.get(1));
+
+        List<String> manualCodes = jdbcTemplate.queryForList(
+                "SELECT manual_code FROM tickets WHERE reservation_id = ?",
+                String.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(manualCodes).hasSize(2);
+        assertThat(manualCodes.get(0)).isNotEqualTo(manualCodes.get(1));
+    }
+
+    @Test
+    @DisplayName("APPROVED com quantity 1 emite exatamente 1 Ticket")
+    void customerCanProcessApprovedPaymentForQuantity1() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Quantity 1",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "80.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":1}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String paymentAttemptId = UUID.randomUUID().toString();
+        HttpResponse<String> payResponse = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+        assertThat(payResponse.statusCode()).isEqualTo(200);
+
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("APPROVED com quantity 6 emite exatamente 6 Tickets com ordinais 1..6")
+    void customerCanProcessApprovedPaymentForQuantity6() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Quantity 6",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":6}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String paymentAttemptId = UUID.randomUUID().toString();
+        HttpResponse<String> payResponse = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+        assertThat(payResponse.statusCode()).isEqualTo(200);
+
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(6);
+
+        List<Integer> ordinals = jdbcTemplate.queryForList(
+                "SELECT ordinal FROM tickets WHERE reservation_id = ? ORDER BY ordinal ASC",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ordinals).containsExactly(1, 2, 3, 4, 5, 6);
+    }
+
+    @Test
+    @DisplayName("Replay idempotente de tentativa APPROVED retorna o mesmo Payment sem duplicar Tickets")
+    void idempotentReplayOfApprovedPaymentDoesNotDuplicateTickets() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Replay Approved",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String paymentAttemptId = UUID.randomUUID().toString();
+        String payload = "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}";
+
+        // 1. Primeira chamada APPROVED
+        HttpResponse<String> pay1 = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                payload
+        );
+        assertThat(pay1.statusCode()).isEqualTo(200);
+
+        // 2. Replay com mesmo paymentAttemptId
+        HttpResponse<String> pay2 = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                payload
+        );
+        assertThat(pay2.statusCode()).isEqualTo(200);
+        assertThat(extractJsonField(pay2.body(), "id")).isEqualTo(paymentAttemptId);
+        assertThat(extractJsonField(pay2.body(), "status")).isEqualTo("APPROVED");
+
+        // 3. Verifica que exatamente 2 Tickets continuam existindo no banco
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Dois paymentAttemptIds diferentes concorrendo pela mesma Reservation: apenas um confirma e o segundo recebe conflito")
+    void twoDifferentPaymentAttemptsRacingForSameReservationOnlyOneConfirms() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Concorrencia Dois Attempts",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String attempt1 = UUID.randomUUID().toString();
+        String attempt2 = UUID.randomUUID().toString();
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        Callable<HttpResponse<String>> task1 = () -> post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + attempt1 + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+        Callable<HttpResponse<String>> task2 = () -> post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + attempt2 + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+
+        List<Future<HttpResponse<String>>> futures = executor.invokeAll(List.of(task1, task2));
+        executor.shutdown();
+
+        HttpResponse<String> res1 = futures.get(0).get();
+        HttpResponse<String> res2 = futures.get(1).get();
+
+        int successCount = (res1.statusCode() == 200 ? 1 : 0) + (res2.statusCode() == 200 ? 1 : 0);
+        int conflictCount = (res1.statusCode() == 409 ? 1 : 0) + (res2.statusCode() == 409 ? 1 : 0);
+
+        assertThat(successCount).isEqualTo(1);
+        assertThat(conflictCount).isEqualTo(1);
+
+        // Exatamente 2 Tickets no banco
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Tentativa APPROVED para Reservation expirada nunca confirma e retorna HTTP 422 com zero tickets")
+    void expiredHoldWithApprovedAttemptNeverConfirmsAndEmitsZeroTickets() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Expirada Approved",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        // Expira a reserva
+        jdbcTemplate.update(
+                "UPDATE reservations SET expires_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(Instant.now().minus(5, ChronoUnit.MINUTES)),
+                UUID.fromString(reservationId)
+        );
+
+        // Tentar pagar com APPROVED
+        HttpResponse<String> payResponse = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + UUID.randomUUID() + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+        assertThat(payResponse.statusCode()).isEqualTo(422);
+        assertThat(payResponse.body()).contains("\"code\":\"RESERVATION_EXPIRED\"");
+
+        // Status no banco é EXPIRED
+        String status = jdbcTemplate.queryForObject(
+                "SELECT status FROM reservations WHERE id = ?",
+                String.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(status).isEqualTo("EXPIRED");
+
+        // Zero tickets emitidos
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(0);
+    }
+
+
     private String bootstrapCsrf() throws Exception {
         HttpResponse<String> response = get("/api/v1/auth/session", "");
         return cookieValue(response, "XSRF-TOKEN");

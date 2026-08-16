@@ -68,7 +68,7 @@ development_status:
 
   epic-5: in-progress
   5-1-processar-tentativa-simulada-recusada-de-forma-idempotente: done
-  5-2-aprovar-pagamento-confirmar-reservation-e-emitir-tickets-atomicamente: backlog
+  5-2-aprovar-pagamento-confirmar-reservation-e-emitir-tickets-atomicamente: done
   5-3-reconciliar-resposta-de-pagamento-perdida-sem-nova-cobrança: backlog
   epic-5-retrospective: optional
 

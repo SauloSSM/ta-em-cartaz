@@ -208,6 +208,75 @@ describe('CheckoutView (Superfície S04)', () => {
     expect(screen.queryByTestId('payment-section')).toBeNull();
   });
 
+  it('processes simulated APPROVED payment, transitions to confirmed state, disables timer and focuses confirmation alert', async () => {
+    const processPaymentSpy = vi.spyOn(paymentsApi, 'processPayment').mockResolvedValue({
+      id: 'pay-attempt-approved',
+      reservationId: 'res-s04',
+      amount: 250.0,
+      currency: 'BRL',
+      status: 'APPROVED',
+      provider: 'FAKE',
+      createdAt: '2026-08-16T12:01:00.000Z',
+      processedAt: '2026-08-16T12:01:00.000Z',
+    });
+
+    const onReconcile = vi.fn();
+
+    render(
+      <CheckoutView
+        reservation={sampleReservation}
+        eventTitle="Festival de MPB"
+        sectorName="Plateia Central"
+        onBackToEvent={vi.fn()}
+        onBackToCatalog={vi.fn()}
+        onReconcile={onReconcile}
+      />,
+    );
+
+    const approveBtn = screen.getByTestId('simulate-approved-payment-btn');
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      expect(processPaymentSpy).toHaveBeenCalledWith('res-s04', {
+        paymentAttemptId: expect.any(String),
+        simulatedOutcome: 'APPROVED',
+      });
+    });
+
+    // Feedback de confirmação autoritativa
+    const confirmedAlert = await screen.findByTestId('checkout-confirmed-alert');
+    expect(confirmedAlert).toBeDefined();
+    expect(screen.getByText('Pagamento Aprovado e Reserva Confirmada!')).toBeDefined();
+    expect(screen.getByText(/pay-attempt-approved/)).toBeDefined();
+
+    // Seção de simulação de pagamento é ocultada
+    expect(screen.queryByTestId('payment-section')).toBeNull();
+
+    // Timer é desabilitado/ocultado após confirmação
+    expect(screen.queryByTestId('reservation-timer')).toBeNull();
+
+    // Título da página atualiza para Reserva Confirmada
+    expect(screen.getByText('Reserva Confirmada')).toBeDefined();
+  });
+
+  it('renders confirmed state immediately if initial reservation status is CONFIRMED', () => {
+    render(
+      <CheckoutView
+        reservation={{
+          ...sampleReservation,
+          status: 'CONFIRMED',
+        }}
+        eventTitle="Festival de MPB"
+        onBackToEvent={vi.fn()}
+        onBackToCatalog={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('checkout-confirmed-alert')).toBeDefined();
+    expect(screen.queryByTestId('payment-section')).toBeNull();
+    expect(screen.queryByTestId('reservation-timer')).toBeNull();
+  });
+
   it('navigates back to event and catalog using nav links', () => {
     const onBackToEvent = vi.fn();
     const onBackToCatalog = vi.fn();
@@ -228,3 +297,4 @@ describe('CheckoutView (Superfície S04)', () => {
     expect(onBackToCatalog).toHaveBeenCalledTimes(1);
   });
 });
+

@@ -13,6 +13,8 @@ import br.com.elitedevticket.reservations.domain.ReservationExpiredException;
 import br.com.elitedevticket.reservations.domain.ReservationNotFoundException;
 import br.com.elitedevticket.reservations.domain.ReservationOwnershipException;
 import br.com.elitedevticket.reservations.domain.ReservationStatus;
+import br.com.elitedevticket.tickets.application.IssueTicketsCommand;
+import br.com.elitedevticket.tickets.application.TicketIssuancePort;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -29,6 +31,7 @@ public class ProcessPaymentAttemptUseCase {
 
     private final CustomerLockPort customerLockPort;
     private final ReservationPaymentPort reservationPaymentPort;
+    private final TicketIssuancePort ticketIssuancePort;
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
     private final Clock clock;
@@ -36,18 +39,20 @@ public class ProcessPaymentAttemptUseCase {
     public ProcessPaymentAttemptUseCase(
             CustomerLockPort customerLockPort,
             ReservationPaymentPort reservationPaymentPort,
+            TicketIssuancePort ticketIssuancePort,
             PaymentRepository paymentRepository,
             PaymentGateway paymentGateway,
             Clock clock
     ) {
         this.customerLockPort = Objects.requireNonNull(customerLockPort, "customerLockPort must not be null");
         this.reservationPaymentPort = Objects.requireNonNull(reservationPaymentPort, "reservationPaymentPort must not be null");
+        this.ticketIssuancePort = Objects.requireNonNull(ticketIssuancePort, "ticketIssuancePort must not be null");
         this.paymentRepository = Objects.requireNonNull(paymentRepository, "paymentRepository must not be null");
         this.paymentGateway = Objects.requireNonNull(paymentGateway, "paymentGateway must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = {ReservationExpiredException.class})
     public Payment execute(ProcessPaymentAttemptCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         Objects.requireNonNull(command.customerId(), "customerId must not be null");
@@ -129,7 +134,36 @@ public class ProcessPaymentAttemptUseCase {
         }
 
         if (gatewayResult.status() == PaymentStatus.APPROVED) {
-            throw new UnsupportedOperationException("Fluxo de aprovação de pagamento não implementado na Story 5.1.");
+            Payment payment = new Payment(
+                    command.paymentAttemptId(),
+                    reservation.id(),
+                    command.customerId(),
+                    reservation.totalAmount(),
+                    Payment.DEFAULT_CURRENCY,
+                    PaymentStatus.APPROVED,
+                    Payment.DEFAULT_PROVIDER,
+                    null,
+                    fingerprint,
+                    serverNow,
+                    gatewayResult.processedAt()
+            );
+
+            // 1. Confirm Reservation (AD-8)
+            reservationPaymentPort.confirmReservation(reservation.id(), serverNow);
+
+            // 2. Issue exactly reservation.quantity() Tickets (AD-8, AD-13)
+            IssueTicketsCommand issueCommand = new IssueTicketsCommand(
+                    reservation.id(),
+                    reservation.eventId(),
+                    reservation.sectorId(),
+                    reservation.customerId(),
+                    reservation.quantity(),
+                    serverNow
+            );
+            ticketIssuancePort.issueTickets(issueCommand);
+
+            // 3. Save Payment
+            return paymentRepository.save(payment);
         }
 
         throw new PaymentDomainException("Resultado de gateway não suportado: " + gatewayResult.status());

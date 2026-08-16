@@ -1,6 +1,7 @@
 package br.com.elitedevticket.reservations.application;
 
 import br.com.elitedevticket.reservations.domain.Reservation;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,4 +30,13 @@ public class DefaultReservationPaymentPort implements ReservationPaymentPort {
     public void expireReservation(UUID reservationId) {
         expireReservationUseCase.execute(reservationId);
     }
+
+    @Override
+    public Reservation confirmReservation(UUID reservationId, Instant confirmedAt) {
+        Reservation reservation = reservationRepository.findByIdWithLock(reservationId)
+                .orElseThrow(() -> new br.com.elitedevticket.reservations.domain.ReservationNotFoundException("Reserva não encontrada."));
+        Reservation confirmed = reservation.confirm(confirmedAt);
+        return reservationRepository.save(confirmed);
+    }
 }
+

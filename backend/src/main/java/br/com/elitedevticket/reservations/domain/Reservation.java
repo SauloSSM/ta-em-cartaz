@@ -94,4 +94,24 @@ public record Reservation(
                 confirmedAt
         );
     }
+
+    public Reservation confirm(Instant confirmedAt) {
+        if (this.status != ReservationStatus.HOLDING) {
+            throw new IllegalStateException("Only HOLDING reservation can be confirmed");
+        }
+        Objects.requireNonNull(confirmedAt, "confirmedAt must not be null");
+        return new Reservation(
+                id,
+                customerId,
+                eventId,
+                sectorId,
+                quantity,
+                unitPrice,
+                totalAmount,
+                ReservationStatus.CONFIRMED,
+                expiresAt,
+                createdAt,
+                confirmedAt
+        );
+    }
 }

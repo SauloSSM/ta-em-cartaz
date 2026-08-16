@@ -37,7 +37,7 @@ export function CheckoutView({
     initialReservation.status === 'EXPIRED',
   );
 
-  // Estados de processamento de pagamento simulado (Story 5.1)
+  // Estados de processamento de pagamento simulado (Story 5.1 e Story 5.2)
   const [currentAttemptId, setCurrentAttemptId] = useState<string>(() => generatePaymentAttemptId());
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [lastPaymentAttempt, setLastPaymentAttempt] = useState<PaymentResponse | null>(null);
@@ -45,6 +45,7 @@ export function CheckoutView({
 
   const expiredHeadingRef = useRef<HTMLHeadingElement>(null);
   const declinedAlertRef = useRef<HTMLHeadingElement>(null);
+  const confirmedAlertRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     setReservation(initialReservation);
@@ -61,17 +62,22 @@ export function CheckoutView({
     }));
   };
 
+  const isConfirmed = reservation.status === 'CONFIRMED';
+  const isExpired = !isConfirmed && (isExpiredLocally || reservation.status === 'EXPIRED');
+
   useEffect(() => {
-    if (isExpiredLocally) {
+    if (isExpired) {
       expiredHeadingRef.current?.focus();
     }
-  }, [isExpiredLocally]);
+  }, [isExpired]);
 
   useEffect(() => {
     if (lastPaymentAttempt?.status === 'DECLINED') {
       declinedAlertRef.current?.focus();
+    } else if (lastPaymentAttempt?.status === 'APPROVED' || isConfirmed) {
+      confirmedAlertRef.current?.focus();
     }
-  }, [lastPaymentAttempt]);
+  }, [lastPaymentAttempt, isConfirmed]);
 
   const handleReconcile = async () => {
     if (onReconcile) {
@@ -91,10 +97,8 @@ export function CheckoutView({
     }
   }, []);
 
-  const isExpired = isExpiredLocally || reservation.status === 'EXPIRED';
-
-  const handleSimulateDeclinedPayment = async () => {
-    if (isExpired || isProcessingPayment) {
+  const handleSimulatePayment = async (outcome: 'APPROVED' | 'DECLINED') => {
+    if (isExpired || isConfirmed || isProcessingPayment) {
       return;
     }
 
@@ -104,12 +108,23 @@ export function CheckoutView({
     try {
       const response = await processPayment(reservation.id, {
         paymentAttemptId: currentAttemptId,
-        simulatedOutcome: 'DECLINED',
+        simulatedOutcome: outcome,
       });
 
       setLastPaymentAttempt(response);
-      // Gera um novo ID para a próxima tentativa caso o usuário deseje tentar novamente
-      setCurrentAttemptId(generatePaymentAttemptId());
+
+      if (response.status === 'APPROVED') {
+        setReservation((prev) => ({
+          ...prev,
+          status: 'CONFIRMED',
+        }));
+        if (onReconcile) {
+          void onReconcile();
+        }
+      } else {
+        // Para nova tentativa deliberada após recusa, gera novo attemptId (AD-9)
+        setCurrentAttemptId(generatePaymentAttemptId());
+      }
     } catch (err: unknown) {
       if (err instanceof PaymentClientError) {
         if (err.code === 'RESERVATION_EXPIRED') {
@@ -129,7 +144,7 @@ export function CheckoutView({
 
   return (
     <article
-      className={`edt-checkout-view ${isExpired ? 'edt-checkout-view--expired' : ''}`}
+      className={`edt-checkout-view ${isExpired ? 'edt-checkout-view--expired' : ''} ${isConfirmed ? 'edt-checkout-view--confirmed' : ''}`}
       aria-labelledby="checkout-page-title"
       data-testid="checkout-view"
     >
@@ -154,7 +169,11 @@ export function CheckoutView({
 
       <header className="edt-checkout-view__header">
         <h1 id="checkout-page-title" className="edt-checkout-view__title">
-          {isExpired ? 'Reserva Expirada' : 'Checkout — Concluir Reserva'}
+          {isConfirmed
+            ? 'Reserva Confirmada'
+            : isExpired
+              ? 'Reserva Expirada'
+              : 'Checkout — Concluir Reserva'}
         </h1>
         <p className="edt-checkout-view__subtitle">
           Superfície S04 • Finalização de reserva de ingressos
@@ -163,6 +182,44 @@ export function CheckoutView({
 
       {/* Aviso obrigatório de ambiente de demonstração */}
       <DemoEnvironmentNotice />
+
+      {/* Alerta de Confirmação quando o pagamento APPROVED é concluído */}
+      {isConfirmed && (
+        <section
+          className="edt-alert edt-alert--success edt-checkout-view__confirmed-alert"
+          role="alert"
+          data-testid="checkout-confirmed-alert"
+        >
+          <h2
+            ref={confirmedAlertRef}
+            tabIndex={-1}
+            className="edt-alert__title"
+            data-testid="confirmed-alert-heading"
+          >
+            Pagamento Aprovado e Reserva Confirmada!
+          </h2>
+          <p className="edt-alert__desc">
+            Seu pagamento foi processado com sucesso e os ingressos foram emitidos de forma autoritativa.
+          </p>
+          <div className="edt-payment-section__declined-meta">
+            {lastPaymentAttempt && (
+              <span>ID do pagamento: <code>{lastPaymentAttempt.id}</code></span>
+            )}
+            <span>ID da reserva: <code>{reservation.id}</code></span>
+            <span>Status: <strong>CONFIRMED</strong></span>
+          </div>
+          <div className="edt-checkout-view__expired-actions">
+            <button
+              type="button"
+              className="edt-button edt-button--primary"
+              onClick={onBackToCatalog}
+              data-testid="confirmed-back-to-catalog-btn"
+            >
+              Voltar ao Catálogo de Eventos →
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Alerta de Expiração quando o hold vence */}
       {isExpired && (
@@ -202,16 +259,18 @@ export function CheckoutView({
         </section>
       )}
 
-      {/* Timer autoritativo da reserva */}
-      <section aria-label="Tempo restante da reserva" className="edt-checkout-view__timer-section">
-        <ReservationTimer
-          expiresAt={reservation.expiresAt}
-          serverNow={reservation.serverNow}
-          status={reservation.status}
-          onExpire={handleExpire}
-          onReconcile={handleReconcile}
-        />
-      </section>
+      {/* Timer autoritativo da reserva (ativo apenas enquanto HOLDING e não expirado) */}
+      {!isConfirmed && (
+        <section aria-label="Tempo restante da reserva" className="edt-checkout-view__timer-section">
+          <ReservationTimer
+            expiresAt={reservation.expiresAt}
+            serverNow={reservation.serverNow}
+            status={reservation.status}
+            onExpire={handleExpire}
+            onReconcile={handleReconcile}
+          />
+        </section>
+      )}
 
       <div className="edt-checkout-view__body">
         {/* Resumo com snapshots autoritativos */}
@@ -223,8 +282,8 @@ export function CheckoutView({
           sectorName={sectorName}
         />
 
-        {/* Seção de Pagamento Simulado (Story 5.1) */}
-        {!isExpired && (
+        {/* Seção de Pagamento Simulado (Story 5.1 & Story 5.2) */}
+        {!isExpired && !isConfirmed && (
           <section
             className="edt-checkout-view__payment-section"
             aria-labelledby="payment-section-title"
@@ -274,17 +333,27 @@ export function CheckoutView({
             <div className="edt-payment-section__actions">
               <button
                 type="button"
-                className="edt-button edt-button--primary edt-button--large"
-                onClick={handleSimulateDeclinedPayment}
+                className="edt-button edt-button--secondary edt-button--large"
+                onClick={() => handleSimulatePayment('DECLINED')}
                 disabled={isProcessingPayment || isExpired}
                 aria-busy={isProcessingPayment}
                 data-testid="simulate-declined-payment-btn"
               >
                 {isProcessingPayment
-                  ? 'Processando com FakePaymentGateway...'
+                  ? 'Processando...'
                   : lastPaymentAttempt?.status === 'DECLINED'
                     ? 'Tentar Novamente (Simular Recusa)'
                     : 'Simular Pagamento Recusado (DECLINED)'}
+              </button>
+              <button
+                type="button"
+                className="edt-button edt-button--primary edt-button--large"
+                onClick={() => handleSimulatePayment('APPROVED')}
+                disabled={isProcessingPayment || isExpired}
+                aria-busy={isProcessingPayment}
+                data-testid="simulate-approved-payment-btn"
+              >
+                {isProcessingPayment ? 'Processando...' : 'Aprovar Pagamento (APPROVED)'}
               </button>
             </div>
           </section>
