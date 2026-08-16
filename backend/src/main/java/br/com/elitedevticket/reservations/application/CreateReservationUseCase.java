@@ -8,13 +8,19 @@ import br.com.elitedevticket.events.domain.EventStatus;
 import br.com.elitedevticket.events.domain.TicketSector;
 import br.com.elitedevticket.events.domain.TicketSectorNotFoundException;
 import br.com.elitedevticket.reservations.domain.EventNotPublishedException;
+import br.com.elitedevticket.reservations.domain.IdempotencyConflictException;
 import br.com.elitedevticket.reservations.domain.InsufficientAvailabilityException;
 import br.com.elitedevticket.reservations.domain.InvalidReservationQuantityException;
 import br.com.elitedevticket.reservations.domain.Reservation;
+import br.com.elitedevticket.reservations.domain.ReservationIdempotencyRecord;
 import br.com.elitedevticket.reservations.domain.SalesClosedException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,17 +31,20 @@ public class CreateReservationUseCase {
     private final CustomerLockPort customerLockPort;
     private final EventStockPort eventStockPort;
     private final ReservationRepository reservationRepository;
+    private final ReservationIdempotencyRepository reservationIdempotencyRepository;
     private final Clock clock;
 
     public CreateReservationUseCase(
             CustomerLockPort customerLockPort,
             EventStockPort eventStockPort,
             ReservationRepository reservationRepository,
+            ReservationIdempotencyRepository reservationIdempotencyRepository,
             Clock clock
     ) {
         this.customerLockPort = customerLockPort;
         this.eventStockPort = eventStockPort;
         this.reservationRepository = reservationRepository;
+        this.reservationIdempotencyRepository = reservationIdempotencyRepository;
         this.clock = clock;
     }
 
@@ -52,12 +61,52 @@ public class CreateReservationUseCase {
             );
         }
 
-        // Lock Customer first (AD-4, AD-5)
+        String normalizedIdempotencyKey = normalizeKey(command.idempotencyKey());
+        String payloadHash = calculatePayloadHash(command.eventId(), command.sectorId(), command.quantity());
+
+        // 1. Lock Customer first (AD-4, AD-5)
         customerLockPort.lockCustomer(command.customerId());
 
         Instant serverNow = clock.instant();
 
-        // Validate Event published & sales open
+        // 2. Check Idempotency-Key if provided (AD-7)
+        if (normalizedIdempotencyKey != null) {
+            Optional<ReservationIdempotencyRecord> existingKeyRecord =
+                    reservationIdempotencyRepository.findByCustomerIdAndIdempotencyKey(
+                            command.customerId(),
+                            normalizedIdempotencyKey
+                    );
+
+            if (existingKeyRecord.isPresent()) {
+                ReservationIdempotencyRecord record = existingKeyRecord.get();
+                if (!record.payloadHash().equals(payloadHash)) {
+                    throw new IdempotencyConflictException("Chave de idempotência reutilizada com parâmetros incompatíveis.");
+                }
+                return reservationRepository.findById(record.reservationId())
+                        .orElseThrow(() -> new IllegalStateException("Reserva associada à chave de idempotência não encontrada"));
+            }
+        }
+
+        // 3. Check if Customer already has an active HOLDING for the same event (AD-4)
+        Optional<Reservation> existingActiveHold =
+                reservationRepository.findHoldingByCustomerAndEvent(command.customerId(), command.eventId());
+
+        if (existingActiveHold.isPresent() && !existingActiveHold.get().isExpired(serverNow)) {
+            Reservation activeHold = existingActiveHold.get();
+            if (normalizedIdempotencyKey != null) {
+                reservationIdempotencyRepository.save(new ReservationIdempotencyRecord(
+                        UUID.randomUUID(),
+                        command.customerId(),
+                        normalizedIdempotencyKey,
+                        payloadHash,
+                        activeHold.id(),
+                        serverNow
+                ));
+            }
+            return activeHold;
+        }
+
+        // 4. Validate Event published & sales open
         Event event = eventStockPort.findEventById(command.eventId())
                 .orElseThrow(() -> new EventNotFoundException("Evento não encontrado: " + command.eventId()));
 
@@ -69,7 +118,7 @@ public class CreateReservationUseCase {
             throw new SalesClosedException("As vendas para este evento foram encerradas.");
         }
 
-        // Lock TicketSector with PESSIMISTIC_WRITE (AD-3, AD-5)
+        // 5. Lock TicketSector with PESSIMISTIC_WRITE (AD-3, AD-5)
         TicketSector sector = eventStockPort.findSectorByIdWithLock(command.sectorId())
                 .orElseThrow(() -> new TicketSectorNotFoundException("Setor de ingressos não encontrado: " + command.sectorId()));
 
@@ -83,11 +132,11 @@ public class CreateReservationUseCase {
             );
         }
 
-        // Decrement availableQuantity atomically
+        // 6. Decrement availableQuantity atomically
         int newAvailableQuantity = sector.availableQuantity() - command.quantity();
         eventStockPort.updateSectorAvailability(sector.id(), newAvailableQuantity);
 
-        // Create and persist Reservation
+        // 7. Create and persist Reservation
         Reservation reservation = Reservation.createHolding(
                 UUID.randomUUID(),
                 command.customerId(),
@@ -97,7 +146,45 @@ public class CreateReservationUseCase {
                 sector.price(),
                 serverNow
         );
+        Reservation savedReservation = reservationRepository.save(reservation);
 
-        return reservationRepository.save(reservation);
+        // 8. Persist Idempotency Record if key was provided (AD-7)
+        if (normalizedIdempotencyKey != null) {
+            reservationIdempotencyRepository.save(new ReservationIdempotencyRecord(
+                    UUID.randomUUID(),
+                    command.customerId(),
+                    normalizedIdempotencyKey,
+                    payloadHash,
+                    savedReservation.id(),
+                    serverNow
+            ));
+        }
+
+        return savedReservation;
+    }
+
+    private static String normalizeKey(String key) {
+        if (key == null) return null;
+        String trimmed = key.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String calculatePayloadHash(UUID eventId, UUID sectorId, int quantity) {
+        String canonical = "v1:" + eventId + ":" + sectorId + ":" + quantity;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(canonical.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Algoritmo SHA-256 indisponível no ambiente", e);
+        }
     }
 }

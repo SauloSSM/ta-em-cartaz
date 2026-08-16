@@ -469,6 +469,12 @@ paths:
             type: string
             format: uuid
           description: Identificador UUID único do setor.
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Chave de idempotência obrigatória para proteção contra retries e requisições concorrentes.
       requestBody:
         required: true
         content:
@@ -490,6 +496,8 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
         '404':
           $ref: '#/components/responses/ReservationNotFound'
+        '409':
+          $ref: '#/components/responses/ReservationConflict'
         '422':
           $ref: '#/components/responses/ReservationUnprocessable'
 components:
@@ -895,7 +903,7 @@ components:
           format: date-time
     ReservationErrorCode:
       type: string
-      enum: [INSUFFICIENT_AVAILABILITY, SALES_CLOSED, EVENT_NOT_PUBLISHED, EVENT_NOT_FOUND, SECTOR_NOT_FOUND, RESERVATION_NOT_FOUND, RESERVATION_EXPIRED, AUTH_INVALID_REQUEST, AUTH_FORBIDDEN, AUTH_UNAUTHENTICATED]
+      enum: [INSUFFICIENT_AVAILABILITY, SALES_CLOSED, EVENT_NOT_PUBLISHED, EVENT_NOT_FOUND, SECTOR_NOT_FOUND, RESERVATION_NOT_FOUND, RESERVATION_EXPIRED, IDEMPOTENCY_CONFLICT, AUTH_INVALID_REQUEST, AUTH_FORBIDDEN, AUTH_UNAUTHENTICATED]
     ReservationApiError:
       type: object
       additionalProperties: false
@@ -970,6 +978,12 @@ components:
             $ref: '#/components/schemas/EventApiError'
     ReservationNotFound:
       description: Evento, setor ou reserva não encontrada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ReservationApiError'
+    ReservationConflict:
+      description: Conflito de idempotência ou estado conflitante na reserva.
       content:
         application/json:
           schema:

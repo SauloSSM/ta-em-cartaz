@@ -52,7 +52,7 @@ class ReservationsOpenApiContractTest {
                 "/api/v1/events/{eventId}/sectors/{sectorId}/reservations",
                 "post",
                 "createReservation",
-                Set.of("201", "400", "401", "403", "404", "422")
+                Set.of("201", "400", "401", "403", "404", "409", "422")
         );
         assertRequestSchema(createReservation, "CreateReservationRequest");
         assertSecurity(createReservation, Set.of(Set.of("CsrfCookie", "CsrfHeader")));
@@ -61,6 +61,7 @@ class ReservationsOpenApiContractTest {
         assertResponseReference(createReservation, "401", "AuthUnauthenticated");
         assertResponseReference(createReservation, "403", "AuthForbidden");
         assertResponseReference(createReservation, "404", "ReservationNotFound");
+        assertResponseReference(createReservation, "409", "ReservationConflict");
         assertResponseReference(createReservation, "422", "ReservationUnprocessable");
 
         Map<String, Object> components = map(contract.get("components"));
@@ -74,6 +75,8 @@ class ReservationsOpenApiContractTest {
         Map<String, Object> responses = map(components.get("responses"));
         assertThat(responses).containsKey("ReservationNotFound");
         assertResponseSchemaReference(responses, "ReservationNotFound", "ReservationApiError");
+        assertThat(responses).containsKey("ReservationConflict");
+        assertResponseSchemaReference(responses, "ReservationConflict", "ReservationApiError");
         assertThat(responses).containsKey("ReservationUnprocessable");
         assertResponseSchemaReference(responses, "ReservationUnprocessable", "ReservationApiError");
     }

@@ -6,6 +6,10 @@ public record CreateReservationCommand(
         UUID customerId,
         UUID eventId,
         UUID sectorId,
-        int quantity
+        int quantity,
+        String idempotencyKey
 ) {
+    public CreateReservationCommand(UUID customerId, UUID eventId, UUID sectorId, int quantity) {
+        this(customerId, eventId, sectorId, quantity, null);
+    }
 }

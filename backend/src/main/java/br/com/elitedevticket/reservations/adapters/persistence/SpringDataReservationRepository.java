@@ -16,8 +16,8 @@ interface SpringDataReservationRepository extends JpaRepository<ReservationEntit
     @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id")
     Optional<ReservationEntity> findByIdForUpdate(@Param("id") UUID id);
 
-    @Query("SELECT r FROM ReservationEntity r WHERE r.customerId = :customerId AND r.eventId = :eventId AND r.status = :status")
-    Optional<ReservationEntity> findByCustomerIdAndEventIdAndStatus(
+    @Query("SELECT r FROM ReservationEntity r WHERE r.customerId = :customerId AND r.eventId = :eventId AND r.status = :status ORDER BY r.createdAt DESC")
+    List<ReservationEntity> findByCustomerIdAndEventIdAndStatusOrderByCreatedAtDesc(
             @Param("customerId") UUID customerId,
             @Param("eventId") UUID eventId,
             @Param("status") ReservationStatus status

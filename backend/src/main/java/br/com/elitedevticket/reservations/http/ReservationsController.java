@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,17 +36,22 @@ public class ReservationsController {
             @PathVariable UUID eventId,
             @PathVariable UUID sectorId,
             @AuthenticationPrincipal SessionUser sessionUser,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestBody(required = false) CreateReservationRequest request
     ) {
+        if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("O cabeçalho Idempotency-Key é obrigatório.");
+        }
         if (request == null) {
-            throw new InvalidReservationQuantityException("Corpo da requisição é obrigatório.");
+            throw new IllegalArgumentException("Corpo da requisição é obrigatório.");
         }
         request.validate();
         CreateReservationCommand command = new CreateReservationCommand(
                 sessionUser.id(),
                 eventId,
                 sectorId,
-                request.quantity()
+                request.quantity(),
+                idempotencyKey
         );
         Reservation reservation = createReservationUseCase.execute(command);
         ReservationResponse response = ReservationResponse.fromDomain(reservation, clock.instant());

@@ -36,7 +36,9 @@ class JpaReservationRepository implements ReservationRepository {
 
     @Override
     public Optional<Reservation> findHoldingByCustomerAndEvent(UUID customerId, UUID eventId) {
-        return repository.findByCustomerIdAndEventIdAndStatus(customerId, eventId, ReservationStatus.HOLDING)
+        return repository.findByCustomerIdAndEventIdAndStatusOrderByCreatedAtDesc(customerId, eventId, ReservationStatus.HOLDING)
+                .stream()
+                .findFirst()
                 .map(ReservationEntity::toDomain);
     }
 

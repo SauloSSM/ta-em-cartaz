@@ -316,6 +316,75 @@ describe('PublicEventDetail component (Superfície S02)', () => {
       'Apenas contas com papel de Cliente (CUSTOMER) podem realizar reservas e compras de ingressos',
     );
   });
+
+  it('preserva a mesma Idempotency-Key em retries após falha de rede/resposta perdida e gera nova chave para nova intenção', async () => {
+    const mockReservation: ReservationResponse = {
+      id: 'res-idemp-1',
+      customerId: 'usr-cust-1',
+      eventId: 'ev-pub-123',
+      sectorId: 'sec-pista',
+      quantity: 1,
+      unitPrice: 150.0,
+      totalAmount: 150.0,
+      status: 'HOLDING',
+      expiresAt: '2026-08-16T15:10:00Z',
+      createdAt: '2026-08-16T15:00:00Z',
+      serverNow: '2026-08-16T15:00:00Z',
+    };
+
+    const capturedKeys: string[] = [];
+
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/reservations')) {
+        const headers = init?.headers as Headers | undefined;
+        const key = headers?.get?.('Idempotency-Key');
+        if (key) {
+          capturedKeys.push(key);
+        }
+        if (capturedKeys.length === 1) {
+          // 1ª tentativa: simula falha de conexão/resposta perdida
+          throw new TypeError('Failed to fetch (network disconnected)');
+        }
+        // 2ª tentativa (retry): sucesso
+        return jsonResponse(mockReservation, 201);
+      }
+      if (url.includes('/sectors')) {
+        return jsonResponse(mockSectors);
+      }
+      return jsonResponse({});
+    });
+
+    const user = userEvent.setup();
+
+    render(
+      <PublicEventDetail
+        eventId="ev-pub-123"
+        initialEvent={mockPublishedEvent}
+        currentUser={customerUser}
+        onBackToCatalog={vi.fn()}
+      />,
+    );
+
+    const reserveBtn = await screen.findByRole('button', { name: /Reservar 1 ingresso no setor Pista Comum/ });
+
+    // 1ª tentativa: falha de rede
+    await user.click(reserveBtn);
+    expect(await screen.findByTestId('reservation-error-alert')).toBeDefined();
+    expect(screen.getByTestId('reservation-error-alert').textContent).toContain(
+      'Ocorreu um erro ao processar sua reserva. Por favor, tente novamente.',
+    );
+    expect(capturedKeys).toHaveLength(1);
+    const firstAttemptKey = capturedKeys[0];
+    expect(firstAttemptKey).toBeDefined();
+
+    // 2ª tentativa (retry da mesma intenção após resposta perdida)
+    await user.click(reserveBtn);
+    expect(await screen.findByTestId('active-hold-card')).toBeDefined();
+    expect(capturedKeys).toHaveLength(2);
+    const retryAttemptKey = capturedKeys[1];
+    expect(retryAttemptKey).toBe(firstAttemptKey); // Mesma chave preservada!
+  });
 });
 
 function jsonResponse(body: unknown, status = 200) {

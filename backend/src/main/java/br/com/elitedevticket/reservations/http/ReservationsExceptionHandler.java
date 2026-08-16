@@ -5,6 +5,7 @@ import br.com.elitedevticket.auth.http.AuthErrorCode;
 import br.com.elitedevticket.events.domain.EventNotFoundException;
 import br.com.elitedevticket.events.domain.TicketSectorNotFoundException;
 import br.com.elitedevticket.reservations.domain.EventNotPublishedException;
+import br.com.elitedevticket.reservations.domain.IdempotencyConflictException;
 import br.com.elitedevticket.reservations.domain.InsufficientAvailabilityException;
 import br.com.elitedevticket.reservations.domain.InvalidReservationQuantityException;
 import br.com.elitedevticket.reservations.domain.ReservationNotFoundException;
@@ -98,6 +99,18 @@ public class ReservationsExceptionHandler {
                 clock.instant()
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<ReservationApiErrorResponse> handleIdempotencyConflict(IdempotencyConflictException ex) {
+        ReservationApiErrorResponse body = new ReservationApiErrorResponse(
+                ReservationErrorCode.IDEMPOTENCY_CONFLICT,
+                ex.getMessage(),
+                null,
+                UUID.randomUUID().toString(),
+                clock.instant()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler(InvalidReservationQuantityException.class)

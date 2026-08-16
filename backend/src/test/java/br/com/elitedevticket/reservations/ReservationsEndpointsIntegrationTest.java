@@ -403,6 +403,239 @@ class ReservationsEndpointsIntegrationTest {
         assertThat(validResponse.body()).contains("\"totalAmount\":360.00");
     }
 
+    @Test
+    @DisplayName("Mesmo Idempotency-Key com mesmo payload retorna mesma Reservation com única baixa de estoque")
+    void sameIdempotencyKeyWithSamePayloadReturnsSameReservation() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+        String idempotencyKey = UUID.randomUUID().toString();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Idempotente",
+                Instant.now().plus(10, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // 1. Primeira chamada com Idempotency-Key
+        HttpResponse<String> res1 = postWithHeaders(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                idempotencyKey,
+                "{\"quantity\":2}"
+        );
+        assertThat(res1.statusCode()).isEqualTo(201);
+        String res1Id = extractJsonField(res1.body(), "id");
+
+        Integer stockAfterFirst = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stockAfterFirst).isEqualTo(48);
+
+        // 2. Retry com a mesma Idempotency-Key e mesmo payload
+        HttpResponse<String> res2 = postWithHeaders(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                idempotencyKey,
+                "{\"quantity\":2}"
+        );
+        assertThat(res2.statusCode()).isEqualTo(201);
+        String res2Id = extractJsonField(res2.body(), "id");
+        assertThat(res2Id).isEqualTo(res1Id);
+
+        Integer stockAfterSecond = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stockAfterSecond).isEqualTo(48);
+
+        Integer totalReservationsCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM reservations WHERE customer_id = (SELECT id FROM users WHERE email = 'customer.one@demo.elitedevticket.local') AND event_id = ?",
+                Integer.class,
+                UUID.fromString(eventId)
+        );
+        assertThat(totalReservationsCount).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Mesma Idempotency-Key com payload diferente retorna 409 IDEMPOTENCY_CONFLICT")
+    void sameIdempotencyKeyWithDifferentPayloadReturns409() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.two@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+        String idempotencyKey = UUID.randomUUID().toString();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Conflito Idempotencia",
+                Instant.now().plus(10, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // 1. Primeira chamada com Idempotency-Key e quantity = 2
+        HttpResponse<String> res1 = postWithHeaders(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                idempotencyKey,
+                "{\"quantity\":2}"
+        );
+        assertThat(res1.statusCode()).isEqualTo(201);
+
+        // 2. Segunda chamada com mesma chave mas quantity = 4
+        HttpResponse<String> res2 = postWithHeaders(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                idempotencyKey,
+                "{\"quantity\":4}"
+        );
+        assertThat(res2.statusCode()).isEqualTo(409);
+        assertThat(res2.body()).contains("\"code\":\"IDEMPOTENCY_CONFLICT\"");
+
+        // Estoque permanece 48 (nenhuma baixa adicional)
+        Integer stock = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stock).isEqualTo(48);
+    }
+
+    @Test
+    @DisplayName("Customer com HOLDING vigente no mesmo evento recupera o hold existente sem criar segundo hold")
+    void customerWithActiveHoldingInSameEventRecoversHoldWithoutDecreasingStock() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Festival Hold Unico",
+                Instant.now().plus(10, ChronoUnit.DAYS).toString(),
+                "VIP",
+                30,
+                "200.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // 1. Criar primeiro hold (2 ingressos)
+        HttpResponse<String> res1 = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        assertThat(res1.statusCode()).isEqualTo(201);
+        String firstHoldId = extractJsonField(res1.body(), "id");
+
+        Integer stockAfterFirst = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stockAfterFirst).isEqualTo(28);
+
+        // 2. Customer tenta criar outro hold para o mesmo evento
+        HttpResponse<String> res2 = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        assertThat(res2.statusCode()).isEqualTo(201);
+        String secondHoldId = extractJsonField(res2.body(), "id");
+        assertThat(secondHoldId).isEqualTo(firstHoldId);
+
+        Integer stockAfterSecond = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stockAfterSecond).isEqualTo(28);
+    }
+
+    @Test
+    @DisplayName("Requisições simultâneas com o mesmo Idempotency-Key garantem efeito único e estoque consistente")
+    void concurrentRequestsWithSameIdempotencyKeyGuaranteeSingleEffect() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+        String sharedKey = UUID.randomUUID().toString();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Mega Concorrente Idempotente",
+                Instant.now().plus(5, ChronoUnit.DAYS).toString(),
+                "Pista Central",
+                20,
+                "120.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        int threadCount = 4;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        try {
+            List<Callable<HttpResponse<String>>> tasks = new ArrayList<>();
+            for (int i = 0; i < threadCount; i++) {
+                tasks.add(() -> postWithHeaders(
+                        "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                        "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                        csrf,
+                        sharedKey,
+                        "{\"quantity\":2}"
+                ));
+            }
+
+            List<Future<HttpResponse<String>>> futures = executor.invokeAll(tasks);
+            List<HttpResponse<String>> responses = new ArrayList<>();
+            for (Future<HttpResponse<String>> future : futures) {
+                responses.add(future.get());
+            }
+
+            // Todas as 4 chamadas devem ter sucesso (201) retornando a mesma reserva
+            assertThat(responses).allMatch(r -> r.statusCode() == 201);
+            String firstId = extractJsonField(responses.get(0).body(), "id");
+            for (HttpResponse<String> r : responses) {
+                assertThat(extractJsonField(r.body(), "id")).isEqualTo(firstId);
+            }
+
+            // Estoque debitado exatamente 2 (de 20 para 18)
+            Integer finalStock = jdbcTemplate.queryForObject(
+                    "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                    Integer.class,
+                    UUID.fromString(sectorId)
+            );
+            assertThat(finalStock).isEqualTo(18);
+
+            // Apenas 1 reserva persistida
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM reservations WHERE event_id = ?",
+                    Integer.class,
+                    UUID.fromString(eventId)
+            );
+            assertThat(count).isEqualTo(1);
+        } finally {
+            executor.shutdown();
+        }
+    }
+
     private String createAndPublishEvent(
             String organizerSession,
             String csrf,
@@ -509,7 +742,65 @@ class ReservationsEndpointsIntegrationTest {
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    @Test
+    @DisplayName("Requisição para criar hold sem Idempotency-Key retorna 400 Bad Request sem alterar estoque ou criar reserva")
+    void missingIdempotencyKeyFailsWith400WithoutSideEffects() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Sem Chave Idempotencia",
+                Instant.now().plus(10, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // Chamada explicitamente sem Idempotency-Key (header null)
+        HttpResponse<String> response = postWithHeaders(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                null,
+                "{\"quantity\":2}"
+        );
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).contains("\"code\":\"AUTH_INVALID_REQUEST\"");
+
+        // Verificar que estoque permanece 50
+        Integer stock = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stock).isEqualTo(50);
+
+        // Verificar que nenhuma reserva foi criada
+        Integer reservationCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM reservations WHERE event_id = ?",
+                Integer.class,
+                UUID.fromString(eventId)
+        );
+        assertThat(reservationCount).isEqualTo(0);
+    }
+
     private HttpResponse<String> post(String path, String cookie, String csrf, String body) throws Exception {
+        String key = path.contains("/reservations") ? UUID.randomUUID().toString() : null;
+        return postWithHeaders(path, cookie, csrf, key, body);
+    }
+
+    private HttpResponse<String> postWithHeaders(
+            String path,
+            String cookie,
+            String csrf,
+            String idempotencyKey,
+            String body
+    ) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(uri(path))
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .header("Content-Type", "application/json");
@@ -518,6 +809,9 @@ class ReservationsEndpointsIntegrationTest {
         }
         if (!csrf.isBlank()) {
             request.header("X-XSRF-TOKEN", csrf);
+        }
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            request.header("Idempotency-Key", idempotencyKey);
         }
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }

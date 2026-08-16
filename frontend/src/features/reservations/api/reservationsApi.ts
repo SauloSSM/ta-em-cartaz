@@ -26,6 +26,7 @@ export type ReservationErrorCode =
   | 'SECTOR_NOT_FOUND'
   | 'RESERVATION_NOT_FOUND'
   | 'RESERVATION_EXPIRED'
+  | 'IDEMPOTENCY_CONFLICT'
   | 'AUTH_INVALID_REQUEST'
   | 'AUTH_FORBIDDEN'
   | 'AUTH_UNAUTHENTICATED';
@@ -72,19 +73,32 @@ export class ReservationClientError extends Error {
   }
 }
 
+export function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `edt-${Date.now()}-${Math.random().toString(36).substring(2)}`;
+}
+
 export async function createReservation(
   eventId: string,
   sectorId: string,
   data: CreateReservationRequest,
+  idempotencyKey?: string,
 ): Promise<ReservationResponse> {
   const request: CreateReservationRequest = {
     quantity: data.quantity,
+  };
+  const effectiveKey = idempotencyKey || generateIdempotencyKey();
+  const headers: HeadersInit = {
+    ...csrfHeaders(),
+    'Idempotency-Key': effectiveKey,
   };
   const payload = await requestJson(
     `/api/v1/events/${encodeURIComponent(eventId)}/sectors/${encodeURIComponent(sectorId)}/reservations`,
     {
       method: 'POST',
-      headers: csrfHeaders(),
+      headers,
       body: JSON.stringify(request),
     },
   );
@@ -154,6 +168,9 @@ async function toApiError(response: Response): Promise<ReservationClientError> {
   if (response.status === 404) {
     return new ReservationClientError('EVENT_NOT_FOUND', 'Evento ou setor não encontrado.');
   }
+  if (response.status === 409) {
+    return new ReservationClientError('IDEMPOTENCY_CONFLICT', 'Conflito de idempotência na criação de reserva.');
+  }
   if (response.status === 422) {
     return new ReservationClientError('INSUFFICIENT_AVAILABILITY', 'Não foi possível reservar os ingressos solicitados.');
   }
@@ -207,6 +224,7 @@ function isReservationApiError(value: unknown): value is ReservationApiError {
     'SECTOR_NOT_FOUND',
     'RESERVATION_NOT_FOUND',
     'RESERVATION_EXPIRED',
+    'IDEMPOTENCY_CONFLICT',
     'AUTH_INVALID_REQUEST',
     'AUTH_FORBIDDEN',
     'AUTH_UNAUTHENTICATED',

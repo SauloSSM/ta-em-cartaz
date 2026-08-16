@@ -62,9 +62,14 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
     let active = true;
     setIsRestoringIntention(true);
 
-    void createReservation(intention.eventId, intention.ticketSectorId, {
-      quantity: intention.quantity,
-    })
+    void createReservation(
+      intention.eventId,
+      intention.ticketSectorId,
+      {
+        quantity: intention.quantity,
+      },
+      intention.idempotencyKey,
+    )
       .then((reservation) => {
         if (!active) return;
         clearPurchaseIntention();

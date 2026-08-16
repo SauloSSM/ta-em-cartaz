@@ -16,12 +16,17 @@ import br.com.elitedevticket.events.domain.EventStatus;
 import br.com.elitedevticket.events.domain.TicketSector;
 import br.com.elitedevticket.events.domain.TicketSectorNotFoundException;
 import br.com.elitedevticket.reservations.domain.EventNotPublishedException;
+import br.com.elitedevticket.reservations.domain.IdempotencyConflictException;
 import br.com.elitedevticket.reservations.domain.InsufficientAvailabilityException;
 import br.com.elitedevticket.reservations.domain.InvalidReservationQuantityException;
 import br.com.elitedevticket.reservations.domain.Reservation;
+import br.com.elitedevticket.reservations.domain.ReservationIdempotencyRecord;
 import br.com.elitedevticket.reservations.domain.ReservationStatus;
 import br.com.elitedevticket.reservations.domain.SalesClosedException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -38,6 +43,7 @@ class CreateReservationUseCaseTest {
     private CustomerLockPort customerLockPort;
     private EventStockPort eventStockPort;
     private ReservationRepository reservationRepository;
+    private ReservationIdempotencyRepository reservationIdempotencyRepository;
     private Clock clock;
     private CreateReservationUseCase useCase;
 
@@ -48,8 +54,15 @@ class CreateReservationUseCaseTest {
         customerLockPort = mock(CustomerLockPort.class);
         eventStockPort = mock(EventStockPort.class);
         reservationRepository = mock(ReservationRepository.class);
+        reservationIdempotencyRepository = mock(ReservationIdempotencyRepository.class);
         clock = Clock.fixed(now, ZoneOffset.UTC);
-        useCase = new CreateReservationUseCase(customerLockPort, eventStockPort, reservationRepository, clock);
+        useCase = new CreateReservationUseCase(
+                customerLockPort,
+                eventStockPort,
+                reservationRepository,
+                reservationIdempotencyRepository,
+                clock
+        );
     }
 
     @Test
@@ -338,5 +351,139 @@ class CreateReservationUseCaseTest {
         assertThat(reservation.totalAmount()).isEqualTo(new BigDecimal("617.25"));
         assertThat(reservation.status()).isEqualTo(ReservationStatus.HOLDING);
         assertThat(reservation.expiresAt()).isEqualTo(now.plus(10, ChronoUnit.MINUTES));
+    }
+
+    @Test
+    @DisplayName("Mesma Idempotency-Key com mesmo payload retorna a Reservation existente sem nova baixa")
+    void shouldReturnSameReservationForSameIdempotencyKeyAndSamePayload() {
+        UUID customerId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID sectorId = UUID.randomUUID();
+        UUID existingReservationId = UUID.randomUUID();
+        String idempotencyKey = "key-12345";
+        String payloadHash = hashOf("v1:" + eventId + ":" + sectorId + ":2");
+
+        Reservation existingReservation = Reservation.createHolding(
+                existingReservationId,
+                customerId,
+                eventId,
+                sectorId,
+                2,
+                new BigDecimal("100.00"),
+                now
+        );
+
+        ReservationIdempotencyRecord idempotencyRecord = new ReservationIdempotencyRecord(
+                UUID.randomUUID(),
+                customerId,
+                idempotencyKey,
+                payloadHash,
+                existingReservationId,
+                now
+        );
+
+        when(reservationIdempotencyRepository.findByCustomerIdAndIdempotencyKey(customerId, idempotencyKey))
+                .thenReturn(Optional.of(idempotencyRecord));
+        when(reservationRepository.findById(existingReservationId))
+                .thenReturn(Optional.of(existingReservation));
+
+        CreateReservationCommand command = new CreateReservationCommand(
+                customerId,
+                eventId,
+                sectorId,
+                2,
+                idempotencyKey
+        );
+        Reservation result = useCase.execute(command);
+
+        assertThat(result).isSameAs(existingReservation);
+        verify(eventStockPort, never()).findSectorByIdWithLock(any());
+        verify(eventStockPort, never()).updateSectorAvailability(any(), any(Integer.class));
+        verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Mesma Idempotency-Key com payload diferente lança IdempotencyConflictException")
+    void shouldThrowIdempotencyConflictWhenPayloadDiffers() {
+        UUID customerId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID sectorId = UUID.randomUUID();
+        UUID existingReservationId = UUID.randomUUID();
+        String idempotencyKey = "key-12345";
+        String differentPayloadHash = hashOf("v1:" + eventId + ":" + sectorId + ":4");
+
+        ReservationIdempotencyRecord idempotencyRecord = new ReservationIdempotencyRecord(
+                UUID.randomUUID(),
+                customerId,
+                idempotencyKey,
+                differentPayloadHash,
+                existingReservationId,
+                now
+        );
+
+        when(reservationIdempotencyRepository.findByCustomerIdAndIdempotencyKey(customerId, idempotencyKey))
+                .thenReturn(Optional.of(idempotencyRecord));
+
+        // Attempt with quantity = 2 (payload differs from 4)
+        CreateReservationCommand command = new CreateReservationCommand(
+                customerId,
+                eventId,
+                sectorId,
+                2,
+                idempotencyKey
+        );
+
+        assertThatThrownBy(() -> useCase.execute(command))
+                .isInstanceOf(IdempotencyConflictException.class)
+                .hasMessageContaining("Chave de idempotência reutilizada");
+
+        verify(eventStockPort, never()).updateSectorAvailability(any(), any(Integer.class));
+        verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Customer com HOLDING vigente no mesmo evento recupera o hold existente sem nova baixa")
+    void shouldReturnExistingActiveHoldForSameCustomerAndEvent() {
+        UUID customerId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID sectorId = UUID.randomUUID();
+        UUID existingReservationId = UUID.randomUUID();
+
+        Reservation existingActiveHold = Reservation.createHolding(
+                existingReservationId,
+                customerId,
+                eventId,
+                sectorId,
+                2,
+                new BigDecimal("150.00"),
+                now
+        );
+
+        when(reservationRepository.findHoldingByCustomerAndEvent(customerId, eventId))
+                .thenReturn(Optional.of(existingActiveHold));
+
+        CreateReservationCommand command = new CreateReservationCommand(customerId, eventId, sectorId, 2);
+        Reservation result = useCase.execute(command);
+
+        assertThat(result).isSameAs(existingActiveHold);
+        verify(eventStockPort, never()).findSectorByIdWithLock(any());
+        verify(eventStockPort, never()).updateSectorAvailability(any(), any(Integer.class));
+        verify(reservationRepository, never()).save(any());
+    }
+
+    private static String hashOf(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                String h = Integer.toHexString(0xff & b);
+                if (h.length() == 1) hex.append('0');
+                hex.append(h);
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

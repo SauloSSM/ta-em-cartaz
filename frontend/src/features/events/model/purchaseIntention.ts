@@ -7,6 +7,7 @@ export type PurchaseIntention = {
   quantity: number;
   internalReturnPath: string;
   createdAt: string;
+  idempotencyKey?: string;
 };
 
 export type CreatePurchaseIntentionInput = {
@@ -15,6 +16,7 @@ export type CreatePurchaseIntentionInput = {
   quantity: number;
   internalReturnPath?: string;
   createdAt?: string;
+  idempotencyKey?: string;
 };
 
 export function savePurchaseIntention(input: CreatePurchaseIntentionInput): PurchaseIntention {
@@ -30,6 +32,9 @@ export function savePurchaseIntention(input: CreatePurchaseIntentionInput): Purc
 
   const internalReturnPath = sanitizeReturnPath(input.internalReturnPath, input.eventId);
   const createdAt = input.createdAt ?? new Date().toISOString();
+  const idempotencyKey =
+    input.idempotencyKey ??
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : undefined);
 
   const intention: PurchaseIntention = {
     eventId: input.eventId,
@@ -37,6 +42,7 @@ export function savePurchaseIntention(input: CreatePurchaseIntentionInput): Purc
     quantity: input.quantity,
     internalReturnPath,
     createdAt,
+    ...(idempotencyKey ? { idempotencyKey } : {}),
   };
 
   try {
@@ -122,6 +128,8 @@ function isValidIntention(value: unknown): value is PurchaseIntention {
     typeof candidate.internalReturnPath === 'string' &&
     candidate.internalReturnPath.startsWith('/') &&
     typeof candidate.createdAt === 'string' &&
-    !Number.isNaN(new Date(candidate.createdAt).getTime())
+    !Number.isNaN(new Date(candidate.createdAt).getTime()) &&
+    (candidate.idempotencyKey === undefined ||
+      (typeof candidate.idempotencyKey === 'string' && candidate.idempotencyKey.length > 0))
   );
 }

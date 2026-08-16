@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { SessionUser } from '../../../app/api/authApi';
 import {
   getEvent,
@@ -15,6 +15,7 @@ import {
 } from '../model/purchaseIntention';
 import {
   createReservation,
+  generateIdempotencyKey,
   ReservationClientError,
   type ReservationResponse,
   ActiveHoldCard,
@@ -66,6 +67,7 @@ export function PublicEventDetail({
   const [reservationError, setReservationError] = useState<string | null>(initialErrorMessage);
   const [activeReservation, setActiveReservation] = useState<ReservationResponse | null>(initialReservation);
   const [isReserving, setIsReserving] = useState(false);
+  const activeAttemptKeyRef = useRef<string | null>(null);
 
   const loadEventData = useCallback(async () => {
     setState({ status: 'loading' });
@@ -255,6 +257,7 @@ export function PublicEventDetail({
         ticketSectorId: selectedSector.id,
         quantity,
         internalReturnPath: `/events/${event.id}`,
+        idempotencyKey: activeAttemptKeyRef.current || generateIdempotencyKey(),
       });
 
       const notice =
@@ -272,8 +275,13 @@ export function PublicEventDetail({
 
     if (currentUser.role === 'CUSTOMER') {
       setIsReserving(true);
+      if (!activeAttemptKeyRef.current) {
+        activeAttemptKeyRef.current = generateIdempotencyKey();
+      }
+      const attemptKey = activeAttemptKeyRef.current;
       try {
-        const reservation = await createReservation(event.id, selectedSector.id, { quantity });
+        const reservation = await createReservation(event.id, selectedSector.id, { quantity }, attemptKey);
+        activeAttemptKeyRef.current = null;
         clearPurchaseIntention();
         setActiveReservation(reservation);
         if (onReservationCreated) {
@@ -282,6 +290,18 @@ export function PublicEventDetail({
       } catch (err) {
         clearPurchaseIntention();
         if (err instanceof ReservationClientError) {
+          if (
+            err.code === 'INSUFFICIENT_AVAILABILITY' ||
+            err.code === 'SALES_CLOSED' ||
+            err.code === 'EVENT_NOT_PUBLISHED' ||
+            err.code === 'EVENT_NOT_FOUND' ||
+            err.code === 'SECTOR_NOT_FOUND' ||
+            err.code === 'IDEMPOTENCY_CONFLICT' ||
+            err.code === 'AUTH_FORBIDDEN' ||
+            err.code === 'AUTH_UNAUTHENTICATED'
+          ) {
+            activeAttemptKeyRef.current = null;
+          }
           if (err.code === 'INSUFFICIENT_AVAILABILITY') {
             setReservationError(
               'Não foi possível concluir sua reserva: a quantidade solicitada não está mais disponível no setor selecionado.',
@@ -294,6 +314,7 @@ export function PublicEventDetail({
             setReservationError(err.message || 'Não foi possível concluir a reserva.');
           }
         } else {
+          // Em falhas de rede/resposta perdida, activeAttemptKeyRef.current é preservada para retry
           setReservationError('Ocorreu um erro ao processar sua reserva. Por favor, tente novamente.');
         }
       } finally {
@@ -501,6 +522,7 @@ export function PublicEventDetail({
                   setIntentionFeedback(null);
                   setRoleErrorMessage(null);
                   setReservationError(null);
+                  activeAttemptKeyRef.current = null;
                 }}
               />
             ))}
@@ -523,6 +545,7 @@ export function PublicEventDetail({
                     setIntentionFeedback(null);
                     setRoleErrorMessage(null);
                     setReservationError(null);
+                    activeAttemptKeyRef.current = null;
                   }}
                 />
 
