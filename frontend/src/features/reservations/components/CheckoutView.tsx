@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReservationResponse } from '../api/reservationsApi';
+import {
+  processPayment,
+  generatePaymentAttemptId,
+  PaymentClientError,
+  type PaymentResponse,
+} from '../../payments/api/paymentsApi';
 import { ReservationTimer } from './ReservationTimer';
 import { CheckoutSummary } from './CheckoutSummary';
 import { DemoEnvironmentNotice } from './DemoEnvironmentNotice';
@@ -31,7 +37,14 @@ export function CheckoutView({
     initialReservation.status === 'EXPIRED',
   );
 
+  // Estados de processamento de pagamento simulado (Story 5.1)
+  const [currentAttemptId, setCurrentAttemptId] = useState<string>(() => generatePaymentAttemptId());
+  const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
+  const [lastPaymentAttempt, setLastPaymentAttempt] = useState<PaymentResponse | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
   const expiredHeadingRef = useRef<HTMLHeadingElement>(null);
+  const declinedAlertRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     setReservation(initialReservation);
@@ -50,10 +63,15 @@ export function CheckoutView({
 
   useEffect(() => {
     if (isExpiredLocally) {
-      // Move o foco para a mensagem persistente de expiração para acessibilidade
       expiredHeadingRef.current?.focus();
     }
   }, [isExpiredLocally]);
+
+  useEffect(() => {
+    if (lastPaymentAttempt?.status === 'DECLINED') {
+      declinedAlertRef.current?.focus();
+    }
+  }, [lastPaymentAttempt]);
 
   const handleReconcile = async () => {
     if (onReconcile) {
@@ -68,13 +86,46 @@ export function CheckoutView({
   };
 
   useEffect(() => {
-    // Reconcilia com o backend imediatamente no mount para que reload/restauração obtenha o serverNow/expiresAt autoritativo
     if (onReconcile && initialReservation.status === 'HOLDING') {
       void handleReconcile();
     }
   }, []);
 
   const isExpired = isExpiredLocally || reservation.status === 'EXPIRED';
+
+  const handleSimulateDeclinedPayment = async () => {
+    if (isExpired || isProcessingPayment) {
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+
+    try {
+      const response = await processPayment(reservation.id, {
+        paymentAttemptId: currentAttemptId,
+        simulatedOutcome: 'DECLINED',
+      });
+
+      setLastPaymentAttempt(response);
+      // Gera um novo ID para a próxima tentativa caso o usuário deseje tentar novamente
+      setCurrentAttemptId(generatePaymentAttemptId());
+    } catch (err: unknown) {
+      if (err instanceof PaymentClientError) {
+        if (err.code === 'RESERVATION_EXPIRED') {
+          handleExpire();
+        } else {
+          setPaymentError(err.message);
+        }
+      } else if (err instanceof Error) {
+        setPaymentError(err.message);
+      } else {
+        setPaymentError('Erro inesperado ao processar pagamento simulado.');
+      }
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   return (
     <article
@@ -172,29 +223,68 @@ export function CheckoutView({
           sectorName={sectorName}
         />
 
-        {/* Bloco de Pagamento Simulador (Desabilitado/Placeholder funcional para Story 4.5) */}
+        {/* Seção de Pagamento Simulado (Story 5.1) */}
         {!isExpired && (
           <section
-            className="edt-checkout-view__payment-placeholder"
+            className="edt-checkout-view__payment-section"
             aria-labelledby="payment-section-title"
-            data-testid="payment-placeholder-section"
+            data-testid="payment-section"
           >
-            <h3 id="payment-section-title" className="edt-payment-placeholder__title">
-              Pagamento Simulado
+            <h3 id="payment-section-title" className="edt-payment-section__title">
+              Pagamento Simulado (Demonstração)
             </h3>
-            <p className="edt-payment-placeholder__desc">
-              Sua reserva está garantida enquanto o cronômetro estiver ativo. A etapa de simulação e processamento de pagamento será executada a seguir.
+            <p className="edt-payment-section__desc">
+              Este sistema opera exclusivamente com simulação controlada via <strong>FakePaymentGateway</strong>. Nenhuma transação financeira real será cobrada em seus meios de pagamento.
             </p>
-            <div className="edt-payment-placeholder__actions">
+
+            {paymentError && (
+              <div
+                className="edt-alert edt-alert--danger edt-payment-section__alert"
+                role="alert"
+                data-testid="payment-error-alert"
+              >
+                <p className="edt-alert__desc">{paymentError}</p>
+              </div>
+            )}
+
+            {lastPaymentAttempt && lastPaymentAttempt.status === 'DECLINED' && (
+              <div
+                className="edt-alert edt-alert--warning edt-payment-section__alert"
+                role="alert"
+                data-testid="payment-declined-alert"
+              >
+                <h4
+                  ref={declinedAlertRef}
+                  tabIndex={-1}
+                  className="edt-alert__title"
+                  data-testid="declined-alert-heading"
+                >
+                  Tentativa de Pagamento Recusada
+                </h4>
+                <p className="edt-alert__desc">
+                  O provedor simulado recusou a transação (motivo: <code>{lastPaymentAttempt.declineReason || 'SIMULATED_DECLINE'}</code>). Sua reserva permanece ativa enquanto houver tempo restante no cronômetro. Você pode tentar novamente.
+                </p>
+                <div className="edt-payment-section__declined-meta">
+                  <span>ID da tentativa: <code>{lastPaymentAttempt.id}</code></span>
+                  <span>Provedor: <strong>{lastPaymentAttempt.provider}</strong></span>
+                </div>
+              </div>
+            )}
+
+            <div className="edt-payment-section__actions">
               <button
                 type="button"
                 className="edt-button edt-button--primary edt-button--large"
-                disabled
-                title="A simulação de pagamento estará disponível no próximo fluxo (Epic 5)"
-                aria-disabled="true"
-                data-testid="proceed-payment-placeholder-btn"
+                onClick={handleSimulateDeclinedPayment}
+                disabled={isProcessingPayment || isExpired}
+                aria-busy={isProcessingPayment}
+                data-testid="simulate-declined-payment-btn"
               >
-                Avançar para Pagamento Simulado (Epic 5)
+                {isProcessingPayment
+                  ? 'Processando com FakePaymentGateway...'
+                  : lastPaymentAttempt?.status === 'DECLINED'
+                    ? 'Tentar Novamente (Simular Recusa)'
+                    : 'Simular Pagamento Recusado (DECLINED)'}
               </button>
             </div>
           </section>

@@ -259,7 +259,8 @@ class FoundationIntegrationTest {
                 "events",
                 "ticket_sectors",
                 "reservations",
-                "reservation_idempotency_keys"
+                "reservation_idempotency_keys",
+                "payments"
         );
     }
 

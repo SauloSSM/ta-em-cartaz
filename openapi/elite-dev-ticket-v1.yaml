@@ -500,6 +500,47 @@ paths:
           $ref: '#/components/responses/ReservationConflict'
         '422':
           $ref: '#/components/responses/ReservationUnprocessable'
+  /api/v1/reservations/{reservationId}/payments:
+    post:
+      operationId: processPayment
+      summary: Processa uma tentativa simulada de pagamento para uma reserva
+      description: Requer sessão autenticada com papel CUSTOMER e proteção CSRF. Somente o dono da reserva HOLDING vigente pode realizar a tentativa. O processamento é idempotente por paymentAttemptId com fingerprint v1 canônico.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único da reserva.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessPaymentRequest'
+      responses:
+        '200':
+          description: Tentativa de pagamento processada com sucesso (inclui outcomes DECLINED e APPROVED).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/ReservationNotFound'
+        '409':
+          $ref: '#/components/responses/ReservationConflict'
+        '422':
+          $ref: '#/components/responses/ReservationUnprocessable'
 components:
   securitySchemes:
     SessionCookie:
@@ -899,6 +940,49 @@ components:
           type: string
           format: date-time
         serverNow:
+          type: string
+          format: date-time
+    PaymentSimulatedOutcome:
+      type: string
+      enum: [APPROVED, DECLINED]
+    PaymentStatus:
+      type: string
+      enum: [PENDING, APPROVED, DECLINED]
+    ProcessPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [paymentAttemptId, simulatedOutcome]
+      properties:
+        paymentAttemptId:
+          type: string
+          format: uuid
+        simulatedOutcome:
+          $ref: '#/components/schemas/PaymentSimulatedOutcome'
+    PaymentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, reservationId, amount, currency, status, provider, createdAt, processedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reservationId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        provider:
+          type: string
+        declineReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        processedAt:
           type: string
           format: date-time
     ReservationErrorCode:

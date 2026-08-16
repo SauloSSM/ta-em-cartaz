@@ -217,7 +217,7 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
     );
 
     expect(screen.getByTestId('checkout-view')).toBeDefined();
-    expect(screen.getByTestId('payment-placeholder-section')).toBeDefined();
+    expect(screen.getByTestId('payment-section')).toBeDefined();
 
     // Avança o tempo até a expiração (10 min e 1 seg)
     act(() => {
@@ -230,7 +230,7 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
     expect(document.activeElement).toBe(heading);
 
     // Bloco de pagamento é removido
-    expect(screen.queryByTestId('payment-placeholder-section')).toBeNull();
+    expect(screen.queryByTestId('payment-section')).toBeNull();
 
     // Opção de retorno ao evento
     const returnBtn = screen.getByTestId('return-to-event-btn');

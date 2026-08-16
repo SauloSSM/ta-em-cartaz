@@ -1,7 +1,8 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CheckoutView } from '../CheckoutView';
 import type { ReservationResponse } from '../../api/reservationsApi';
+import * as paymentsApi from '../../../payments/api/paymentsApi';
 
 const sampleReservation: ReservationResponse = {
   id: 'res-s04',
@@ -19,14 +20,10 @@ const sampleReservation: ReservationResponse = {
 
 describe('CheckoutView (Superfície S04)', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.restoreAllMocks();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('renders S04 checkout with snapshot details, timer, and demo environment notice', () => {
+  it('renders S04 checkout with snapshot details, timer, and demo payment section', () => {
     const onBackToEvent = vi.fn();
     const onBackToCatalog = vi.fn();
 
@@ -52,10 +49,106 @@ describe('CheckoutView (Superfície S04)', () => {
     expect(screen.getByText('2 ingressos')).toBeDefined();
     expect(screen.getByText(/125,00/)).toBeDefined();
     expect(screen.getByText(/250,00/)).toBeDefined();
-    expect(screen.getByTestId('payment-placeholder-section')).toBeDefined();
+    expect(screen.getByTestId('payment-section')).toBeDefined();
+    expect(screen.getByTestId('simulate-declined-payment-btn')).toBeDefined();
+  });
+
+  it('processes simulated DECLINED payment, displays clear decline feedback and allows retry', async () => {
+    const processPaymentSpy = vi.spyOn(paymentsApi, 'processPayment').mockResolvedValue({
+      id: 'pay-attempt-1',
+      reservationId: 'res-s04',
+      amount: 250.0,
+      currency: 'BRL',
+      status: 'DECLINED',
+      provider: 'FAKE',
+      declineReason: 'SIMULATED_DECLINE',
+      createdAt: '2026-08-16T12:01:00.000Z',
+      processedAt: '2026-08-16T12:01:00.000Z',
+    });
+
+    render(
+      <CheckoutView
+        reservation={sampleReservation}
+        eventTitle="Festival de MPB"
+        sectorName="Plateia Central"
+        onBackToEvent={vi.fn()}
+        onBackToCatalog={vi.fn()}
+      />,
+    );
+
+    const payBtn = screen.getByTestId('simulate-declined-payment-btn');
+    fireEvent.click(payBtn);
+
+    await waitFor(() => {
+      expect(processPaymentSpy).toHaveBeenCalledWith('res-s04', {
+        paymentAttemptId: expect.any(String),
+        simulatedOutcome: 'DECLINED',
+      });
+    });
+
+    // Feedback específico de recusa
+    const declinedAlert = await screen.findByTestId('payment-declined-alert');
+    expect(declinedAlert).toBeDefined();
+    expect(screen.getByText('Tentativa de Pagamento Recusada')).toBeDefined();
+    expect(screen.getByText(/SIMULATED_DECLINE/)).toBeDefined();
+    expect(screen.getByText(/pay-attempt-1/)).toBeDefined();
+
+    // Botão muda para permitir nova tentativa
+    expect(screen.getByText('Tentar Novamente (Simular Recusa)')).toBeDefined();
+
+    // Reserva continua HOLDING (não vai para tela de sucesso)
+    expect(screen.getByTestId('checkout-view')).toBeDefined();
+    expect(screen.queryByTestId('checkout-expired-alert')).toBeNull();
+  });
+
+  it('handles payment error when reservation expired during checkout (422)', async () => {
+    vi.spyOn(paymentsApi, 'processPayment').mockRejectedValue(
+      new paymentsApi.PaymentClientError('RESERVATION_EXPIRED', 'A reserva expirou.'),
+    );
+
+    render(
+      <CheckoutView
+        reservation={sampleReservation}
+        eventTitle="Festival de MPB"
+        sectorName="Plateia Central"
+        onBackToEvent={vi.fn()}
+        onBackToCatalog={vi.fn()}
+      />,
+    );
+
+    const payBtn = screen.getByTestId('simulate-declined-payment-btn');
+    fireEvent.click(payBtn);
+
+    const expiredAlert = await screen.findByTestId('checkout-expired-alert');
+    expect(expiredAlert).toBeDefined();
+    expect(screen.queryByTestId('payment-section')).toBeNull();
+  });
+
+  it('handles general payment errors and renders error alert', async () => {
+    vi.spyOn(paymentsApi, 'processPayment').mockRejectedValue(
+      new Error('Erro de conexão com o servidor.'),
+    );
+
+    render(
+      <CheckoutView
+        reservation={sampleReservation}
+        eventTitle="Festival de MPB"
+        sectorName="Plateia Central"
+        onBackToEvent={vi.fn()}
+        onBackToCatalog={vi.fn()}
+      />,
+    );
+
+    const payBtn = screen.getByTestId('simulate-declined-payment-btn');
+    fireEvent.click(payBtn);
+
+    const errorAlert = await screen.findByTestId('payment-error-alert');
+    expect(errorAlert).toBeDefined();
+    expect(screen.getByText('Erro de conexão com o servidor.')).toBeDefined();
   });
 
   it('switches to expired state when timer reaches zero, focuses alert and hides payment', () => {
+    vi.useFakeTimers();
     const onBackToEvent = vi.fn();
     const onBackToCatalog = vi.fn();
 
@@ -84,13 +177,15 @@ describe('CheckoutView (Superfície S04)', () => {
     const alertHeading = screen.getByTestId('expired-alert-heading');
     expect(document.activeElement).toBe(alertHeading);
 
-    // Payment placeholder must be hidden
-    expect(screen.queryByTestId('payment-placeholder-section')).toBeNull();
+    // Payment section must be hidden
+    expect(screen.queryByTestId('payment-section')).toBeNull();
 
     // Return to event CTA
     const returnBtn = screen.getByTestId('return-to-event-btn');
     fireEvent.click(returnBtn);
     expect(onBackToEvent).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
   });
 
   it('renders expired state immediately if initial reservation status is EXPIRED', () => {
@@ -110,7 +205,7 @@ describe('CheckoutView (Superfície S04)', () => {
     );
 
     expect(screen.getByTestId('checkout-expired-alert')).toBeDefined();
-    expect(screen.queryByTestId('payment-placeholder-section')).toBeNull();
+    expect(screen.queryByTestId('payment-section')).toBeNull();
   });
 
   it('navigates back to event and catalog using nav links', () => {

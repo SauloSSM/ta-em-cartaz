@@ -19,6 +19,10 @@ const reservationsTypeSource = readFileSync(
   new URL('../src/features/reservations/api/reservationsApi.ts', import.meta.url),
   'utf8',
 );
+const paymentsTypeSource = readFileSync(
+  new URL('../src/features/payments/api/paymentsApi.ts', import.meta.url),
+  'utf8',
+);
 
 const authSourceFile = ts.createSourceFile(
   'authApi.ts',
@@ -48,12 +52,20 @@ const reservationsSourceFile = ts.createSourceFile(
   true,
   ts.ScriptKind.TS,
 );
+const paymentsSourceFile = ts.createSourceFile(
+  'paymentsApi.ts',
+  paymentsTypeSource,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
 
 const allStatements = [
   ...authSourceFile.statements,
   ...catalogSourceFile.statements,
   ...eventsSourceFile.statements,
   ...reservationsSourceFile.statements,
+  ...paymentsSourceFile.statements,
 ];
 
 const aliases = new Map(
@@ -114,7 +126,8 @@ function parseOperations(source) {
     const pathBlock = section.slice(pathStart, pathEnd);
     if (!pathMarker[1].startsWith('/api/v1/auth/')
       && !pathMarker[1].startsWith('/api/v1/catalog/')
-      && !pathMarker[1].startsWith('/api/v1/events')) {
+      && !pathMarker[1].startsWith('/api/v1/events')
+      && !pathMarker[1].startsWith('/api/v1/reservations')) {
       return [];
     }
     const methodMarkers = [...pathBlock.matchAll(/^    (get|post|put|patch|delete|options|head|trace):$/gm)];
