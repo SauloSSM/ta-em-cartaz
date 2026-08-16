@@ -541,6 +541,52 @@ paths:
           $ref: '#/components/responses/ReservationConflict'
         '422':
           $ref: '#/components/responses/ReservationUnprocessable'
+  /api/v1/my-tickets:
+    get:
+      operationId: listMyTickets
+      summary: Lista todos os ingressos pertencentes ao comprador autenticado
+      description: Requer sessão autenticada com papel CUSTOMER. Retorna exclusivamente os ingressos do usuário da sessão, ordenados por data de criação decrescente.
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Lista de ingressos do cliente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyTicketListResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+  /api/v1/my-tickets/{ticketId}:
+    get:
+      operationId: getMyTicket
+      summary: Consulta os detalhes de um ingresso próprio do comprador
+      description: Requer sessão autenticada com papel CUSTOMER. Somente o comprador proprietário do ingresso pode acessá-lo. Não-proprietários recebem 404 seguro.
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do ingresso.
+      responses:
+        '200':
+          description: Detalhes do ingresso próprio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyTicketResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/TicketNotFound'
 components:
   securitySchemes:
     SessionCookie:
@@ -1006,6 +1052,69 @@ components:
         timestamp:
           type: string
           format: date-time
+    TicketStatus:
+      type: string
+      enum: [VALID, USED]
+    MyTicketResponse:
+      type: object
+      additionalProperties: false
+      required: [id, reservationId, eventId, sectorId, ordinal, status, manualCode, shareToken, validationToken, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reservationId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        ordinal:
+          type: integer
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        manualCode:
+          type: string
+        shareToken:
+          type: string
+        validationToken:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    MyTicketListResponse:
+      type: object
+      additionalProperties: false
+      required: [tickets]
+      properties:
+        tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyTicketResponse'
+    TicketErrorCode:
+      type: string
+      enum: [TICKET_NOT_FOUND, AUTH_UNAUTHENTICATED, AUTH_FORBIDDEN]
+    TicketApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId, timestamp]
+      properties:
+        code:
+          $ref: '#/components/schemas/TicketErrorCode'
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        traceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
   responses:
     AuthInvalidRequest:
       description: Corpo ausente ou inválido.
@@ -1078,4 +1187,10 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ReservationApiError'
+    TicketNotFound:
+      description: Ingresso não encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TicketApiError'
 

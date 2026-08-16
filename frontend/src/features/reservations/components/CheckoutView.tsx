@@ -25,6 +25,7 @@ export type CheckoutViewProps = {
   sectorName?: string;
   onBackToEvent: () => void;
   onBackToCatalog: () => void;
+  onNavigateMyTickets?: () => void;
   onReconcile?: () => Promise<ReservationResponse | null | void> | void;
 };
 
@@ -36,6 +37,7 @@ export function CheckoutView({
   sectorName,
   onBackToEvent,
   onBackToCatalog,
+  onNavigateMyTickets,
   onReconcile,
 }: CheckoutViewProps) {
   const [reservation, setReservation] = useState<ReservationResponse>(initialReservation);
@@ -301,14 +303,24 @@ export function CheckoutView({
             <span>ID da reserva: <code>{reservation.id}</code></span>
             <span>Status: <strong>CONFIRMED</strong></span>
           </div>
-          <div className="edt-checkout-view__expired-actions">
+          <div className="edt-checkout-view__expired-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {onNavigateMyTickets && (
+              <button
+                type="button"
+                className="edt-button edt-button--primary"
+                onClick={onNavigateMyTickets}
+                data-testid="confirmed-go-to-my-tickets-btn"
+              >
+                Ver Meus Ingressos →
+              </button>
+            )}
             <button
               type="button"
-              className="edt-button edt-button--primary"
+              className={`edt-button ${onNavigateMyTickets ? 'edt-button--secondary' : 'edt-button--primary'}`}
               onClick={onBackToCatalog}
               data-testid="confirmed-back-to-catalog-btn"
             >
-              Voltar ao Catálogo de Eventos →
+              Voltar ao Catálogo de Eventos
             </button>
           </div>
         </section>

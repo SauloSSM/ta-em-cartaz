@@ -23,6 +23,11 @@ import {
   getActiveHold,
   clearActiveHold,
 } from '../reservations';
+import {
+  MyTicketsList,
+  TicketDetail,
+  type MyTicketResponse,
+} from '../tickets';
 
 type AuthenticatedSessionProps = {
   user: SessionUser;
@@ -32,7 +37,7 @@ type AuthenticatedSessionProps = {
 };
 
 type OrganizerView = 'my-events' | 'catalog' | 'editor' | 'public-catalog' | 'public-detail';
-type CustomerView = 'catalog' | 'detail' | 'checkout';
+type CustomerView = 'catalog' | 'detail' | 'checkout' | 'my-tickets' | 'ticket-detail';
 
 const roleLabels = {
   ORGANIZER: 'Organizador',
@@ -62,6 +67,8 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
 
   const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
   const [selectedPublicEvent, setSelectedPublicEvent] = useState<PublicEventResponse | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<MyTicketResponse | null>(null);
+  const [selectedTicketMeta, setSelectedTicketMeta] = useState<{ event?: PublicEventResponse; sectorName?: string } | null>(null);
   const [activeReservation, setActiveReservation] = useState<ReservationResponse | null>(() => {
     if (!initialStoredHold) return null;
     const expiresMs = new Date(initialStoredHold.reservation.expiresAt).getTime();
@@ -246,6 +253,34 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
 
       {user.role === 'CUSTOMER' ? (
         <>
+          {/* Navegação do cliente: Catálogo e Meus Ingressos */}
+          <nav aria-label="Navegação do cliente" className="customer-nav" style={{ margin: '1rem 0', display: 'flex', gap: '0.75rem' }}>
+            <button
+              type="button"
+              className={`edt-button ${customerView === 'catalog' || customerView === 'detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
+              onClick={() => {
+                setSelectedPublicEvent(null);
+                setRestoredEventId(null);
+                setRestorationError(null);
+                setCustomerView('catalog');
+              }}
+              data-testid="customer-nav-catalog-btn"
+            >
+              Eventos em Cartaz
+            </button>
+            <button
+              type="button"
+              className={`edt-button ${customerView === 'my-tickets' || customerView === 'ticket-detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
+              onClick={() => {
+                setSelectedTicket(null);
+                setCustomerView('my-tickets');
+              }}
+              data-testid="customer-nav-my-tickets-btn"
+            >
+              Meus Ingressos
+            </button>
+          </nav>
+
           {/* Banner de acesso persistente "Continuar reserva" quando houver hold ativo nas telas de catálogo e detalhe */}
           {customerView !== 'checkout' && activeReservation && activeReservation.status === 'HOLDING' && (
             <ActiveReservationBanner
@@ -260,7 +295,31 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
             />
           )}
 
-          {customerView === 'checkout' && activeReservation !== null ? (
+          {customerView === 'ticket-detail' && selectedTicket !== null ? (
+            <TicketDetail
+              ticket={selectedTicket}
+              eventTitle={selectedTicketMeta?.event?.title}
+              eventDate={selectedTicketMeta?.event?.startsAt}
+              eventVenue={selectedTicketMeta?.event?.venueName}
+              eventAddress={selectedTicketMeta?.event?.venueAddress}
+              sectorName={selectedTicketMeta?.sectorName}
+              onBackToList={() => {
+                setSelectedTicket(null);
+                setCustomerView('my-tickets');
+              }}
+            />
+          ) : customerView === 'my-tickets' ? (
+            <MyTicketsList
+              onSelectTicket={(ticket, meta) => {
+                setSelectedTicket(ticket);
+                setSelectedTicketMeta(meta || null);
+                setCustomerView('ticket-detail');
+              }}
+              onBrowseCatalog={() => {
+                setCustomerView('catalog');
+              }}
+            />
+          ) : customerView === 'checkout' && activeReservation !== null ? (
             <CheckoutView
               reservation={activeReservation}
               eventTitle={selectedPublicEvent?.title ?? activeHoldMeta?.eventTitle}
@@ -276,6 +335,9 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
               }}
               onBackToCatalog={() => {
                 setCustomerView('catalog');
+              }}
+              onNavigateMyTickets={() => {
+                setCustomerView('my-tickets');
               }}
               onReconcile={handleReconcile}
             />

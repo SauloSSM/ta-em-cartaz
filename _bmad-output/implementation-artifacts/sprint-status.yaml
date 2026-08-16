@@ -74,7 +74,7 @@ development_status:
 
   epic-6: in-progress
   6-1-gerar-e-proteger-credenciais-reexibíveis-de-ticket: done
-  6-2-listar-e-abrir-tickets-próprios: backlog
+  6-2-listar-e-abrir-tickets-próprios: done
   6-3-compartilhar-ticket-em-página-pública-permanente: backlog
   epic-6-retrospective: optional
 
