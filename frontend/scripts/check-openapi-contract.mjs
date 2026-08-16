@@ -140,7 +140,8 @@ function parseOperations(source) {
       && !pathMarker[1].startsWith('/api/v1/catalog/')
       && !pathMarker[1].startsWith('/api/v1/events')
       && !pathMarker[1].startsWith('/api/v1/reservations')
-      && !pathMarker[1].startsWith('/api/v1/my-tickets')) {
+      && !pathMarker[1].startsWith('/api/v1/my-tickets')
+      && !pathMarker[1].startsWith('/api/v1/public/tickets')) {
       return [];
     }
     const methodMarkers = [...pathBlock.matchAll(/^    (get|post|put|patch|delete|options|head|trace):$/gm)];

@@ -5,18 +5,43 @@ import {
   PublicEventDetail,
   type PublicEventResponse,
 } from '../features/events';
+import { PublicSharedTicket } from '../features/tickets';
 import { useSession, type SessionState } from './session/useSession';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import './App.css';
 
 export type AppProps = {
-  initialAnonymousView?: 'catalog' | 'login' | 'detail';
+  initialAnonymousView?: 'catalog' | 'login' | 'detail' | 'shared-ticket';
+  initialShareToken?: string;
 };
 
-export function App({ initialAnonymousView = 'catalog' }: AppProps) {
+export function App({ initialAnonymousView, initialShareToken }: AppProps) {
   const { state, setEmail, authenticate, endSession, retryBootstrap } = useSession();
-  const [anonymousView, setAnonymousView] = useState<'catalog' | 'login' | 'detail'>(initialAnonymousView);
+  const [anonymousView, setAnonymousView] = useState<'catalog' | 'login' | 'detail' | 'shared-ticket'>(() => {
+    if (initialAnonymousView !== undefined) {
+      return initialAnonymousView;
+    }
+    if (typeof window !== 'undefined' && window.location?.pathname) {
+      const match = window.location.pathname.match(/^\/t\/([^/]+)/);
+      if (match && match[1]) {
+        return 'shared-ticket';
+      }
+    }
+    return 'catalog';
+  });
+  const [shareToken, setShareToken] = useState<string | null>(() => {
+    if (initialShareToken !== undefined) {
+      return initialShareToken;
+    }
+    if (typeof window !== 'undefined' && window.location?.pathname) {
+      const match = window.location.pathname.match(/^\/t\/([^/]+)/);
+      if (match && match[1]) {
+        return decodeURIComponent(match[1]);
+      }
+    }
+    return null;
+  });
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedEventData, setSelectedEventData] = useState<PublicEventResponse | null>(null);
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
@@ -42,11 +67,13 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
   const handleSelectCatalog = () => {
     setSelectedEventId(null);
     setSelectedEventData(null);
+    setShareToken(null);
     setAnonymousView('catalog');
   };
 
   const handleSelectLogin = () => {
     setLoginNotice(null);
+    setShareToken(null);
     setAnonymousView('login');
   };
 
@@ -64,6 +91,7 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
         <SessionContent
           state={state}
           anonymousView={anonymousView}
+          shareToken={shareToken}
           selectedEventId={selectedEventId}
           selectedEventData={selectedEventData}
           loginNotice={loginNotice}
@@ -71,10 +99,12 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
           onSelectDetail={(event) => {
             setSelectedEventData(event);
             setSelectedEventId(event.id);
+            setShareToken(null);
             setAnonymousView('detail');
           }}
           onProceedToLogin={(notice) => {
             setLoginNotice(notice);
+            setShareToken(null);
             setAnonymousView('login');
           }}
           onSelectLogin={handleSelectLogin}
@@ -95,7 +125,8 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
 
 type SessionContentProps = {
   state: SessionState;
-  anonymousView: 'catalog' | 'login' | 'detail';
+  anonymousView: 'catalog' | 'login' | 'detail' | 'shared-ticket';
+  shareToken: string | null;
   selectedEventId: string | null;
   selectedEventData: PublicEventResponse | null;
   loginNotice: string | null;
@@ -112,6 +143,7 @@ type SessionContentProps = {
 function SessionContent({
   state,
   anonymousView,
+  shareToken,
   selectedEventId,
   selectedEventData,
   loginNotice,
@@ -138,6 +170,15 @@ function SessionContent({
         </section>
       );
     case 'anonymous':
+      if (anonymousView === 'shared-ticket' && shareToken) {
+        return (
+          <PublicSharedTicket
+            shareToken={shareToken}
+            onBrowseCatalog={onSelectCatalog}
+            onLoginClick={onSelectLogin}
+          />
+        );
+      }
       if (anonymousView === 'detail' && selectedEventId) {
         return (
           <PublicEventDetail

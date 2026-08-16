@@ -6,7 +6,7 @@ import './Navbar.css';
 
 export type NavbarProps = {
   user: SessionUser | null;
-  activeView: 'catalog' | 'login' | 'detail' | 'authenticated';
+  activeView: 'catalog' | 'login' | 'detail' | 'authenticated' | 'shared-ticket';
   onNavigateCatalog: () => void;
   onNavigateLogin: () => void;
   onLogout?: () => void;

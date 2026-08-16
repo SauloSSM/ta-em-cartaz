@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   listMyTickets,
   getMyTicket,
+  getPublicTicket,
   TicketClientError,
   type MyTicketResponse,
   type MyTicketListResponse,
@@ -127,6 +128,58 @@ describe('ticketsApi', () => {
 
       await expect(
         getMyTicket('non-existent-or-not-owned-id'),
+      ).rejects.toThrow(TicketClientError);
+    });
+  });
+
+  describe('getPublicTicket', () => {
+    it('sends GET request to /api/v1/public/tickets/:shareToken and returns public ticket', async () => {
+      const mockPublicTicket = {
+        id: '11111111-1111-1111-1111-111111111111',
+        eventId: '33333333-3333-3333-3333-333333333333',
+        sectorId: '44444444-4444-4444-4444-444444444444',
+        ordinal: 1,
+        status: 'VALID' as const,
+        manualCode: 'AB7K92QX4M',
+        shareToken: 'share-token-12345678901234567890123456789012',
+        validationToken: 'val-token-12345678901234567890123456789012',
+        createdAt: '2026-08-16T14:00:00Z',
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockPublicTicket),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await getPublicTicket('share-token-12345678901234567890123456789012');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/public/tickets/share-token-12345678901234567890123456789012',
+        {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: expect.any(Headers),
+        },
+      );
+      expect(result).toEqual(mockPublicTicket);
+    });
+
+    it('throws TicketClientError on 404 for invalid shareToken', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({
+          code: 'TICKET_NOT_FOUND',
+          message: 'Ingresso não encontrado.',
+          traceId: 'tr-notfound',
+          timestamp: '2026-08-16T14:00:00Z',
+        }),
+      }));
+
+      await expect(
+        getPublicTicket('invalid-token'),
       ).rejects.toThrow(TicketClientError);
     });
   });

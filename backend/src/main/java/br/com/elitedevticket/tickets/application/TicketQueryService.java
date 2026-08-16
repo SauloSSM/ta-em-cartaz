@@ -39,4 +39,13 @@ public class TicketQueryService {
 
         return ticket;
     }
+
+    @Transactional(readOnly = true)
+    public Ticket getTicketByShareToken(String shareToken) {
+        if (shareToken == null || shareToken.isBlank()) {
+            throw new TicketNotFoundException("Ingresso não encontrado.");
+        }
+        return ticketRepository.findByShareToken(shareToken.trim())
+                .orElseThrow(() -> new TicketNotFoundException("Ingresso não encontrado."));
+    }
 }

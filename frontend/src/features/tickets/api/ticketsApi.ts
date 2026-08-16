@@ -17,6 +17,18 @@ export type MyTicketListResponse = {
   tickets: MyTicketResponse[];
 };
 
+export type PublicTicketResponse = {
+  id: string;
+  eventId: string;
+  sectorId: string;
+  ordinal: number;
+  status: TicketStatus;
+  manualCode: string;
+  shareToken: string;
+  validationToken: string;
+  createdAt: string;
+};
+
 export type TicketErrorCode =
   | 'TICKET_NOT_FOUND'
   | 'AUTH_UNAUTHENTICATED'
@@ -82,6 +94,19 @@ export async function getMyTicket(ticketId: string): Promise<MyTicketResponse> {
     },
   );
   if (!isMyTicketResponse(payload)) {
+    throw invalidResponse();
+  }
+  return payload;
+}
+
+export async function getPublicTicket(shareToken: string): Promise<PublicTicketResponse> {
+  const payload = await requestJson(
+    `/api/v1/public/tickets/${encodeURIComponent(shareToken)}`,
+    {
+      method: 'GET',
+    },
+  );
+  if (!isPublicTicketResponse(payload)) {
     throw invalidResponse();
   }
   return payload;
@@ -174,6 +199,33 @@ function isMyTicketListResponse(value: unknown): value is MyTicketListResponse {
     return false;
   }
   return Array.isArray(value.tickets) && value.tickets.every(isMyTicketResponse);
+}
+
+function isPublicTicketResponse(value: unknown): value is PublicTicketResponse {
+  if (!isRecord(value) || !hasOnlyKeys(value, [
+    'id',
+    'eventId',
+    'sectorId',
+    'ordinal',
+    'status',
+    'manualCode',
+    'shareToken',
+    'validationToken',
+    'createdAt',
+  ])) {
+    return false;
+  }
+  const validStatuses: TicketStatus[] = ['VALID', 'USED'];
+  return typeof value.id === 'string'
+    && typeof value.eventId === 'string'
+    && typeof value.sectorId === 'string'
+    && typeof value.ordinal === 'number'
+    && typeof value.status === 'string'
+    && validStatuses.includes(value.status as TicketStatus)
+    && typeof value.manualCode === 'string'
+    && typeof value.shareToken === 'string'
+    && typeof value.validationToken === 'string'
+    && typeof value.createdAt === 'string';
 }
 
 function isTicketApiError(value: unknown): value is TicketApiError {

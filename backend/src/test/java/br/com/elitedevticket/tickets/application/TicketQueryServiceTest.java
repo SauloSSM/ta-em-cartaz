@@ -95,4 +95,57 @@ class TicketQueryServiceTest {
                 .isInstanceOf(TicketNotFoundException.class)
                 .hasMessage("Ingresso não encontrado.");
     }
+
+    @Test
+    @DisplayName("getTicketByShareToken retorna o ingresso quando o shareToken existe")
+    void shouldReturnTicketWhenShareTokenExists() {
+        String shareToken = "share-token-valid";
+        Ticket t1 = Ticket.createValid(
+                UUID.randomUUID(), reservationId, eventId, sectorId, customer1Id, 1,
+                "val-token-1", "MC00000001", shareToken, now
+        );
+
+        when(ticketRepository.findByShareToken(shareToken)).thenReturn(Optional.of(t1));
+
+        Ticket result = service.getTicketByShareToken(shareToken);
+        assertThat(result).isEqualTo(t1);
+    }
+
+    @Test
+    @DisplayName("getTicketByShareToken lança TicketNotFoundException quando o shareToken não existe")
+    void shouldThrowNotFoundWhenShareTokenDoesNotExist() {
+        String shareToken = "non-existent-token";
+        when(ticketRepository.findByShareToken(shareToken)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getTicketByShareToken(shareToken))
+                .isInstanceOf(TicketNotFoundException.class)
+                .hasMessage("Ingresso não encontrado.");
+    }
+
+    @Test
+    @DisplayName("getTicketByShareToken lança TicketNotFoundException quando shareToken é nulo ou vazio")
+    void shouldThrowNotFoundWhenShareTokenIsNullOrBlank() {
+        assertThatThrownBy(() -> service.getTicketByShareToken(null))
+                .isInstanceOf(TicketNotFoundException.class)
+                .hasMessage("Ingresso não encontrado.");
+
+        assertThatThrownBy(() -> service.getTicketByShareToken("   "))
+                .isInstanceOf(TicketNotFoundException.class)
+                .hasMessage("Ingresso não encontrado.");
+    }
+
+    @Test
+    @DisplayName("getTicketByShareToken faz trim do token antes da busca")
+    void shouldTrimShareTokenBeforeQuery() {
+        String shareToken = "share-token-valid";
+        Ticket t1 = Ticket.createValid(
+                UUID.randomUUID(), reservationId, eventId, sectorId, customer1Id, 1,
+                "val-token-1", "MC00000001", shareToken, now
+        );
+
+        when(ticketRepository.findByShareToken(shareToken)).thenReturn(Optional.of(t1));
+
+        Ticket result = service.getTicketByShareToken("  " + shareToken + "  ");
+        assertThat(result).isEqualTo(t1);
+    }
 }

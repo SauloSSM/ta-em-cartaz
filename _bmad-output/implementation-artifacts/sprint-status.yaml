@@ -72,10 +72,10 @@ development_status:
   5-3-reconciliar-resposta-de-pagamento-perdida-sem-nova-cobrança: done
   epic-5-retrospective: optional
 
-  epic-6: in-progress
+  epic-6: done
   6-1-gerar-e-proteger-credenciais-reexibíveis-de-ticket: done
   6-2-listar-e-abrir-tickets-próprios: done
-  6-3-compartilhar-ticket-em-página-pública-permanente: backlog
+  6-3-compartilhar-ticket-em-página-pública-permanente: done
   epic-6-retrospective: optional
 
   epic-7: backlog

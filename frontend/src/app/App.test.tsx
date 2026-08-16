@@ -887,6 +887,84 @@ describe('App session flow', () => {
     // Intenção foi limpa do sessionStorage
     expect(sessionStorage.getItem('edt_purchase_intention')).toBeNull();
   });
+
+  it('visitante anônimo acessa ingresso compartilhado diretamente pelo link /t/:shareToken', async () => {
+    const mockSharedTicket = {
+      id: '11111111-1111-1111-1111-111111111111',
+      eventId: '22222222-2222-2222-2222-222222222222',
+      sectorId: '33333333-3333-3333-3333-333333333333',
+      ordinal: 1,
+      status: 'VALID',
+      manualCode: 'AB7K92QX4M',
+      shareToken: 'share-token-test-12345678901234567890123456789012',
+      validationToken: 'val-token-test-12345678901234567890123456789012',
+      createdAt: '2026-08-16T14:00:00Z',
+    };
+
+    const mockEvent = {
+      id: '22222222-2222-2222-2222-222222222222',
+      organizerId: '00000000-0000-0000-0000-000000000001',
+      title: 'Festival Compartilhado',
+      category: 'Música',
+      description: 'Festival de música ao vivo',
+      venueName: 'Estádio Municipal',
+      venueAddress: 'Rua Principal, 50',
+      startsAt: '2026-10-15T19:00:00Z',
+      status: 'PUBLISHED',
+      createdAt: '2026-08-16T12:00:00Z',
+      updatedAt: '2026-08-16T12:00:00Z',
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({ authenticated: false }));
+      }
+      if (url.includes('/api/v1/public/tickets/')) {
+        return Promise.resolve(jsonResponse(mockSharedTicket));
+      }
+      if (url.includes('/sectors')) {
+        return Promise.resolve(jsonResponse({
+          sectors: [{
+            id: '33333333-3333-3333-3333-333333333333',
+            eventId: '22222222-2222-2222-2222-222222222222',
+            name: 'Pista Geral',
+            description: 'Acesso geral',
+            capacity: 200,
+            availableQuantity: 150,
+            price: 100,
+            createdAt: '2026-08-16T12:00:00Z',
+            updatedAt: '2026-08-16T12:00:00Z',
+          }],
+        }));
+      }
+      if (url.includes('/api/v1/events/22222222-2222-2222-2222-222222222222')) {
+        return Promise.resolve(jsonResponse(mockEvent));
+      }
+      return Promise.resolve(jsonResponse({ events: [] }));
+    });
+
+    render(
+      <App
+        initialAnonymousView="shared-ticket"
+        initialShareToken="share-token-test-12345678901234567890123456789012"
+      />
+    );
+
+    // Verifica que renderiza a página do ingresso compartilhado sem exigir login
+    expect(await screen.findByRole('heading', { level: 2, name: 'Festival Compartilhado' })).toBeDefined();
+    expect(screen.getByTestId('shared-ticket-status-badge').textContent).toBe('Válido');
+    expect(screen.getByText('Ingresso #1')).toBeDefined();
+    expect(screen.getByText('AB7K-92QX-4M')).toBeDefined();
+    expect(screen.getByTestId('qrcode-panel')).toBeDefined();
+
+    // Permite voltar ao catálogo
+    const backBtn = screen.getByTestId('shared-ticket-back-to-catalog-btn');
+    const user = userEvent.setup();
+    await user.click(backBtn);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
+  });
 });
 
 function jsonResponse(body: unknown, status = 200) {

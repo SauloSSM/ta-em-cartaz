@@ -587,6 +587,29 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
         '404':
           $ref: '#/components/responses/TicketNotFound'
+  /api/v1/public/tickets/{shareToken}:
+    get:
+      operationId: getPublicTicket
+      summary: Consulta pública de um ingresso por shareToken
+      description: Acesso público anônimo sem autenticação. Resolve o ingresso exclusivamente pelo shareToken permanente. Não expõe dados pessoais do comprador ou identificadores de reserva. Retorna 404 neutro se o token for inválido ou não existir.
+      security:
+        - {}
+      parameters:
+        - name: shareToken
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Token público permanente de compartilhamento do ingresso.
+      responses:
+        '200':
+          description: Dados públicos do ingresso para apresentação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTicketResponse'
+        '404':
+          $ref: '#/components/responses/TicketNotFound'
 components:
   securitySchemes:
     SessionCookie:
@@ -1064,6 +1087,33 @@ components:
           type: string
           format: uuid
         reservationId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        ordinal:
+          type: integer
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        manualCode:
+          type: string
+        shareToken:
+          type: string
+        validationToken:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    PublicTicketResponse:
+      type: object
+      additionalProperties: false
+      required: [id, eventId, sectorId, ordinal, status, manualCode, shareToken, validationToken, createdAt]
+      properties:
+        id:
           type: string
           format: uuid
         eventId:
