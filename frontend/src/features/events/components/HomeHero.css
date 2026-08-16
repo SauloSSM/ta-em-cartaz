@@ -1,0 +1,220 @@
+/* ==========================================================================
+   Home Hero Styles (Neo-Swiss / Festival Editorial)
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & REFERENCE_MANIFEST
+   ========================================================================== */
+
+.tc-hero {
+  position: relative;
+  width: 100%;
+  padding: var(--space-8) 0 var(--space-6);
+  overflow: hidden;
+  border-bottom: 2px solid var(--brand-ink);
+}
+
+.tc-hero__container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  align-items: center;
+  position: relative;
+}
+
+@media (min-width: 992px) {
+  .tc-hero {
+    padding: var(--space-12) 0 var(--space-8);
+  }
+
+  .tc-hero__container {
+    grid-template-columns: 1.1fr 1fr;
+    gap: var(--space-8);
+  }
+}
+
+/* Left Typography Block */
+.tc-hero__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  z-index: var(--z-content);
+  position: relative;
+}
+
+.tc-hero__title-group {
+  position: relative;
+}
+
+.tc-hero__star-decoration {
+  position: absolute;
+  top: -24px;
+  left: -20px;
+  width: 48px;
+  height: 48px;
+  color: var(--brand-green);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.85;
+}
+
+@media (min-width: 768px) {
+  .tc-hero__star-decoration {
+    top: -36px;
+    left: -32px;
+    width: 64px;
+    height: 64px;
+  }
+}
+
+.tc-hero__title {
+  font-family: var(--font-display);
+  font-size: var(--type-display-xl-size);
+  line-height: var(--type-display-xl-line);
+  letter-spacing: var(--type-display-xl-track);
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  margin: 0;
+}
+
+.tc-hero__tagline-box {
+  display: inline-flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+  gap: 2px;
+}
+
+.tc-hero__tagline {
+  font-family: var(--font-body);
+  font-size: var(--type-body-l-size);
+  font-weight: 800;
+  color: var(--brand-ink);
+  line-height: 1.3;
+}
+
+.tc-hero__highlight {
+  display: inline-block;
+  background-color: var(--brand-green);
+  color: var(--brand-ink);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-control);
+  font-weight: 800;
+  width: fit-content;
+}
+
+/* Right Collage Visual */
+.tc-hero__collage {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .tc-hero__collage {
+    height: 280px;
+  }
+}
+
+@media (min-width: 992px) {
+  .tc-hero__collage {
+    height: 340px;
+  }
+}
+
+/* Sun disk */
+.tc-hero__sun {
+  position: absolute;
+  top: 10%;
+  right: 15%;
+  width: 180px;
+  height: 180px;
+  background-color: var(--brand-orange);
+  border-radius: 50%;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .tc-hero__sun {
+    width: 240px;
+    height: 240px;
+    right: 10%;
+  }
+}
+
+/* Crowd silhouette vector / collage layer */
+.tc-hero__crowd-svg {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  z-index: 3;
+  color: var(--brand-ink);
+}
+
+/* Torn paper note */
+.tc-hero__note {
+  position: absolute;
+  bottom: 15%;
+  left: 5%;
+  background-color: var(--brand-green);
+  color: var(--brand-ink);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: var(--type-body-s-size);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  transform: rotate(-4deg);
+  border: 1px dashed var(--brand-ink);
+  box-shadow: 3px 3px 0px var(--brand-ink);
+  z-index: 4;
+}
+
+@media (max-width: 480px) {
+  .tc-hero__note {
+    font-size: 0.75rem;
+    padding: var(--space-2) var(--space-3);
+    bottom: 8%;
+    left: 2%;
+  }
+}
+
+/* Circular pink badge "VIVA AGORA" */
+.tc-hero__badge {
+  position: absolute;
+  bottom: 0;
+  right: 25%;
+  width: 76px;
+  height: 76px;
+  background-color: var(--brand-pink);
+  color: var(--brand-ink);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: rotate(6deg);
+  box-shadow: 2px 2px 0px var(--brand-ink);
+  z-index: 5;
+  text-align: center;
+}
+
+/* Halftone dot pattern */
+.tc-hero__halftone {
+  position: absolute;
+  top: 5%;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  opacity: 0.2;
+  z-index: 2;
+}

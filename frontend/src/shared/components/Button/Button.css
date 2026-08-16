@@ -1,0 +1,169 @@
+/* ==========================================================================
+   Button Component Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
+   ========================================================================== */
+
+.tc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  min-width: 44px;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-body);
+  font-size: var(--type-body-s-size);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard),
+              transform var(--motion-fast) var(--ease-standard);
+  position: relative;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Primary Button */
+.tc-btn--primary {
+  background-color: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  border-color: var(--brand-ink);
+}
+
+.tc-btn--primary:hover:not(:disabled) {
+  background-color: #262422;
+  border-color: #262422;
+}
+
+.tc-btn--primary:hover:not(:disabled) .tc-btn__arrow {
+  transform: translateX(4px);
+}
+
+.tc-btn--primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Secondary Button */
+.tc-btn--secondary {
+  background-color: transparent;
+  color: var(--brand-ink);
+  border: 1px solid var(--brand-ink);
+}
+
+.tc-btn--secondary:hover:not(:disabled) {
+  background-color: var(--brand-paper-deep);
+}
+
+.tc-btn--secondary:hover:not(:disabled) .tc-btn__arrow {
+  transform: translateX(4px);
+}
+
+.tc-btn--secondary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Link Button */
+.tc-btn--link {
+  background-color: transparent;
+  color: var(--brand-ink);
+  border: none;
+  min-height: auto;
+  padding: var(--space-1) var(--space-2);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.tc-btn--link:hover:not(:disabled) {
+  color: var(--brand-orange);
+}
+
+.tc-btn--link:hover:not(:disabled) .tc-btn__arrow {
+  transform: translateX(3px);
+}
+
+/* Disabled State */
+.tc-btn:disabled,
+.tc-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Focus Visible */
+.tc-btn:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Arrow Icon */
+.tc-btn__arrow {
+  display: inline-block;
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+/* Loading Spinner */
+.tc-btn__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: currentColor;
+  animation: tc-spin 0.6s linear infinite;
+}
+
+@keyframes tc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Backward compatibility classes for existing tests */
+.edt-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-body);
+  font-size: var(--type-body-s-size);
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+  border: 1px solid transparent;
+}
+
+.edt-button--primary {
+  background-color: var(--brand-ink);
+  color: var(--brand-paper-soft);
+}
+
+.edt-button--primary:hover:not(:disabled) {
+  background-color: #262422;
+}
+
+.edt-button--secondary {
+  background-color: transparent;
+  color: var(--brand-ink);
+  border-color: var(--brand-ink);
+}
+
+.edt-link-btn {
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--brand-ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

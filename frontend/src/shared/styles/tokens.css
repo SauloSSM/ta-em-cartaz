@@ -1,0 +1,150 @@
+/* ==========================================================================
+   Tá em Cartaz — Design System Tokens (v1.0 FINAL)
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
+   ========================================================================== */
+
+:root {
+  /* --- 2.1 Typography Families --- */
+  --font-display: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* --- Type Scale & Roles --- */
+  --type-display-xl-size: clamp(4rem, 8vw, 8rem);
+  --type-display-xl-line: 0.90;
+  --type-display-xl-track: -0.02em;
+
+  --type-display-l-size: clamp(3rem, 6vw, 5.5rem);
+  --type-display-l-line: 0.94;
+  --type-display-l-track: -0.015em;
+
+  --type-display-m-size: clamp(2.25rem, 4vw, 3.5rem);
+  --type-display-m-line: 0.98;
+
+  --type-heading-l-size: 2rem;
+  --type-heading-l-line: 1.12;
+
+  --type-heading-m-size: 1.5rem;
+  --type-heading-m-line: 1.25;
+
+  --type-body-l-size: 1.125rem;
+  --type-body-l-line: 1.55;
+
+  --type-body-m-size: 1rem;
+  --type-body-m-line: 1.50;
+
+  --type-body-s-size: 0.875rem;
+  --type-body-s-line: 1.45;
+
+  --type-label-size: 0.75rem;
+  --type-label-line: 1.35;
+  --type-label-track: 0.06em;
+
+  /* --- 2.2 Brand Colors --- */
+  --brand-ink: #10100F;
+  --brand-paper: #F3E5D8;
+  --brand-paper-soft: #FFF8F0;
+  --brand-paper-deep: #D6C8B7;
+
+  --brand-orange: #F25709;
+  --brand-pink: #E774A4;
+  --brand-yellow: #ECA705;
+  --brand-green: #4D9A6C;
+
+  /* --- 2.3 Functional Neutrals --- */
+  --neutral-900: #10100F;
+  --neutral-700: #3F3D39;
+  --neutral-500: #6E6A63;
+  --neutral-300: #A5A098;
+  --neutral-200: #D6C8B7;
+  --neutral-100: #EEE3D7;
+  --neutral-050: #FFF8F0;
+
+  /* --- 2.4 Semantic States --- */
+  --semantic-success: #176B45;
+  --semantic-success-bg: #E7F4EC;
+
+  --semantic-warning: #8A5B00;
+  --semantic-warning-bg: #FFF2CC;
+
+  --semantic-danger: #B42318;
+  --semantic-danger-bg: #FDECEA;
+
+  --semantic-info: #175CD3;
+  --semantic-info-bg: #EAF2FF;
+
+  --semantic-wrong-event: #A970FF;
+
+  /* --- 2.5 Focus Ring --- */
+  --focus-ring: #175CD3;
+  --focus-width: 3px;
+  --focus-offset: 2px;
+
+  /* --- 3.1 Spacing Scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* --- 3.2 Layout Tokens --- */
+  --page-padding: var(--page-padding-mobile);
+  --page-padding-mobile: 16px;
+  --page-padding-tablet: 24px;
+  --page-padding-desktop: 32px;
+
+  --grid-gap: var(--grid-gap-mobile);
+  --grid-gap-mobile: 16px;
+  --grid-gap-tablet: 24px;
+  --grid-gap-desktop: 24px;
+
+  --section-gap: var(--section-gap-mobile);
+  --section-gap-mobile: 48px;
+  --section-gap-tablet: 64px;
+  --section-gap-desktop: 96px;
+
+  --content-max: 1440px;
+
+  /* --- 3.4 Radius --- */
+  --radius-control: 4px;
+  --radius-container: 8px;
+  --radius-overlay: 12px;
+  --radius-pill: 999px;
+
+  /* --- 3.5 Elevation --- */
+  --shadow-overlay: 0 8px 24px rgba(16, 16, 15, 0.12);
+
+  /* --- 3.6 Layer Scale / Z-Index --- */
+  --z-base: 0;
+  --z-content: 10;
+  --z-sticky: 20;
+  --z-dropdown: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* --- 4. Motion --- */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-padding: var(--page-padding-tablet);
+    --grid-gap: var(--grid-gap-tablet);
+    --section-gap: var(--section-gap-tablet);
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --page-padding: var(--page-padding-desktop);
+    --grid-gap: var(--grid-gap-desktop);
+    --section-gap: var(--section-gap-desktop);
+  }
+}

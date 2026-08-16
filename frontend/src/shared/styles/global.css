@@ -1,0 +1,122 @@
+/* ==========================================================================
+   Tá em Cartaz — Global CSS & Reset
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
+   ========================================================================== */
+
+@import './tokens.css';
+
+/* --- CSS Reset --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--brand-ink);
+  background-color: var(--brand-paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--brand-paper);
+  color: var(--brand-ink);
+  overflow-x: hidden;
+}
+
+/* --- Skip to Main Content --- */
+.tc-skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  z-index: var(--z-toast);
+  padding: var(--space-3) var(--space-4);
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  font-weight: 700;
+  font-size: var(--type-body-s-size);
+  text-decoration: none;
+  border-radius: var(--radius-control);
+  transition: top var(--motion-fast) var(--ease-standard);
+}
+
+.tc-skip-link:focus-visible {
+  top: 16px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* --- Focus Rings --- */
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* --- Container & Layout --- */
+.tc-container {
+  width: 100%;
+  max-width: var(--content-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
+}
+
+/* --- Visually Hidden (Accessibility) --- */
+.tc-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Backward compatibility with edt-visually-hidden */
+.edt-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* --- Typography Utilities --- */
+.tc-font-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.tc-font-body {
+  font-family: var(--font-body);
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

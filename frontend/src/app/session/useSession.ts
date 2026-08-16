@@ -7,6 +7,8 @@ import {
   type SessionUser,
 } from '../api/authApi';
 
+export type { SessionUser };
+
 const PURCHASE_INTENT_KEY = 'edt.purchase-intent.v1';
 
 export type SessionState =

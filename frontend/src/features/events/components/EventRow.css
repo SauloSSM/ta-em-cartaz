@@ -1,0 +1,216 @@
+/* ==========================================================================
+   EventRow & EventCard Styles (Neo-Swiss Editorial)
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & REFERENCE_MANIFEST
+   ========================================================================== */
+
+.tc-event-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px dashed var(--neutral-300);
+  transition: background-color var(--motion-fast) var(--ease-standard);
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .tc-event-row {
+    grid-template-columns: 90px 1fr 1fr auto;
+    gap: var(--space-6);
+    padding: var(--space-4) var(--space-2);
+  }
+
+  .tc-event-row:hover {
+    background-color: var(--brand-paper-soft);
+  }
+}
+
+/* Date block */
+.tc-event-row__date-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .tc-event-row__date-block {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+}
+
+.tc-event-row__date-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  font-family: var(--font-display);
+  border: 1px solid var(--brand-ink);
+  color: var(--brand-ink);
+  line-height: 1;
+}
+
+.tc-event-row__date-badge--orange { background-color: var(--brand-orange); }
+.tc-event-row__date-badge--pink { background-color: var(--brand-pink); }
+.tc-event-row__date-badge--yellow { background-color: var(--brand-yellow); }
+.tc-event-row__date-badge--green { background-color: var(--brand-green); }
+
+.tc-event-row__date-day {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.tc-event-row__date-month {
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.tc-event-row__weekday-time {
+  font-family: var(--font-body);
+  font-size: var(--type-label-size);
+  font-weight: 700;
+  color: var(--neutral-700);
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+}
+
+/* Info block: Title & Category */
+.tc-event-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tc-event-row__title {
+  font-family: var(--font-display);
+  font-size: var(--type-heading-m-size);
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  line-height: 1.15;
+  margin: 0;
+}
+
+.tc-event-row__tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tc-event-row__category {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  background-color: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  font-family: var(--font-body);
+  font-size: var(--type-label-size);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+  border-radius: var(--radius-control);
+}
+
+.tc-event-row__status-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  background-color: var(--semantic-danger-bg);
+  color: var(--semantic-danger);
+  border: 1px solid var(--semantic-danger);
+  font-family: var(--font-body);
+  font-size: var(--type-label-size);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+  border-radius: var(--radius-control);
+}
+
+/* Venue block */
+.tc-event-row__venue {
+  font-family: var(--font-body);
+  font-size: var(--type-body-s-size);
+  color: var(--neutral-700);
+  line-height: 1.3;
+}
+
+.tc-event-row__venue-name {
+  font-weight: 700;
+  color: var(--brand-ink);
+  text-transform: uppercase;
+}
+
+/* Price & Action block */
+.tc-event-row__action-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .tc-event-row__action-block {
+    justify-content: flex-end;
+    width: auto;
+  }
+}
+
+.tc-event-row__price-box {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.tc-event-row__price-label {
+  font-family: var(--font-body);
+  font-size: var(--type-label-size);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+  color: var(--neutral-500);
+}
+
+.tc-event-row__price-value {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+  color: var(--brand-ink);
+  line-height: 1;
+}
+
+.tc-event-row__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background-color: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-standard),
+              background-color var(--motion-fast) var(--ease-standard);
+  flex-shrink: 0;
+}
+
+.tc-event-row__btn:hover {
+  background-color: #262422;
+  transform: scale(1.08);
+}
+
+.tc-event-row__btn:active {
+  transform: scale(0.96);
+}
+
+.tc-event-row__btn:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

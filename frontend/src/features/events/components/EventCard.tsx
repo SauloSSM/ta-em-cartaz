@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PublicEventResponse } from '../api/eventsApi';
+import './EventCard.css';
 
 export type EventCardProps = {
   event: PublicEventResponse;

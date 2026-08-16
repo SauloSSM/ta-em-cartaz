@@ -1,0 +1,203 @@
+/* ==========================================================================
+   Navbar (Global Header) Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
+   ========================================================================== */
+
+.tc-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background-color: var(--brand-paper);
+  border-bottom: 1px solid var(--neutral-900);
+  width: 100%;
+}
+
+.tc-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--page-padding);
+  gap: var(--space-4);
+}
+
+.tc-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-decoration: none;
+  color: var(--brand-ink);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.tc-header__logo-text {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Desktop Navigation */
+.tc-header__nav-desktop {
+  display: none;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .tc-header__nav-desktop {
+    display: flex;
+  }
+}
+
+.tc-header__nav-link {
+  font-family: var(--font-body);
+  font-size: var(--type-body-s-size);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+  color: var(--brand-ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid transparent;
+  transition: border-color var(--motion-fast) var(--ease-standard);
+  text-decoration: none;
+}
+
+.tc-header__nav-link:hover {
+  border-bottom-color: var(--brand-ink);
+}
+
+.tc-header__nav-link--active {
+  border-bottom-color: var(--brand-ink);
+}
+
+/* Search in header */
+.tc-header__search {
+  display: none;
+  flex: 1;
+  max-width: 400px;
+}
+
+@media (min-width: 1024px) {
+  .tc-header__search {
+    display: block;
+  }
+}
+
+/* Header Actions */
+.tc-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .tc-header__actions {
+    gap: var(--space-3);
+  }
+}
+
+.tc-header__btn-login {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--type-label-size);
+}
+
+@media (min-width: 768px) {
+  .tc-header__btn-login {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--type-body-s-size);
+  }
+}
+
+.tc-header__user-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--type-body-s-size);
+  font-weight: 600;
+}
+
+.tc-header__role-tag {
+  display: none;
+  padding: 2px var(--space-2);
+  background-color: var(--brand-orange);
+  color: var(--brand-ink);
+  font-size: var(--type-label-size);
+  font-weight: 800;
+  border-radius: var(--radius-control);
+  text-transform: uppercase;
+}
+
+@media (min-width: 480px) {
+  .tc-header__role-tag {
+    display: inline-block;
+  }
+}
+
+/* Mobile Menu Toggle */
+.tc-header__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: 1px solid var(--brand-ink);
+  border-radius: var(--radius-control);
+  color: var(--brand-ink);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .tc-header__menu-btn {
+    display: none;
+  }
+}
+
+/* Mobile Menu Drawer / Overlay */
+.tc-mobile-menu {
+  position: fixed;
+  top: 72px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--brand-paper-soft);
+  z-index: var(--z-overlay);
+  padding: var(--space-6) var(--page-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  border-top: 1px solid var(--brand-ink);
+  overflow-y: auto;
+}
+
+.tc-mobile-menu__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.tc-mobile-menu__link {
+  font-family: var(--font-display);
+  font-size: var(--type-heading-m-size);
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  background: none;
+  border: none;
+  text-align: left;
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  border-bottom: 1px solid var(--neutral-300);
+}

@@ -6,6 +6,9 @@ import {
   type PublicEventResponse,
 } from '../features/events';
 import { useSession, type SessionState } from './session/useSession';
+import { Navbar } from './Navbar';
+import { Footer } from './Footer';
+import './App.css';
 
 export type AppProps = {
   initialAnonymousView?: 'catalog' | 'login' | 'detail';
@@ -27,43 +30,35 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
     }
   }, [state.status]);
 
-  const isAnonymousStatus =
-    state.status === 'anonymous' ||
-    state.status === 'authenticating' ||
-    state.status === 'authentication-error';
+  const authenticatedUser =
+    state.status === 'authenticated' ||
+    state.status === 'logging-out' ||
+    state.status === 'logout-error'
+      ? state.user
+      : null;
+
+  const currentView = authenticatedUser ? 'authenticated' : anonymousView;
+
+  const handleSelectCatalog = () => {
+    setSelectedEventId(null);
+    setSelectedEventData(null);
+    setAnonymousView('catalog');
+  };
+
+  const handleSelectLogin = () => {
+    setLoginNotice(null);
+    setAnonymousView('login');
+  };
 
   return (
     <div className="edt-app-root">
-      <header className="edt-top-bar">
-        <h1>EliteDevTicket</h1>
-        {isAnonymousStatus && (
-          <nav aria-label="Navegação principal" className="edt-top-nav">
-            <button
-              type="button"
-              className={`edt-nav-link ${anonymousView === 'catalog' || anonymousView === 'detail' ? 'edt-nav-link--active' : ''}`}
-              onClick={() => {
-                setSelectedEventId(null);
-                setSelectedEventData(null);
-                setAnonymousView('catalog');
-              }}
-              aria-current={anonymousView === 'catalog' || anonymousView === 'detail' ? 'page' : undefined}
-            >
-              Catálogo de Eventos
-            </button>
-            <button
-              type="button"
-              className={`edt-nav-link ${anonymousView === 'login' ? 'edt-nav-link--active' : ''}`}
-              onClick={() => {
-                setLoginNotice(null);
-                setAnonymousView('login');
-              }}
-              aria-current={anonymousView === 'login' ? 'page' : undefined}
-            >
-              Acessar conta
-            </button>
-          </nav>
-        )}
-      </header>
+      <Navbar
+        user={authenticatedUser}
+        activeView={currentView}
+        onNavigateCatalog={handleSelectCatalog}
+        onNavigateLogin={handleSelectLogin}
+        onLogout={authenticatedUser ? endSession : undefined}
+      />
 
       <main id="main-content">
         <SessionContent
@@ -72,11 +67,7 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
           selectedEventId={selectedEventId}
           selectedEventData={selectedEventData}
           loginNotice={loginNotice}
-          onSelectCatalog={() => {
-            setSelectedEventId(null);
-            setSelectedEventData(null);
-            setAnonymousView('catalog');
-          }}
+          onSelectCatalog={handleSelectCatalog}
           onSelectDetail={(event) => {
             setSelectedEventData(event);
             setSelectedEventId(event.id);
@@ -86,16 +77,18 @@ export function App({ initialAnonymousView = 'catalog' }: AppProps) {
             setLoginNotice(notice);
             setAnonymousView('login');
           }}
-          onSelectLogin={() => {
-            setLoginNotice(null);
-            setAnonymousView('login');
-          }}
+          onSelectLogin={handleSelectLogin}
           onEmailChange={setEmail}
           onLogin={authenticate}
           onLogout={endSession}
           onRetryBootstrap={retryBootstrap}
         />
       </main>
+
+      <Footer
+        onNavigateCatalog={handleSelectCatalog}
+        onNavigateLogin={handleSelectLogin}
+      />
     </div>
   );
 }

@@ -1,0 +1,114 @@
+/* ==========================================================================
+   Category Strip (Visual Motif)
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & REFERENCE_MANIFEST
+   ========================================================================== */
+
+.tc-category-strip {
+  width: 100%;
+  margin: var(--space-8) 0;
+}
+
+.tc-category-strip__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+  .tc-category-strip__grid {
+    gap: var(--space-4);
+  }
+}
+
+@media (min-width: 992px) {
+  .tc-category-strip__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.tc-category-card {
+  position: relative;
+  min-height: 110px;
+  min-width: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  border: 1px solid var(--brand-ink);
+  color: var(--brand-ink);
+  user-select: none;
+}
+
+@media (min-width: 480px) {
+  .tc-category-card {
+    padding: var(--space-4);
+  }
+}
+
+@media (min-width: 768px) {
+  .tc-category-card {
+    min-height: 140px;
+    padding: var(--space-6);
+  }
+}
+
+/* Category card color variants */
+.tc-category-card--shows {
+  background-color: var(--brand-orange);
+}
+
+.tc-category-card--festivais {
+  background-color: var(--brand-pink);
+}
+
+.tc-category-card--cultura {
+  background-color: var(--brand-yellow);
+}
+
+.tc-category-card--perto {
+  background-color: var(--brand-green);
+}
+
+.tc-category-card__header {
+  z-index: 2;
+}
+
+.tc-category-card__title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: var(--space-1);
+}
+
+.tc-category-card__subtitle {
+  font-family: var(--font-body);
+  font-size: var(--type-label-size);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track);
+  opacity: 0.9;
+  line-height: 1.3;
+}
+
+/* Visual Collage Illustration inside each category card */
+.tc-category-card__art {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 90px;
+  height: 80px;
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .tc-category-card__art {
+    width: 120px;
+    height: 100px;
+  }
+}

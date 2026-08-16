@@ -1,0 +1,23 @@
+/* ==========================================================================
+   App Shell Styles
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
+   ========================================================================== */
+
+.edt-app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--brand-paper);
+  color: var(--brand-ink);
+}
+
+.edt-app-root main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Legacy backward compatibility helpers */
+.edt-top-bar {
+  display: none;
+}

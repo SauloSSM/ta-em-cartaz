@@ -1,0 +1,252 @@
+/* ==========================================================================
+   PublicEventCatalog Styles (Home / Discovery)
+   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & REFERENCE_MANIFEST
+   ========================================================================== */
+
+.tc-home-catalog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Section "EM CARTAZ" */
+.tc-cartaz-section {
+  padding: var(--space-8) 0 var(--space-12);
+  width: 100%;
+}
+
+.tc-cartaz-section__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .tc-cartaz-section__header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.tc-cartaz-section__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tc-cartaz-section__title {
+  font-family: var(--font-display);
+  font-size: var(--type-display-l-size);
+  letter-spacing: var(--type-display-l-track);
+  line-height: var(--type-display-l-line);
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  margin: 0;
+}
+
+.tc-cartaz-section__underline {
+  width: 120px;
+  height: 4px;
+  background-color: var(--brand-pink);
+  border-radius: var(--radius-pill);
+}
+
+.tc-cartaz-section__search {
+  width: 100%;
+  max-width: 480px;
+}
+
+.tc-cartaz-section__search-form {
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.tc-cartaz-section__search-btn {
+  min-height: 48px;
+  padding: var(--space-3) var(--space-4);
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .tc-cartaz-section__search-btn {
+    padding: var(--space-3) var(--space-6);
+  }
+}
+
+/* Filter active bar */
+.tc-cartaz-section__filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--brand-paper-soft);
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-control);
+  margin-bottom: var(--space-4);
+  font-size: var(--type-body-s-size);
+  font-weight: 600;
+}
+
+.tc-cartaz-section__filter-clear {
+  background: none;
+  border: none;
+  color: var(--brand-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tc-cartaz-section__filter-clear:hover {
+  color: var(--brand-orange);
+}
+
+/* Discovery Layout: Grid of Rows + Editorial Stamp */
+.tc-cartaz-section__layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-8);
+}
+
+@media (min-width: 1200px) {
+  .tc-cartaz-section__layout {
+    grid-template-columns: 240px 1fr;
+    align-items: flex-start;
+  }
+}
+
+/* Left Editorial Stamp Sidebar */
+.tc-cartaz-sidebar {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .tc-cartaz-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    position: sticky;
+    top: 96px;
+  }
+
+  .tc-cartaz-sidebar__card {
+    border: 2px solid var(--brand-ink);
+    padding: var(--space-6);
+    background-color: var(--brand-paper-soft);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-4);
+    box-shadow: 4px 4px 0px var(--brand-ink);
+  }
+
+  .tc-cartaz-sidebar__text {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    color: var(--brand-ink);
+    line-height: 1.2;
+  }
+
+  .tc-cartaz-sidebar__note {
+    font-family: var(--font-body);
+    font-size: var(--type-label-size);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--type-label-track);
+    color: var(--neutral-700);
+  }
+}
+
+/* Event List Container */
+.tc-cartaz-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Loading Skeletons */
+.tc-cartaz-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.tc-cartaz-skeleton-row {
+  height: 84px;
+  background: linear-gradient(90deg, var(--neutral-200) 25%, var(--neutral-100) 50%, var(--neutral-200) 75%);
+  background-size: 200% 100%;
+  animation: tc-shimmer 1.5s infinite;
+  border-radius: var(--radius-control);
+  border: 1px dashed var(--neutral-300);
+}
+
+@keyframes tc-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty & Error States */
+.tc-cartaz-empty,
+.tc-cartaz-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-12) var(--space-4);
+  background-color: var(--brand-paper-soft);
+  border: 2px dashed var(--neutral-300);
+  border-radius: var(--radius-container);
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.tc-cartaz-empty__icon,
+.tc-cartaz-error__icon {
+  width: 48px;
+  height: 48px;
+  color: var(--neutral-700);
+}
+
+.tc-cartaz-error__icon {
+  color: var(--semantic-danger);
+}
+
+.tc-cartaz-empty__title,
+.tc-cartaz-error__title {
+  font-family: var(--font-display);
+  font-size: var(--type-heading-m-size);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--brand-ink);
+  margin: 0;
+}
+
+.tc-cartaz-empty__message,
+.tc-cartaz-error__message {
+  font-family: var(--font-body);
+  font-size: var(--type-body-m-size);
+  color: var(--neutral-700);
+  max-width: 480px;
+}
+
+.tc-cartaz-empty__btn,
+.tc-cartaz-error__btn {
+  margin-top: var(--space-2);
+}
+
+/* Backward compatibility classes */
+.edt-catalog {
+  width: 100%;
+}
+.edt-catalog__header,
+.edt-catalog__content {
+  width: 100%;
+}
