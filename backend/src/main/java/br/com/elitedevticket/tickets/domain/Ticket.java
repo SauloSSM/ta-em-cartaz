@@ -33,8 +33,20 @@ public record Ticket(
         }
         Objects.requireNonNull(status, "status must not be null");
         Objects.requireNonNull(validationToken, "validationToken must not be null");
+        if (validationToken.isBlank()) {
+            throw new IllegalArgumentException("validationToken must not be blank");
+        }
         Objects.requireNonNull(manualCode, "manualCode must not be null");
+        if (manualCode.isBlank()) {
+            throw new IllegalArgumentException("manualCode must not be blank");
+        }
         Objects.requireNonNull(shareToken, "shareToken must not be null");
+        if (shareToken.isBlank()) {
+            throw new IllegalArgumentException("shareToken must not be blank");
+        }
+        if (validationToken.equals(shareToken)) {
+            throw new IllegalArgumentException("validationToken and shareToken must not be equal");
+        }
         Objects.requireNonNull(createdAt, "createdAt must not be null");
     }
 

@@ -54,16 +54,29 @@ class JpaTicketRepository implements TicketRepository {
 
     @Override
     public Optional<Ticket> findByValidationToken(String validationToken) {
-        return repository.findByValidationToken(validationToken).map(TicketEntity::toDomain);
+        if (validationToken == null || validationToken.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByValidationToken(validationToken.trim()).map(TicketEntity::toDomain);
     }
 
     @Override
     public Optional<Ticket> findByManualCode(String manualCode) {
-        return repository.findByManualCode(manualCode).map(TicketEntity::toDomain);
+        if (manualCode == null || manualCode.isBlank()) {
+            return Optional.empty();
+        }
+        String normalized = br.com.elitedevticket.tickets.domain.TicketCredentialGenerator.normalizeManualCode(manualCode);
+        if (normalized == null || normalized.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByManualCode(normalized).map(TicketEntity::toDomain);
     }
 
     @Override
     public Optional<Ticket> findByShareToken(String shareToken) {
-        return repository.findByShareToken(shareToken).map(TicketEntity::toDomain);
+        if (shareToken == null || shareToken.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByShareToken(shareToken.trim()).map(TicketEntity::toDomain);
     }
 }
