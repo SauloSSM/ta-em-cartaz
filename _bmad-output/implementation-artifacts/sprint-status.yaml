@@ -66,10 +66,10 @@ development_status:
   4-5-exibir-checkout-e-timer-autoritativo-do-hold: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
+  epic-5: done
   5-1-processar-tentativa-simulada-recusada-de-forma-idempotente: done
   5-2-aprovar-pagamento-confirmar-reservation-e-emitir-tickets-atomicamente: done
-  5-3-reconciliar-resposta-de-pagamento-perdida-sem-nova-cobrança: backlog
+  5-3-reconciliar-resposta-de-pagamento-perdida-sem-nova-cobrança: done
   epic-5-retrospective: optional
 
   epic-6: backlog

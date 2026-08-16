@@ -6,6 +6,12 @@ import {
   PaymentClientError,
   type PaymentResponse,
 } from '../../payments/api/paymentsApi';
+import {
+  getUncertainPayment,
+  saveUncertainPayment,
+  clearUncertainPayment,
+  type StoredUncertainPayment,
+} from '../../payments/model/uncertainPayment';
 import { ReservationTimer } from './ReservationTimer';
 import { CheckoutSummary } from './CheckoutSummary';
 import { DemoEnvironmentNotice } from './DemoEnvironmentNotice';
@@ -37,20 +43,35 @@ export function CheckoutView({
     initialReservation.status === 'EXPIRED',
   );
 
-  // Estados de processamento de pagamento simulado (Story 5.1 e Story 5.2)
-  const [currentAttemptId, setCurrentAttemptId] = useState<string>(() => generatePaymentAttemptId());
+  // Recupera tentativa incerta pendente do sessionStorage (Story 5.3)
+  const [uncertainAttempt, setUncertainAttempt] = useState<StoredUncertainPayment | null>(() => {
+    return getUncertainPayment(initialReservation.id);
+  });
+
+  // Estados de processamento de pagamento simulado (Story 5.1, 5.2, 5.3)
+  const [currentAttemptId, setCurrentAttemptId] = useState<string>(() => {
+    const stored = getUncertainPayment(initialReservation.id);
+    return stored ? stored.paymentAttemptId : generatePaymentAttemptId();
+  });
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [lastPaymentAttempt, setLastPaymentAttempt] = useState<PaymentResponse | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [reconcileError, setReconcileError] = useState<string | null>(null);
 
   const expiredHeadingRef = useRef<HTMLHeadingElement>(null);
   const declinedAlertRef = useRef<HTMLHeadingElement>(null);
   const confirmedAlertRef = useRef<HTMLHeadingElement>(null);
+  const verifyingAlertRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     setReservation(initialReservation);
     if (initialReservation.status === 'EXPIRED') {
       setIsExpiredLocally(true);
+    }
+    const storedUncertain = getUncertainPayment(initialReservation.id);
+    if (storedUncertain) {
+      setUncertainAttempt(storedUncertain);
+      setCurrentAttemptId(storedUncertain.paymentAttemptId);
     }
   }, [initialReservation]);
 
@@ -72,12 +93,14 @@ export function CheckoutView({
   }, [isExpired]);
 
   useEffect(() => {
-    if (lastPaymentAttempt?.status === 'DECLINED') {
+    if (uncertainAttempt !== null && !isConfirmed && !isExpired) {
+      verifyingAlertRef.current?.focus();
+    } else if (lastPaymentAttempt?.status === 'DECLINED') {
       declinedAlertRef.current?.focus();
     } else if (lastPaymentAttempt?.status === 'APPROVED' || isConfirmed) {
       confirmedAlertRef.current?.focus();
     }
-  }, [lastPaymentAttempt, isConfirmed]);
+  }, [uncertainAttempt, lastPaymentAttempt, isConfirmed, isExpired]);
 
   const handleReconcile = async () => {
     if (onReconcile) {
@@ -98,12 +121,22 @@ export function CheckoutView({
   }, []);
 
   const handleSimulatePayment = async (outcome: 'APPROVED' | 'DECLINED') => {
-    if (isExpired || isConfirmed || isProcessingPayment) {
+    if (isExpired || isConfirmed || isProcessingPayment || uncertainAttempt !== null) {
       return;
     }
 
+    const attemptData: StoredUncertainPayment = {
+      reservationId: reservation.id,
+      paymentAttemptId: currentAttemptId,
+      simulatedOutcome: outcome,
+      timestamp: Date.now(),
+    };
+
+    // Armazena a tentativa em trânsito antes do envio (Story 5.3)
+    saveUncertainPayment(attemptData);
     setIsProcessingPayment(true);
     setPaymentError(null);
+    setReconcileError(null);
 
     try {
       const response = await processPayment(reservation.id, {
@@ -111,6 +144,8 @@ export function CheckoutView({
         simulatedOutcome: outcome,
       });
 
+      clearUncertainPayment(reservation.id);
+      setUncertainAttempt(null);
       setLastPaymentAttempt(response);
 
       if (response.status === 'APPROVED') {
@@ -128,14 +163,72 @@ export function CheckoutView({
     } catch (err: unknown) {
       if (err instanceof PaymentClientError) {
         if (err.code === 'RESERVATION_EXPIRED') {
+          clearUncertainPayment(reservation.id);
+          setUncertainAttempt(null);
           handleExpire();
+        } else if (err.code === 'PAYMENT_INVALID_RESPONSE') {
+          // Formato inválido ou resposta técnica truncada -> estado de incerteza (Story 5.3)
+          setUncertainAttempt(attemptData);
         } else {
+          // Erros determinísticos de domínio (400, 401, 403, 409)
+          clearUncertainPayment(reservation.id);
+          setUncertainAttempt(null);
           setPaymentError(err.message);
         }
-      } else if (err instanceof Error) {
-        setPaymentError(err.message);
       } else {
-        setPaymentError('Erro inesperado ao processar pagamento simulado.');
+        // Falha de rede / timeout / conexão interrompida -> estado de incerteza (Story 5.3)
+        setUncertainAttempt(attemptData);
+      }
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleReconcilePayment = async () => {
+    if (!uncertainAttempt || isProcessingPayment) {
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    setReconcileError(null);
+
+    try {
+      const response = await processPayment(reservation.id, {
+        paymentAttemptId: uncertainAttempt.paymentAttemptId,
+        simulatedOutcome: uncertainAttempt.simulatedOutcome,
+      });
+
+      clearUncertainPayment(reservation.id);
+      setUncertainAttempt(null);
+      setLastPaymentAttempt(response);
+
+      if (response.status === 'APPROVED') {
+        setReservation((prev) => ({
+          ...prev,
+          status: 'CONFIRMED',
+        }));
+        if (onReconcile) {
+          void onReconcile();
+        }
+      } else {
+        // Para nova tentativa deliberada após recusa, gera novo attemptId (AD-9)
+        setCurrentAttemptId(generatePaymentAttemptId());
+      }
+    } catch (err: unknown) {
+      if (err instanceof PaymentClientError) {
+        if (err.code === 'RESERVATION_EXPIRED') {
+          clearUncertainPayment(reservation.id);
+          setUncertainAttempt(null);
+          handleExpire();
+        } else if (err.code === 'PAYMENT_INVALID_RESPONSE') {
+          setReconcileError('Não foi possível validar a resposta do servidor. Por favor, tente novamente.');
+        } else {
+          clearUncertainPayment(reservation.id);
+          setUncertainAttempt(null);
+          setPaymentError(err.message);
+        }
+      } else {
+        setReconcileError('Não foi possível conectar ao servidor para verificar o resultado. Por favor, tente novamente.');
       }
     } finally {
       setIsProcessingPayment(false);
@@ -282,7 +375,7 @@ export function CheckoutView({
           sectorName={sectorName}
         />
 
-        {/* Seção de Pagamento Simulado (Story 5.1 & Story 5.2) */}
+        {/* Seção de Pagamento Simulado (Story 5.1, 5.2, 5.3) */}
         {!isExpired && !isConfirmed && (
           <section
             className="edt-checkout-view__payment-section"
@@ -306,7 +399,50 @@ export function CheckoutView({
               </div>
             )}
 
-            {lastPaymentAttempt && lastPaymentAttempt.status === 'DECLINED' && (
+            {/* Alerta de Verificação / Incerteza de Resposta (Story 5.3) */}
+            {uncertainAttempt !== null && (
+              <div
+                className="edt-alert edt-alert--warning edt-payment-section__alert edt-payment-section__verifying-alert"
+                role="alert"
+                data-testid="payment-verifying-alert"
+              >
+                <h4
+                  ref={verifyingAlertRef}
+                  tabIndex={-1}
+                  className="edt-alert__title"
+                  data-testid="verifying-alert-heading"
+                >
+                  Verificando Situação do Pagamento
+                </h4>
+                <p className="edt-alert__desc">
+                  Houve uma instabilidade de rede após o envio da sua tentativa. Para garantir que nenhuma cobrança duplicada seja efetuada, estamos prontos para consultar o resultado autoritativo da mesma tentativa.
+                </p>
+                <div className="edt-payment-section__declined-meta edt-payment-section__verifying-meta">
+                  <span>ID da tentativa: <code>{uncertainAttempt.paymentAttemptId}</code></span>
+                  <span>Resultado enviado: <strong>{uncertainAttempt.simulatedOutcome}</strong></span>
+                </div>
+                {reconcileError && (
+                  <div className="edt-payment-section__reconcile-error" role="alert">
+                    <p className="edt-alert__desc">{reconcileError}</p>
+                  </div>
+                )}
+                <div className="edt-payment-section__verifying-actions">
+                  <button
+                    type="button"
+                    className="edt-button edt-button--primary edt-button--large"
+                    onClick={() => void handleReconcilePayment()}
+                    disabled={isProcessingPayment}
+                    aria-busy={isProcessingPayment}
+                    data-testid="reconcile-payment-btn"
+                  >
+                    {isProcessingPayment ? 'Consultando resultado...' : 'Verificar Novamente'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Alerta de Recusa Simulada (DECLINED) */}
+            {uncertainAttempt === null && lastPaymentAttempt && lastPaymentAttempt.status === 'DECLINED' && (
               <div
                 className="edt-alert edt-alert--warning edt-payment-section__alert"
                 role="alert"
@@ -330,32 +466,35 @@ export function CheckoutView({
               </div>
             )}
 
-            <div className="edt-payment-section__actions">
-              <button
-                type="button"
-                className="edt-button edt-button--secondary edt-button--large"
-                onClick={() => handleSimulatePayment('DECLINED')}
-                disabled={isProcessingPayment || isExpired}
-                aria-busy={isProcessingPayment}
-                data-testid="simulate-declined-payment-btn"
-              >
-                {isProcessingPayment
-                  ? 'Processando...'
-                  : lastPaymentAttempt?.status === 'DECLINED'
-                    ? 'Tentar Novamente (Simular Recusa)'
-                    : 'Simular Pagamento Recusado (DECLINED)'}
-              </button>
-              <button
-                type="button"
-                className="edt-button edt-button--primary edt-button--large"
-                onClick={() => handleSimulatePayment('APPROVED')}
-                disabled={isProcessingPayment || isExpired}
-                aria-busy={isProcessingPayment}
-                data-testid="simulate-approved-payment-btn"
-              >
-                {isProcessingPayment ? 'Processando...' : 'Aprovar Pagamento (APPROVED)'}
-              </button>
-            </div>
+            {/* Botões de Ação de Pagamento Simulado (ocultos durante estado de verificação/reconciliação para evitar nova cobrança) */}
+            {uncertainAttempt === null && (
+              <div className="edt-payment-section__actions">
+                <button
+                  type="button"
+                  className="edt-button edt-button--secondary edt-button--large"
+                  onClick={() => handleSimulatePayment('DECLINED')}
+                  disabled={isProcessingPayment || isExpired}
+                  aria-busy={isProcessingPayment}
+                  data-testid="simulate-declined-payment-btn"
+                >
+                  {isProcessingPayment
+                    ? 'Processando...'
+                    : lastPaymentAttempt?.status === 'DECLINED'
+                      ? 'Tentar Novamente (Simular Recusa)'
+                      : 'Simular Pagamento Recusado (DECLINED)'}
+                </button>
+                <button
+                  type="button"
+                  className="edt-button edt-button--primary edt-button--large"
+                  onClick={() => handleSimulatePayment('APPROVED')}
+                  disabled={isProcessingPayment || isExpired}
+                  aria-busy={isProcessingPayment}
+                  data-testid="simulate-approved-payment-btn"
+                >
+                  {isProcessingPayment ? 'Processando...' : 'Aprovar Pagamento (APPROVED)'}
+                </button>
+              </div>
+            )}
           </section>
         )}
       </div>

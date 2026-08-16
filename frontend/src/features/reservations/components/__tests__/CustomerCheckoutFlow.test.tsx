@@ -394,4 +394,93 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
     expect(screen.getByTestId('timer-countdown').textContent).toBe('02:30');
     expect(screen.getByText('Tempo acabando')).toBeDefined();
   });
+
+  it('Story 5.3 — erro de rede após submissão APPROVED entra em verifying e permite reconciliar sem nova cobrança', async () => {
+    const activeHoldRes: ReservationResponse = {
+      id: 'res-flow-lost-resp',
+      customerId: customerUser.id,
+      eventId: 'ev-flow-1',
+      sectorId: 'sec-flow-pista',
+      quantity: 2,
+      unitPrice: 250.0,
+      totalAmount: 500.0,
+      status: 'HOLDING',
+      expiresAt: new Date(Date.now() + 600000).toISOString(),
+      createdAt: new Date().toISOString(),
+      serverNow: new Date().toISOString(),
+    };
+
+    saveActiveHold({
+      reservation: activeHoldRes,
+      eventTitle: 'Festival Primavera Sound 2026',
+      sectorName: 'Pista Premium',
+    });
+
+    let paymentCalls = 0;
+    let attemptIdUsed = '';
+
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+
+      if (url.includes('/payments') && method === 'POST') {
+        paymentCalls++;
+        const body = JSON.parse(String(init?.body));
+        attemptIdUsed = body.paymentAttemptId;
+
+        if (paymentCalls === 1) {
+          // Primeira chamada: conexão falha antes da resposta
+          return Promise.reject(new TypeError('Failed to fetch'));
+        }
+
+        // Segunda chamada (reconciliação): retorna APPROVED com o mesmo ID
+        return Promise.resolve(jsonResponse({
+          id: attemptIdUsed,
+          reservationId: 'res-flow-lost-resp',
+          amount: 500.0,
+          currency: 'BRL',
+          status: 'APPROVED',
+          provider: 'FAKE',
+          createdAt: new Date().toISOString(),
+          processedAt: new Date().toISOString(),
+        }));
+      }
+
+      return Promise.resolve(jsonResponse({}));
+    });
+
+    render(
+      <AuthenticatedSession
+        user={customerUser}
+        busy={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('checkout-view')).toBeDefined();
+
+    // 1. Customer clica para aprovar pagamento (falha na rede)
+    const approveBtn = screen.getByTestId('simulate-approved-payment-btn');
+    await act(async () => {
+      fireEvent.click(approveBtn);
+    });
+
+    // 2. Entra em estado de verificação com aviso apropriado
+    expect(screen.getByTestId('payment-verifying-alert')).toBeDefined();
+    expect(screen.getByText('Verificando Situação do Pagamento')).toBeDefined();
+    expect(screen.queryByTestId('simulate-approved-payment-btn')).toBeNull();
+
+    const firstAttemptId = attemptIdUsed;
+
+    // 3. Customer clica em "Verificar Novamente"
+    const reconcileBtn = screen.getByTestId('reconcile-payment-btn');
+    await act(async () => {
+      fireEvent.click(reconcileBtn);
+    });
+
+    // 4. Confirmação autoritativa exibida usando o MESMO attemptId
+    expect(screen.getByTestId('checkout-confirmed-alert')).toBeDefined();
+    expect(attemptIdUsed).toBe(firstAttemptId);
+    expect(paymentCalls).toBe(2);
+  });
 });

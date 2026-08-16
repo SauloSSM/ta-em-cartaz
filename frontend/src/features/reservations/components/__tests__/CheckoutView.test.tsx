@@ -20,6 +20,7 @@ const sampleReservation: ReservationResponse = {
 
 describe('CheckoutView (Superfície S04)', () => {
   beforeEach(() => {
+    sessionStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -124,9 +125,9 @@ describe('CheckoutView (Superfície S04)', () => {
     expect(screen.queryByTestId('payment-section')).toBeNull();
   });
 
-  it('handles general payment errors and renders error alert', async () => {
+  it('handles deterministic payment errors and renders error alert', async () => {
     vi.spyOn(paymentsApi, 'processPayment').mockRejectedValue(
-      new Error('Erro de conexão com o servidor.'),
+      new paymentsApi.PaymentClientError('AUTH_INVALID_REQUEST', 'Requisição de pagamento inválida.'),
     );
 
     render(
@@ -144,7 +145,7 @@ describe('CheckoutView (Superfície S04)', () => {
 
     const errorAlert = await screen.findByTestId('payment-error-alert');
     expect(errorAlert).toBeDefined();
-    expect(screen.getByText('Erro de conexão com o servidor.')).toBeDefined();
+    expect(screen.getByText('Requisição de pagamento inválida.')).toBeDefined();
   });
 
   it('switches to expired state when timer reaches zero, focuses alert and hides payment', () => {
@@ -295,6 +296,269 @@ describe('CheckoutView (Superfície S04)', () => {
 
     fireEvent.click(screen.getByText('Ir para o Catálogo'));
     expect(onBackToCatalog).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Story 5.3 — Reconciliação de resposta perdida sem nova cobrança', () => {
+    beforeEach(() => {
+      sessionStorage.clear();
+    });
+
+    it('entra em estado de verificação (verifying) após erro de rede / resposta perdida, mantendo o mesmo paymentAttemptId e sem exibir recusa', async () => {
+      // Simula falha de conexão na primeira tentativa
+      vi.spyOn(paymentsApi, 'processPayment').mockRejectedValueOnce(
+        new TypeError('Failed to fetch'),
+      );
+
+      render(
+        <CheckoutView
+          reservation={sampleReservation}
+          eventTitle="Festival de MPB"
+          sectorName="Plateia Central"
+          onBackToEvent={vi.fn()}
+          onBackToCatalog={vi.fn()}
+        />,
+      );
+
+      const payBtn = screen.getByTestId('simulate-approved-payment-btn');
+      fireEvent.click(payBtn);
+
+      // Entra em verifying alert
+      const verifyingAlert = await screen.findByTestId('payment-verifying-alert');
+      expect(verifyingAlert).toBeDefined();
+      expect(screen.getByTestId('verifying-alert-heading')).toBeDefined();
+      expect(screen.getByText('Verificando Situação do Pagamento')).toBeDefined();
+
+      // Heading deve ter foco para acessibilidade
+      const alertHeading = screen.getByTestId('verifying-alert-heading');
+      expect(document.activeElement).toBe(alertHeading);
+
+      // Não mostra "pagamento recusado"
+      expect(screen.queryByTestId('payment-declined-alert')).toBeNull();
+
+      // Botões normais de aprovar/recusar devem estar ocultos para não permitir nova cobrança acidental
+      expect(screen.queryByTestId('simulate-approved-payment-btn')).toBeNull();
+      expect(screen.queryByTestId('simulate-declined-payment-btn')).toBeNull();
+
+      // Botão de reconciliação presente
+      expect(screen.getByTestId('reconcile-payment-btn')).toBeDefined();
+      expect(screen.getByText('Verificar Novamente')).toBeDefined();
+
+      // Tentativa está armazenada no sessionStorage
+      const rawStored = sessionStorage.getItem(`edt.uncertain-payment.v1:${sampleReservation.id}`);
+      expect(rawStored).not.toBeNull();
+      const parsed = JSON.parse(rawStored!);
+      expect(parsed.reservationId).toBe(sampleReservation.id);
+      expect(parsed.simulatedOutcome).toBe('APPROVED');
+      expect(parsed.paymentAttemptId).toBeDefined();
+    });
+
+    it('reconcilia tentativa APPROVED com sucesso ao clicar em "Verificar Novamente", reutilizando o mesmo paymentAttemptId e confirmando a compra', async () => {
+      let capturedAttemptId = '';
+      const processPaymentSpy = vi.spyOn(paymentsApi, 'processPayment')
+        .mockImplementationOnce(async (_resId, req) => {
+          capturedAttemptId = req.paymentAttemptId;
+          throw new TypeError('Network connection lost');
+        })
+        .mockImplementationOnce(async (_resId, req) => {
+          expect(req.paymentAttemptId).toBe(capturedAttemptId);
+          expect(req.simulatedOutcome).toBe('APPROVED');
+          return {
+            id: req.paymentAttemptId,
+            reservationId: 'res-s04',
+            amount: 250.0,
+            currency: 'BRL',
+            status: 'APPROVED',
+            provider: 'FAKE',
+            createdAt: '2026-08-16T12:01:00.000Z',
+            processedAt: '2026-08-16T12:01:00.000Z',
+          };
+        });
+
+      render(
+        <CheckoutView
+          reservation={sampleReservation}
+          eventTitle="Festival de MPB"
+          sectorName="Plateia Central"
+          onBackToEvent={vi.fn()}
+          onBackToCatalog={vi.fn()}
+        />,
+      );
+
+      // 1. Dispara submissão inicial que falha na rede
+      fireEvent.click(screen.getByTestId('simulate-approved-payment-btn'));
+
+      await screen.findByTestId('payment-verifying-alert');
+      expect(processPaymentSpy).toHaveBeenCalledTimes(1);
+
+      // 2. Clica em "Verificar Novamente"
+      const reconcileBtn = screen.getByTestId('reconcile-payment-btn');
+      fireEvent.click(reconcileBtn);
+
+      // 3. Deve resolver para CONFIRMED e limpar o estado incerto do sessionStorage
+      await screen.findByTestId('checkout-confirmed-alert');
+      expect(processPaymentSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Pagamento Aprovado e Reserva Confirmada!')).toBeDefined();
+
+      expect(sessionStorage.getItem(`edt.uncertain-payment.v1:${sampleReservation.id}`)).toBeNull();
+    });
+
+    it('reconcilia tentativa DECLINED com sucesso, exibe alerta de recusa e gera novo attemptId para a próxima tentativa deliberada', async () => {
+      let capturedAttemptId = '';
+      const processPaymentSpy = vi.spyOn(paymentsApi, 'processPayment')
+        .mockImplementationOnce(async (_resId, req) => {
+          capturedAttemptId = req.paymentAttemptId;
+          throw new TypeError('Network timeout');
+        })
+        .mockImplementationOnce(async (_resId, req) => {
+          expect(req.paymentAttemptId).toBe(capturedAttemptId);
+          expect(req.simulatedOutcome).toBe('DECLINED');
+          return {
+            id: req.paymentAttemptId,
+            reservationId: 'res-s04',
+            amount: 250.0,
+            currency: 'BRL',
+            status: 'DECLINED',
+            provider: 'FAKE',
+            declineReason: 'SIMULATED_DECLINE',
+            createdAt: '2026-08-16T12:01:00.000Z',
+            processedAt: '2026-08-16T12:01:00.000Z',
+          };
+        });
+
+      render(
+        <CheckoutView
+          reservation={sampleReservation}
+          eventTitle="Festival de MPB"
+          sectorName="Plateia Central"
+          onBackToEvent={vi.fn()}
+          onBackToCatalog={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId('simulate-declined-payment-btn'));
+
+      await screen.findByTestId('payment-verifying-alert');
+
+      fireEvent.click(screen.getByTestId('reconcile-payment-btn'));
+
+      // Resolve para DECLINED
+      await screen.findByTestId('payment-declined-alert');
+      expect(processPaymentSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Tentativa de Pagamento Recusada')).toBeDefined();
+      expect(sessionStorage.getItem(`edt.uncertain-payment.v1:${sampleReservation.id}`)).toBeNull();
+
+      // Botões de pagamento voltam a estar disponíveis com novo ID
+      expect(screen.getByTestId('simulate-declined-payment-btn')).toBeDefined();
+      expect(screen.getByTestId('simulate-approved-payment-btn')).toBeDefined();
+    });
+
+    it('restaura estado de verificação a partir do sessionStorage após reload e reconcilia com o mesmo ID', async () => {
+      const storedAttemptId = '00000000-1111-2222-3333-444444444444';
+      sessionStorage.setItem(
+        `edt.uncertain-payment.v1:${sampleReservation.id}`,
+        JSON.stringify({
+          reservationId: sampleReservation.id,
+          paymentAttemptId: storedAttemptId,
+          simulatedOutcome: 'APPROVED',
+          timestamp: Date.now(),
+        }),
+      );
+
+      const processPaymentSpy = vi.spyOn(paymentsApi, 'processPayment').mockResolvedValue({
+        id: storedAttemptId,
+        reservationId: 'res-s04',
+        amount: 250.0,
+        currency: 'BRL',
+        status: 'APPROVED',
+        provider: 'FAKE',
+        createdAt: '2026-08-16T12:01:00.000Z',
+        processedAt: '2026-08-16T12:01:00.000Z',
+      });
+
+      render(
+        <CheckoutView
+          reservation={sampleReservation}
+          eventTitle="Festival de MPB"
+          sectorName="Plateia Central"
+          onBackToEvent={vi.fn()}
+          onBackToCatalog={vi.fn()}
+        />,
+      );
+
+      // Renderiza imediatamente em verifying alert com o ID persistido
+      expect(screen.getByTestId('payment-verifying-alert')).toBeDefined();
+      expect(screen.getByText(storedAttemptId)).toBeDefined();
+
+      // Clica em verificar novamente
+      fireEvent.click(screen.getByTestId('reconcile-payment-btn'));
+
+      await waitFor(() => {
+        expect(processPaymentSpy).toHaveBeenCalledWith('res-s04', {
+          paymentAttemptId: storedAttemptId,
+          simulatedOutcome: 'APPROVED',
+        });
+      });
+
+      await screen.findByTestId('checkout-confirmed-alert');
+      expect(sessionStorage.getItem(`edt.uncertain-payment.v1:${sampleReservation.id}`)).toBeNull();
+    });
+
+    it('trata falha contínua de rede durante reconciliação permanecendo no estado de verificação com opção de retry', async () => {
+      vi.spyOn(paymentsApi, 'processPayment')
+        .mockRejectedValueOnce(new TypeError('Network offline'))
+        .mockRejectedValueOnce(new TypeError('Still offline'));
+
+      render(
+        <CheckoutView
+          reservation={sampleReservation}
+          eventTitle="Festival de MPB"
+          sectorName="Plateia Central"
+          onBackToEvent={vi.fn()}
+          onBackToCatalog={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId('simulate-approved-payment-btn'));
+
+      await screen.findByTestId('payment-verifying-alert');
+
+      fireEvent.click(screen.getByTestId('reconcile-payment-btn'));
+
+      // Permanece em verifying alert e exibe mensagem de erro na verificação
+      const verifyingAlert = await screen.findByTestId('payment-verifying-alert');
+      expect(verifyingAlert).toBeDefined();
+      expect(screen.getByText(/Não foi possível conectar ao servidor/)).toBeDefined();
+      expect(screen.getByTestId('reconcile-payment-btn')).toBeDefined();
+    });
+
+    it('trata expiração (422) retornada durante a reconciliação', async () => {
+      vi.spyOn(paymentsApi, 'processPayment')
+        .mockRejectedValueOnce(new TypeError('Network lost'))
+        .mockRejectedValueOnce(
+          new paymentsApi.PaymentClientError('RESERVATION_EXPIRED', 'A reserva expirou.'),
+        );
+
+      render(
+        <CheckoutView
+          reservation={sampleReservation}
+          eventTitle="Festival de MPB"
+          sectorName="Plateia Central"
+          onBackToEvent={vi.fn()}
+          onBackToCatalog={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId('simulate-approved-payment-btn'));
+
+      await screen.findByTestId('payment-verifying-alert');
+
+      fireEvent.click(screen.getByTestId('reconcile-payment-btn'));
+
+      // Transiciona para o alerta de expiração
+      await screen.findByTestId('checkout-expired-alert');
+      expect(sessionStorage.getItem(`edt.uncertain-payment.v1:${sampleReservation.id}`)).toBeNull();
+      expect(screen.queryByTestId('payment-section')).toBeNull();
+    });
   });
 });
 

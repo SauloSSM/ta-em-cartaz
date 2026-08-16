@@ -902,6 +902,307 @@ class PaymentsEndpointsIntegrationTest {
         assertThat(ticketCount).isEqualTo(0);
     }
 
+    @Test
+    @DisplayName("Story 5.3 — APPROVED commitado + resposta perdida: reconcile com mesmo paymentAttemptId retorna APPROVED sem gateway novo e sem duplicar Tickets")
+    void reconciliationOfCommittedApprovedPaymentReturnsApprovedWithoutReExecutingGatewayOrDuplicatingTickets() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Reconcile Approved 5.3",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista VIP",
+                100,
+                "300.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String paymentAttemptId = UUID.randomUUID().toString();
+        String payload = "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}";
+
+        // 1. Primeira chamada enviada pelo cliente (simula que backend processou e commitou, mas resposta se perdeu no caminho)
+        HttpResponse<String> initialPay = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                payload
+        );
+        assertThat(initialPay.statusCode()).isEqualTo(200);
+
+        // Captura timestamps e contagens autoritativas
+        Instant initialProcessedAt = jdbcTemplate.queryForObject(
+                "SELECT processed_at FROM payments WHERE id = ?",
+                Instant.class,
+                UUID.fromString(paymentAttemptId)
+        );
+        Instant confirmedAt = jdbcTemplate.queryForObject(
+                "SELECT confirmed_at FROM reservations WHERE id = ?",
+                Instant.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(initialProcessedAt).isNotNull();
+        assertThat(confirmedAt).isNotNull();
+
+        // 2. Cliente entra em modo de reconciliação e consulta com o MESMO paymentAttemptId
+        HttpResponse<String> reconcilePay = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                payload
+        );
+        assertThat(reconcilePay.statusCode()).isEqualTo(200);
+        assertThat(reconcilePay.body()).contains("\"id\":\"" + paymentAttemptId + "\"");
+        assertThat(reconcilePay.body()).contains("\"reservationId\":\"" + reservationId + "\"");
+        assertThat(reconcilePay.body()).contains("\"status\":\"APPROVED\"");
+        assertThat(reconcilePay.body()).contains("\"amount\":600.00");
+        assertThat(reconcilePay.body()).contains("\"currency\":\"BRL\"");
+
+        // 3. Verificação de Invariantes Estritas no PostgreSQL:
+        // a) Exatamente 1 registro de Payment no banco de dados para a tentativa
+        Integer paymentCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM payments WHERE id = ?",
+                Integer.class,
+                UUID.fromString(paymentAttemptId)
+        );
+        assertThat(paymentCount).isEqualTo(1);
+
+        // b) Exatamente 2 Tickets emitidos, sem nenhuma duplicação
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(2);
+
+        // c) Estoque permanece inalterado (98 restantes)
+        Integer stock = jdbcTemplate.queryForObject(
+                "SELECT available_quantity FROM ticket_sectors WHERE id = ?",
+                Integer.class,
+                UUID.fromString(sectorId)
+        );
+        assertThat(stock).isEqualTo(98);
+
+        // d) Timestamps persistidos inalterados
+        Instant finalProcessedAt = jdbcTemplate.queryForObject(
+                "SELECT processed_at FROM payments WHERE id = ?",
+                Instant.class,
+                UUID.fromString(paymentAttemptId)
+        );
+        assertThat(finalProcessedAt).isEqualTo(initialProcessedAt);
+    }
+
+    @Test
+    @DisplayName("Story 5.3 — DECLINED commitado + resposta perdida: reconcile com mesmo paymentAttemptId retorna DECLINED sem gateway novo")
+    void reconciliationOfCommittedDeclinedPaymentReturnsDeclinedWithoutReExecutingGateway() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Reconcile Declined 5.3",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista Comum",
+                50,
+                "150.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":1}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String paymentAttemptId = UUID.randomUUID().toString();
+        String payload = "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"DECLINED\"}";
+
+        // 1. Primeira chamada DECLINED
+        HttpResponse<String> initialPay = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                payload
+        );
+        assertThat(initialPay.statusCode()).isEqualTo(200);
+        assertThat(initialPay.body()).contains("\"status\":\"DECLINED\"");
+
+        // 2. Reconciliação da tentativa DECLINED
+        HttpResponse<String> reconcilePay = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                payload
+        );
+        assertThat(reconcilePay.statusCode()).isEqualTo(200);
+        assertThat(reconcilePay.body()).contains("\"status\":\"DECLINED\"");
+        assertThat(reconcilePay.body()).contains("\"id\":\"" + paymentAttemptId + "\"");
+
+        // 3. Invariantes no banco:
+        // a) Reserva continua HOLDING
+        String resStatus = jdbcTemplate.queryForObject(
+                "SELECT status FROM reservations WHERE id = ?",
+                String.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(resStatus).isEqualTo("HOLDING");
+
+        // b) Exatamente 1 registro de payment
+        Integer paymentCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM payments WHERE id = ?",
+                Integer.class,
+                UUID.fromString(paymentAttemptId)
+        );
+        assertThat(paymentCount).isEqualTo(1);
+
+        // c) Zero tickets
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Story 5.3 — Reconciliação concorrente múltipla do mesmo paymentAttemptId produz resultado consistente e zero efeitos colaterais extras")
+    void concurrentReconciliationOfSamePaymentAttemptProducesConsistentResult() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Concurrent Reconcile 5.3",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista",
+                100,
+                "200.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":3}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String paymentAttemptId = UUID.randomUUID().toString();
+        String payload = "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}";
+
+        // Commit inicial da tentativa
+        HttpResponse<String> initialPay = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                payload
+        );
+        assertThat(initialPay.statusCode()).isEqualTo(200);
+
+        // 4 chamadas concorrentes de reconciliação
+        int threads = 4;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        List<Callable<HttpResponse<String>>> tasks = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            tasks.add(() -> post(
+                    "/api/v1/reservations/" + reservationId + "/payments",
+                    "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                    csrf,
+                    payload
+            ));
+        }
+
+        List<Future<HttpResponse<String>>> futures = executor.invokeAll(tasks);
+        executor.shutdown();
+
+        for (Future<HttpResponse<String>> future : futures) {
+            HttpResponse<String> response = future.get();
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.body()).contains("\"status\":\"APPROVED\"");
+            assertThat(response.body()).contains("\"id\":\"" + paymentAttemptId + "\"");
+        }
+
+        // Exatamente 3 Tickets e 1 Payment persistido
+        Integer ticketCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tickets WHERE reservation_id = ?",
+                Integer.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(ticketCount).isEqualTo(3);
+
+        Integer paymentCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM payments WHERE id = ?",
+                Integer.class,
+                UUID.fromString(paymentAttemptId)
+        );
+        assertThat(paymentCount).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Story 5.3 — CUSTOMER não proprietário não consegue reconciliar tentativa de outro usuário (HTTP 403 AUTH_FORBIDDEN)")
+    void nonOwnerCustomerCannotReconcileAnotherUsersPaymentAttempt() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerOneSession = loginSession("customer.one@demo.elitedevticket.local");
+        String customerTwoSession = loginSession("customer.two@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Show Ownership Reconcile 5.3",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Pista",
+                50,
+                "100.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // Customer One cria reserva e processa pagamento
+        HttpResponse<String> resResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerOneSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":1}"
+        );
+        String reservationId = extractJsonField(resResponse.body(), "id");
+
+        String paymentAttemptId = UUID.randomUUID().toString();
+        HttpResponse<String> payOne = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerOneSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+        assertThat(payOne.statusCode()).isEqualTo(200);
+
+        // Customer Two tenta reconciliar o paymentAttemptId do Customer One
+        HttpResponse<String> reconcileTwo = post(
+                "/api/v1/reservations/" + reservationId + "/payments",
+                "EDT_SESSION=" + customerTwoSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"paymentAttemptId\":\"" + paymentAttemptId + "\",\"simulatedOutcome\":\"APPROVED\"}"
+        );
+        assertThat(reconcileTwo.statusCode()).isEqualTo(403);
+        assertThat(reconcileTwo.body()).contains("\"code\":\"AUTH_FORBIDDEN\"");
+    }
+
 
     private String bootstrapCsrf() throws Exception {
         HttpResponse<String> response = get("/api/v1/auth/session", "");

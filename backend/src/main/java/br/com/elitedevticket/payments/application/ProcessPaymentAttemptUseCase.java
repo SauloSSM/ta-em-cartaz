@@ -73,6 +73,9 @@ public class ProcessPaymentAttemptUseCase {
         Optional<Payment> existingPaymentOpt = paymentRepository.findById(command.paymentAttemptId());
         if (existingPaymentOpt.isPresent()) {
             Payment existingPayment = existingPaymentOpt.get();
+            if (!existingPayment.customerId().equals(command.customerId())) {
+                throw new ReservationOwnershipException("A tentativa de pagamento informada pertence a outro usuário.");
+            }
             if (!existingPayment.fingerprint().equals(fingerprint)) {
                 throw new IdempotencyConflictException("Chave de tentativa de pagamento reutilizada com parâmetros incompatíveis.");
             }
