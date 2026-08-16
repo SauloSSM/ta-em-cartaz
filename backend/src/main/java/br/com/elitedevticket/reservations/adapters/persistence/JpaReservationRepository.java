@@ -1,0 +1,50 @@
+package br.com.elitedevticket.reservations.adapters.persistence;
+
+import br.com.elitedevticket.reservations.application.ReservationRepository;
+import br.com.elitedevticket.reservations.domain.Reservation;
+import br.com.elitedevticket.reservations.domain.ReservationStatus;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.stereotype.Component;
+
+@Component
+class JpaReservationRepository implements ReservationRepository {
+
+    private final SpringDataReservationRepository repository;
+
+    JpaReservationRepository(SpringDataReservationRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public Reservation save(Reservation reservation) {
+        ReservationEntity entity = new ReservationEntity(reservation);
+        ReservationEntity saved = repository.save(entity);
+        return saved.toDomain();
+    }
+
+    @Override
+    public Optional<Reservation> findById(UUID id) {
+        return repository.findById(id).map(ReservationEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Reservation> findByIdWithLock(UUID id) {
+        return repository.findByIdForUpdate(id).map(ReservationEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Reservation> findHoldingByCustomerAndEvent(UUID customerId, UUID eventId) {
+        return repository.findByCustomerIdAndEventIdAndStatus(customerId, eventId, ReservationStatus.HOLDING)
+                .map(ReservationEntity::toDomain);
+    }
+
+    @Override
+    public List<Reservation> findByCustomerId(UUID customerId) {
+        return repository.findByCustomerIdOrderByCreatedAtDesc(customerId)
+                .stream()
+                .map(ReservationEntity::toDomain)
+                .toList();
+    }
+}

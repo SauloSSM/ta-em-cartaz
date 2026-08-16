@@ -15,6 +15,10 @@ const eventsTypeSource = readFileSync(
   new URL('../src/features/events/api/eventsApi.ts', import.meta.url),
   'utf8',
 );
+const reservationsTypeSource = readFileSync(
+  new URL('../src/features/reservations/api/reservationsApi.ts', import.meta.url),
+  'utf8',
+);
 
 const authSourceFile = ts.createSourceFile(
   'authApi.ts',
@@ -37,11 +41,19 @@ const eventsSourceFile = ts.createSourceFile(
   true,
   ts.ScriptKind.TS,
 );
+const reservationsSourceFile = ts.createSourceFile(
+  'reservationsApi.ts',
+  reservationsTypeSource,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
 
 const allStatements = [
   ...authSourceFile.statements,
   ...catalogSourceFile.statements,
   ...eventsSourceFile.statements,
+  ...reservationsSourceFile.statements,
 ];
 
 const aliases = new Map(
@@ -312,8 +324,8 @@ function assertClientOperation(operation, functions, responses) {
   for (const [status, response] of operation.responses) {
     if (!status.startsWith('2')) {
       const component = response.componentRef === undefined ? undefined : responses.get(response.componentRef);
-      if (component?.schemaRef !== 'ApiError' && component?.schemaRef !== 'CatalogApiError' && component?.schemaRef !== 'EventApiError') {
-        fail(`resposta ${status} de ${operation.path} não referencia ApiError, CatalogApiError ou EventApiError via component response`);
+      if (component?.schemaRef !== 'ApiError' && component?.schemaRef !== 'CatalogApiError' && component?.schemaRef !== 'EventApiError' && component?.schemaRef !== 'ReservationApiError') {
+        fail(`resposta ${status} de ${operation.path} não referencia ApiError, CatalogApiError, EventApiError ou ReservationApiError via component response`);
       }
     }
   }

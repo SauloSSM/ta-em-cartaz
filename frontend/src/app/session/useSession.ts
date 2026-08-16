@@ -8,6 +8,7 @@ import {
 } from '../api/authApi';
 
 export type { SessionUser };
+import { clearPurchaseIntention } from '../../features/events/model/purchaseIntention';
 
 const PURCHASE_INTENT_KEY = 'edt.purchase-intent.v1';
 
@@ -92,6 +93,7 @@ export function useSession() {
       dispatch({ type: 'LOGOUT_FAILED', message: 'Não foi possível encerrar a sessão. Tente novamente.' });
       return;
     }
+    clearPurchaseIntention();
     try {
       sessionStorage.removeItem(PURCHASE_INTENT_KEY);
     } catch {

@@ -1,0 +1,14 @@
+package br.com.elitedevticket.reservations.http;
+
+public enum ReservationErrorCode {
+    INSUFFICIENT_AVAILABILITY,
+    SALES_CLOSED,
+    EVENT_NOT_PUBLISHED,
+    EVENT_NOT_FOUND,
+    SECTOR_NOT_FOUND,
+    RESERVATION_NOT_FOUND,
+    RESERVATION_EXPIRED,
+    AUTH_INVALID_REQUEST,
+    AUTH_FORBIDDEN,
+    AUTH_UNAUTHENTICATED
+}

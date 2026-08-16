@@ -8,8 +8,7 @@ const originalFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = originalFetch;
   document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/';
-  sessionStorage.removeItem('edt.purchase-intent.v1');
-  sessionStorage.removeItem('unrelated.preference');
+  sessionStorage.clear();
   localStorage.removeItem('unrelated.local-preference');
 });
 
@@ -588,22 +587,66 @@ describe('App session flow', () => {
     );
   });
 
-  it('cliente autenticado (CUSTOMER) navega para o detalhe e forma intenção com confirmação visual', async () => {
-    globalThis.fetch = vi.fn<typeof fetch>()
-      // 1. Session check: authenticated as CUSTOMER
-      .mockResolvedValueOnce(
-        jsonResponse({
+  it('cliente autenticado (CUSTOMER) navega para o detalhe e cria hold de reserva com sucesso', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({
           authenticated: true,
           user: {
             id: '00000000-0000-0000-0000-000000000002',
             email: 'customer.one@demo.elitedevticket.local',
             role: 'CUSTOMER',
           },
-        }),
-      )
-      // 2. Initial catalog load
-      .mockResolvedValueOnce(
-        jsonResponse({
+        }));
+      }
+      if (url.includes('/reservations') && method === 'POST') {
+        return Promise.resolve(jsonResponse({
+          id: 'res-cust-1',
+          customerId: '00000000-0000-0000-0000-000000000002',
+          eventId: 'ev-cust-1',
+          sectorId: 'sec-mesa',
+          quantity: 1,
+          unitPrice: 90.0,
+          totalAmount: 90.0,
+          status: 'HOLDING',
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          createdAt: new Date().toISOString(),
+          serverNow: new Date().toISOString(),
+        }, 201));
+      }
+      if (url.endsWith('/sectors') && method === 'GET') {
+        return Promise.resolve(jsonResponse({
+          sectors: [
+            {
+              id: 'sec-mesa',
+              eventId: 'ev-cust-1',
+              name: 'Mesa Central',
+              capacity: 40,
+              availableQuantity: 40,
+              price: 90.0,
+              createdAt: '2026-08-15T10:00:00Z',
+              updatedAt: '2026-08-15T12:00:00Z',
+            },
+          ],
+        }));
+      }
+      if (url.endsWith('/events/ev-cust-1') && method === 'GET') {
+        return Promise.resolve(jsonResponse({
+          id: 'ev-cust-1',
+          organizerId: '00000000-0000-0000-0000-000000000001',
+          title: 'Jazz & Blues Night 2026',
+          category: 'Jazz',
+          status: 'PUBLISHED',
+          venueName: 'Blue Note SP',
+          startsAt: '2026-12-05T21:00:00Z',
+          createdAt: '2026-08-15T10:00:00Z',
+          updatedAt: '2026-08-15T12:00:00Z',
+        }));
+      }
+      if (url.includes('/api/v1/events') && method === 'GET') {
+        return Promise.resolve(jsonResponse({
           events: [
             {
               id: 'ev-cust-1',
@@ -618,25 +661,10 @@ describe('App session flow', () => {
               updatedAt: '2026-08-15T12:00:00Z',
             },
           ],
-        }),
-      )
-      // 3. List sectors
-      .mockResolvedValueOnce(
-        jsonResponse({
-          sectors: [
-            {
-              id: 'sec-mesa',
-              eventId: 'ev-cust-1',
-              name: 'Mesa Central',
-              capacity: 40,
-              availableQuantity: 40,
-              price: 90.0,
-              createdAt: '2026-08-15T10:00:00Z',
-              updatedAt: '2026-08-15T12:00:00Z',
-            },
-          ],
-        }),
-      );
+        }));
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
 
     const user = userEvent.setup();
     render(<App />);
@@ -656,17 +684,208 @@ describe('App session flow', () => {
     const reserveBtn = screen.getByRole('button', { name: /Reservar 1 ingresso no setor Mesa Central/ });
     await user.click(reserveBtn);
 
-    // Feedback de intenção registrada é exibido
-    expect(await screen.findByTestId('intention-success-alert')).toBeDefined();
-    expect(screen.getByTestId('intention-success-alert').textContent).toContain(
-      'Intenção de compra registrada com sucesso para o setor Mesa Central (1 ingresso)',
-    );
+    // Active hold card é exibido com sucesso
+    expect(await screen.findByTestId('active-hold-card')).toBeDefined();
+    expect(screen.getByText('Ingressos Pré-Reservados (Hold)')).toBeDefined();
+    expect(screen.getAllByText(/90,00/).length).toBeGreaterThanOrEqual(1);
 
     // Botão de voltar ao catálogo funciona
     const backBtn = screen.getByRole('button', { name: 'Voltar para o catálogo de eventos' });
     await user.click(backBtn);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();
+  });
+
+  it('restaura intenção de compra após login CUSTOMER e cria hold válido', async () => {
+    // 1. Visitante salva intenção no sessionStorage
+    sessionStorage.setItem(
+      'edt_purchase_intention',
+      JSON.stringify({
+        eventId: 'ev-cust-restore',
+        ticketSectorId: 'sec-pista-restore',
+        quantity: 2,
+        internalReturnPath: '/events/ev-cust-restore',
+        createdAt: new Date().toISOString(),
+      }),
+    );
+
+    const mockEvent = {
+      id: 'ev-cust-restore',
+      organizerId: '00000000-0000-0000-0000-000000000001',
+      title: 'Show dos Sonhos 2026',
+      status: 'PUBLISHED',
+      startsAt: '2026-11-20T20:00:00Z',
+      createdAt: '2026-08-15T10:00:00Z',
+      updatedAt: '2026-08-15T12:00:00Z',
+    };
+
+    const mockSectors = {
+      sectors: [
+        {
+          id: 'sec-pista-restore',
+          eventId: 'ev-cust-restore',
+          name: 'Pista Geral',
+          capacity: 100,
+          availableQuantity: 50,
+          price: 100.0,
+          createdAt: '2026-08-15T10:00:00Z',
+          updatedAt: '2026-08-15T12:00:00Z',
+        },
+      ],
+    };
+
+    const mockReservation = {
+      id: 'res-restored-1',
+      customerId: '00000000-0000-0000-0000-000000000002',
+      eventId: 'ev-cust-restore',
+      sectorId: 'sec-pista-restore',
+      quantity: 2,
+      unitPrice: 100.0,
+      totalAmount: 200.0,
+      status: 'HOLDING',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      serverNow: new Date().toISOString(),
+    };
+
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({ authenticated: false }));
+      }
+      if (url.includes('/api/v1/auth/login')) {
+        return Promise.resolve(jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000002',
+            email: 'customer.one@demo.elitedevticket.local',
+            role: 'CUSTOMER',
+          },
+        }));
+      }
+      if (url.includes('/reservations') && method === 'POST') {
+        return Promise.resolve(jsonResponse(mockReservation, 201));
+      }
+      if (url.includes('/sectors') && method === 'GET') {
+        return Promise.resolve(jsonResponse(mockSectors));
+      }
+      if (url.endsWith('/events/ev-cust-restore') && method === 'GET') {
+        return Promise.resolve(jsonResponse(mockEvent));
+      }
+      return Promise.resolve(jsonResponse({ events: [] }));
+    });
+
+    const user = userEvent.setup();
+    render(<App initialAnonymousView="login" />);
+
+    // Realiza login
+    const emailInput = await screen.findByLabelText('E-mail');
+    const passwordInput = screen.getByLabelText('Senha');
+    await user.type(emailInput, 'customer.one@demo.elitedevticket.local');
+    await user.type(passwordInput, 'password');
+
+    const submitBtn = screen.getByRole('button', { name: 'Entrar' });
+    await user.click(submitBtn);
+
+    // Intenção restaurada com sucesso e hold ativo exibido
+    expect(await screen.findByTestId('active-hold-card')).toBeDefined();
+    expect(screen.getByText('Ingressos Pré-Reservados (Hold)')).toBeDefined();
+    expect(screen.getAllByText(/200,00/).length).toBeGreaterThanOrEqual(1);
+
+    // Intenção foi limpa do sessionStorage
+    expect(sessionStorage.getItem('edt_purchase_intention')).toBeNull();
+  });
+
+  it('restaura e trata falha de disponibilidade após login sem redução silenciosa', async () => {
+    sessionStorage.setItem(
+      'edt_purchase_intention',
+      JSON.stringify({
+        eventId: 'ev-fail-1',
+        ticketSectorId: 'sec-soldout',
+        quantity: 3,
+        internalReturnPath: '/events/ev-fail-1',
+        createdAt: new Date().toISOString(),
+      }),
+    );
+
+    const mockEvent = {
+      id: 'ev-fail-1',
+      organizerId: '00000000-0000-0000-0000-000000000001',
+      title: 'Show Esgotado 2026',
+      status: 'PUBLISHED',
+      startsAt: '2026-11-20T20:00:00Z',
+      createdAt: '2026-08-15T10:00:00Z',
+      updatedAt: '2026-08-15T12:00:00Z',
+    };
+
+    const mockSectors = {
+      sectors: [
+        {
+          id: 'sec-soldout',
+          eventId: 'ev-fail-1',
+          name: 'Área Premium',
+          capacity: 50,
+          availableQuantity: 0,
+          price: 150.0,
+          createdAt: '2026-08-15T10:00:00Z',
+          updatedAt: '2026-08-15T12:00:00Z',
+        },
+      ],
+    };
+
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+      if (url.includes('/api/v1/auth/session')) {
+        return Promise.resolve(jsonResponse({ authenticated: false }));
+      }
+      if (url.includes('/api/v1/auth/login')) {
+        return Promise.resolve(jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000002',
+            email: 'customer.one@demo.elitedevticket.local',
+            role: 'CUSTOMER',
+          },
+        }));
+      }
+      if (url.includes('/reservations') && method === 'POST') {
+        return Promise.resolve(jsonResponse({
+          code: 'INSUFFICIENT_AVAILABILITY',
+          message: 'Quantidade solicitada indisponível.',
+          traceId: 'tr-fail',
+          timestamp: new Date().toISOString(),
+        }, 422));
+      }
+      if (url.includes('/sectors') && method === 'GET') {
+        return Promise.resolve(jsonResponse(mockSectors));
+      }
+      if (url.endsWith('/events/ev-fail-1') && method === 'GET') {
+        return Promise.resolve(jsonResponse(mockEvent));
+      }
+      return Promise.resolve(jsonResponse({ events: [] }));
+    });
+
+    const user = userEvent.setup();
+    render(<App initialAnonymousView="login" />);
+
+    const emailInput = await screen.findByLabelText('E-mail');
+    const passwordInput = screen.getByLabelText('Senha');
+    await user.type(emailInput, 'customer.one@demo.elitedevticket.local');
+    await user.type(passwordInput, 'password');
+
+    const submitBtn = screen.getByRole('button', { name: 'Entrar' });
+    await user.click(submitBtn);
+
+    // Alerta de erro de restauração é exibido no detalhe do evento
+    expect(await screen.findByTestId('reservation-error-alert')).toBeDefined();
+    expect(screen.getByTestId('reservation-error-alert').textContent).toContain(
+      'Não foi possível concluir sua reserva automaticamente: a quantidade solicitada não está mais disponível no setor selecionado.',
+    );
+
+    // Intenção foi limpa do sessionStorage
+    expect(sessionStorage.getItem('edt_purchase_intention')).toBeNull();
   });
 });
 

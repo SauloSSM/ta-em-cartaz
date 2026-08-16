@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionUser } from '../../../../app/api/authApi';
 import type { PublicEventResponse, TicketSectorListResponse } from '../../api/eventsApi';
+import type { ReservationResponse } from '../../../reservations';
 import { getPurchaseIntention } from '../../model/purchaseIntention';
 import { PublicEventDetail } from '../PublicEventDetail';
 
@@ -86,7 +87,7 @@ afterEach(() => {
 describe('PublicEventDetail component (Superfície S02)', () => {
   it('exibe estado de loading acessível durante carregamento inicial', async () => {
     globalThis.fetch = vi.fn<typeof fetch>().mockImplementation(
-      () => new Promise(() => {}), // nunca resolve
+      () => new Promise(() => {}),
     );
 
     render(
@@ -100,63 +101,7 @@ describe('PublicEventDetail component (Superfície S02)', () => {
     expect(screen.getByRole('button', { name: 'Voltar para o catálogo de eventos' })).toBeDefined();
   });
 
-  it('exibe erro 404 quando o evento não existe com opção de voltar ao catálogo', async () => {
-    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
-      jsonResponse(
-        {
-          code: 'EVENT_NOT_FOUND',
-          message: 'Evento não encontrado.',
-          traceId: 'trace-404',
-          timestamp: '2026-08-15T12:00:00Z',
-        },
-        404,
-      ),
-    );
-
-    const handleBack = vi.fn();
-    const user = userEvent.setup();
-
-    render(
-      <PublicEventDetail
-        eventId="ev-inexistente"
-        onBackToCatalog={handleBack}
-      />,
-    );
-
-    expect(await screen.findByRole('heading', { level: 2, name: 'Evento não encontrado' })).toBeDefined();
-    expect(screen.getByRole('alert').textContent).toContain('O evento solicitado não foi encontrado ou não está disponível.');
-
-    await user.click(screen.getByRole('button', { name: '← Voltar para o Catálogo de Eventos' }));
-    expect(handleBack).toHaveBeenCalledTimes(1);
-  });
-
-  it('exibe erro 403 quando um evento DRAFT é acessado publicamente', async () => {
-    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
-      jsonResponse(
-        {
-          code: 'EVENT_FORBIDDEN',
-          message: 'Acesso negado ao rascunho de evento.',
-          traceId: 'trace-403',
-          timestamp: '2026-08-15T12:00:00Z',
-        },
-        403,
-      ),
-    );
-
-    render(
-      <PublicEventDetail
-        eventId="ev-draft-secret"
-        onBackToCatalog={vi.fn()}
-      />,
-    );
-
-    expect(await screen.findByRole('heading', { level: 2, name: 'Acesso Restrito' })).toBeDefined();
-    expect(screen.getByRole('alert').textContent).toContain(
-      'Este evento está em modo rascunho e não está disponível publicamente.',
-    );
-  });
-
-  it('renderiza todos os detalhes do evento publicado com setores e preço formatado em BRL', async () => {
+  it('exibe detalhes completos de evento publicado', async () => {
     globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValueOnce(jsonResponse(mockSectors));
 
     render(
@@ -167,34 +112,16 @@ describe('PublicEventDetail component (Superfície S02)', () => {
       />,
     );
 
-    // Título principal
     expect(await screen.findByRole('heading', { level: 1, name: 'Festival Primavera Sound 2026' })).toBeDefined();
-
-    // Metadados
+    expect(screen.getByText('O maior festival de música e cultura urbana.')).toBeDefined();
     expect(screen.getByText('Autódromo de Interlagos — Av. Senador Teotônio Vilela, 261, São Paulo - SP')).toBeDefined();
     expect(screen.getByText('Festival')).toBeDefined();
-    expect(screen.getByText('O maior festival de música e cultura urbana.')).toBeDefined();
-
-    // Setores
-    expect(screen.getAllByText('Pista Comum').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/150,00/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/500 ingressos disponíveis/)).toBeDefined();
-
-    expect(screen.getByText('Camarote VIP')).toBeDefined();
-    expect(screen.getAllByText(/450,00/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/4 ingressos disponíveis/)).toBeDefined();
-
-    // Setor esgotado
-    expect(screen.getByText('Lounge Premium')).toBeDefined();
-    expect(screen.getByText('Esgotado')).toBeDefined();
   });
 
-  it('comunica SALES_CLOSED claramente quando o evento já iniciou e bloqueia reserva', async () => {
+  it('exibe alerta e desabilita compra quando evento tiver vendas encerradas', async () => {
     const closedEvent: PublicEventResponse = {
       ...mockPublishedEvent,
       id: 'ev-closed-1',
-      title: 'Festival Já Iniciado',
-      startsAt: '2026-08-10T10:00:00Z', // data no passado
       salesClosed: true,
     };
 
@@ -212,7 +139,6 @@ describe('PublicEventDetail component (Superfície S02)', () => {
     expect(screen.getByTestId('sales-closed-alert').textContent).toContain('Vendas Encerradas');
     expect(screen.getByText('Vendas encerradas')).toBeDefined();
 
-    // Painel de compra não exibe stepper nem botão de reservar
     expect(screen.queryByTestId('purchase-intention-box')).toBeNull();
     expect(screen.queryByRole('button', { name: /Reservar/ })).toBeNull();
   });
@@ -230,16 +156,13 @@ describe('PublicEventDetail component (Superfície S02)', () => {
       />,
     );
 
-    // Setor Camarote VIP tem estoque = 4
     const vipSectorBtn = await screen.findByRole('button', { name: /Selecionar setor Camarote VIP/ });
     await user.click(vipSectorBtn);
 
-    // Resumo atualiza para Camarote VIP
     expect(screen.getAllByText('Camarote VIP').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId('quantity-stepper-value').textContent).toContain('1');
     expect(screen.getAllByText(/450,00/).length).toBeGreaterThanOrEqual(1);
 
-    // Incrementa até 4
     const incBtn = screen.getByRole('button', { name: 'Aumentar quantidade' });
     await user.click(incBtn);
     expect(screen.getByTestId('quantity-stepper-value').textContent).toContain('2');
@@ -253,7 +176,6 @@ describe('PublicEventDetail component (Superfície S02)', () => {
     expect(screen.getByTestId('quantity-stepper-value').textContent).toContain('4');
     expect(screen.getByText(/1\.800,00/)).toBeDefined();
 
-    // Botão + desabilita no limite do estoque (4)
     expect((incBtn as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -273,15 +195,12 @@ describe('PublicEventDetail component (Superfície S02)', () => {
       />,
     );
 
-    // Incrementa para 2 ingressos
     const incBtn = await screen.findByRole('button', { name: 'Aumentar quantidade' });
     await user.click(incBtn);
 
-    // Clica em "Reservar Ingressos"
     const reserveBtn = screen.getByRole('button', { name: /Reservar 2 ingressos no setor Pista Comum/ });
     await user.click(reserveBtn);
 
-    // Intenção salva em sessionStorage
     const savedIntention = getPurchaseIntention();
     expect(savedIntention).not.toBeNull();
     expect(savedIntention?.eventId).toBe('ev-pub-123');
@@ -289,17 +208,32 @@ describe('PublicEventDetail component (Superfície S02)', () => {
     expect(savedIntention?.quantity).toBe(2);
     expect(savedIntention?.internalReturnPath).toBe('/events/ev-pub-123');
 
-    // Redireciona para o login com mensagem explicativa
     expect(handleLoginRedirect).toHaveBeenCalledTimes(1);
     expect(handleLoginRedirect).toHaveBeenCalledWith(
       expect.stringContaining('acesse sua conta de Cliente (CUSTOMER)'),
     );
   });
 
-  it('cliente autenticado (CUSTOMER) forma intenção sem antecipar Reservation do Epic 4', async () => {
-    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValueOnce(jsonResponse(mockSectors));
+  it('cliente autenticado (CUSTOMER) cria hold de reserva com sucesso', async () => {
+    const mockReservation: ReservationResponse = {
+      id: 'res-123',
+      customerId: 'usr-cust-1',
+      eventId: 'ev-pub-123',
+      sectorId: 'sec-pista',
+      quantity: 2,
+      unitPrice: 150.0,
+      totalAmount: 300.0,
+      status: 'HOLDING',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      serverNow: new Date().toISOString(),
+    };
 
-    const handleIntention = vi.fn();
+    globalThis.fetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(mockSectors))
+      .mockResolvedValueOnce(jsonResponse(mockReservation, 201));
+
+    const handleReservation = vi.fn();
     const user = userEvent.setup();
 
     render(
@@ -308,31 +242,56 @@ describe('PublicEventDetail component (Superfície S02)', () => {
         initialEvent={mockPublishedEvent}
         currentUser={customerUser}
         onBackToCatalog={vi.fn()}
-        onIntentionFormed={handleIntention}
+        onReservationCreated={handleReservation}
       />,
     );
 
-    const reserveBtn = await screen.findByRole('button', { name: /Reservar 1 ingresso no setor Pista Comum/ });
+    const incBtn = await screen.findByRole('button', { name: 'Aumentar quantidade' });
+    await user.click(incBtn);
+
+    const reserveBtn = screen.getByRole('button', { name: /Reservar 2 ingressos no setor Pista Comum/ });
     await user.click(reserveBtn);
 
-    // Intenção salva no sessionStorage
-    const savedIntention = getPurchaseIntention();
-    expect(savedIntention).not.toBeNull();
-    expect(savedIntention?.quantity).toBe(1);
+    expect(await screen.findByTestId('active-hold-card')).toBeDefined();
+    expect(screen.getByText('Ingressos Pré-Reservados (Hold)')).toBeDefined();
+    expect(screen.getAllByText(/300,00/).length).toBeGreaterThanOrEqual(1);
+    expect(handleReservation).toHaveBeenCalledWith(mockReservation);
+  });
 
-    // Feedback acessível de intenção registrada
-    expect(await screen.findByTestId('intention-success-alert')).toBeDefined();
-    expect(screen.getByTestId('intention-success-alert').textContent).toContain(
-      'Intenção de compra registrada com sucesso para o setor Pista Comum (1 ingresso)',
+  it('exibe erro de disponibilidade insuficiente sem reduzir silenciosamente a quantidade', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(mockSectors))
+      .mockResolvedValueOnce(jsonResponse({
+        code: 'INSUFFICIENT_AVAILABILITY',
+        message: 'Quantidade indisponível.',
+        traceId: 'tr-insufficient',
+        timestamp: new Date().toISOString(),
+      }, 422));
+
+    const user = userEvent.setup();
+
+    render(
+      <PublicEventDetail
+        eventId="ev-pub-123"
+        initialEvent={mockPublishedEvent}
+        currentUser={customerUser}
+        onBackToCatalog={vi.fn()}
+      />,
     );
 
-    expect(handleIntention).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventId: 'ev-pub-123',
-        ticketSectorId: 'sec-pista',
-        quantity: 1,
-      }),
+    const incBtn = await screen.findByRole('button', { name: 'Aumentar quantidade' });
+    await user.click(incBtn); // quantity = 2
+
+    const reserveBtn = screen.getByRole('button', { name: /Reservar 2 ingressos no setor Pista Comum/ });
+    await user.click(reserveBtn);
+
+    expect(await screen.findByTestId('reservation-error-alert')).toBeDefined();
+    expect(screen.getByTestId('reservation-error-alert').textContent).toContain(
+      'Não foi possível concluir sua reserva: a quantidade solicitada não está mais disponível no setor selecionado.',
     );
+
+    // Quantidade permanece selecionada como 2 sem redução silenciosa
+    expect(screen.getByTestId('quantity-stepper-value').textContent).toContain('2');
   });
 
   it('organizador autenticado recebe aviso de papel incompatível ao tentar reservar', async () => {

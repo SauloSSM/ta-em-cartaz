@@ -10,18 +10,28 @@ import {
 } from '../api/eventsApi';
 import {
   savePurchaseIntention,
+  clearPurchaseIntention,
   type PurchaseIntention,
 } from '../model/purchaseIntention';
+import {
+  createReservation,
+  ReservationClientError,
+  type ReservationResponse,
+  ActiveHoldCard,
+} from '../../reservations';
 import { QuantityStepper } from './QuantityStepper';
 import { TicketSectorCard } from './TicketSectorCard';
 
 export type PublicEventDetailProps = {
   eventId: string;
   initialEvent?: PublicEventResponse | EventResponse;
+  initialReservation?: ReservationResponse | null;
+  initialErrorMessage?: string | null;
   onBackToCatalog: () => void;
   onProceedToLogin?: (noticeMessage: string) => void;
   currentUser?: SessionUser | null;
   onIntentionFormed?: (intention: PurchaseIntention) => void;
+  onReservationCreated?: (reservation: ReservationResponse) => void;
 };
 
 type DetailState =
@@ -39,10 +49,13 @@ type DetailState =
 export function PublicEventDetail({
   eventId,
   initialEvent,
+  initialReservation = null,
+  initialErrorMessage = null,
   onBackToCatalog,
   onProceedToLogin,
   currentUser,
   onIntentionFormed,
+  onReservationCreated,
 }: PublicEventDetailProps) {
   const [state, setState] = useState<DetailState>({ status: 'loading' });
   const [selectedSectorId, setSelectedSectorId] = useState<string | null>(null);
@@ -50,6 +63,9 @@ export function PublicEventDetail({
   const [imageError, setImageError] = useState(false);
   const [intentionFeedback, setIntentionFeedback] = useState<string | null>(null);
   const [roleErrorMessage, setRoleErrorMessage] = useState<string | null>(null);
+  const [reservationError, setReservationError] = useState<string | null>(initialErrorMessage);
+  const [activeReservation, setActiveReservation] = useState<ReservationResponse | null>(initialReservation);
+  const [isReserving, setIsReserving] = useState(false);
 
   const loadEventData = useCallback(async () => {
     setState({ status: 'loading' });
@@ -107,6 +123,18 @@ export function PublicEventDetail({
   useEffect(() => {
     void loadEventData();
   }, [loadEventData]);
+
+  useEffect(() => {
+    if (initialReservation !== undefined) {
+      setActiveReservation(initialReservation);
+    }
+  }, [initialReservation]);
+
+  useEffect(() => {
+    if (initialErrorMessage !== undefined) {
+      setReservationError(initialErrorMessage);
+    }
+  }, [initialErrorMessage]);
 
   if (state.status === 'loading') {
     return (
@@ -212,19 +240,23 @@ export function PublicEventDetail({
 
   const hasImage = Boolean(event.imageUrl) && !imageError;
 
-  const handleReserveClick = () => {
+  const handleReserveClick = async () => {
     if (!selectedSector || selectedSector.availableQuantity <= 0 || salesClosed) {
       return;
     }
 
-    const intention = savePurchaseIntention({
-      eventId: event.id,
-      ticketSectorId: selectedSector.id,
-      quantity,
-      internalReturnPath: `/events/${event.id}`,
-    });
+    setReservationError(null);
+    setIntentionFeedback(null);
+    setRoleErrorMessage(null);
 
     if (!currentUser) {
+      const intention = savePurchaseIntention({
+        eventId: event.id,
+        ticketSectorId: selectedSector.id,
+        quantity,
+        internalReturnPath: `/events/${event.id}`,
+      });
+
       const notice =
         'Para continuar com a compra dos seus ingressos, acesse sua conta de Cliente (CUSTOMER). Sua seleção foi guardada e a disponibilidade será revalidada após o login.';
       if (onProceedToLogin) {
@@ -232,15 +264,40 @@ export function PublicEventDetail({
       } else {
         setIntentionFeedback(notice);
       }
+      if (onIntentionFormed) {
+        onIntentionFormed(intention);
+      }
       return;
     }
 
     if (currentUser.role === 'CUSTOMER') {
-      setIntentionFeedback(
-        `Intenção de compra registrada com sucesso para o setor ${selectedSector.name} (${quantity} ${quantity === 1 ? 'ingresso' : 'ingressos'}). Prossiga para o checkout quando disponível.`,
-      );
-      if (onIntentionFormed) {
-        onIntentionFormed(intention);
+      setIsReserving(true);
+      try {
+        const reservation = await createReservation(event.id, selectedSector.id, { quantity });
+        clearPurchaseIntention();
+        setActiveReservation(reservation);
+        if (onReservationCreated) {
+          onReservationCreated(reservation);
+        }
+      } catch (err) {
+        clearPurchaseIntention();
+        if (err instanceof ReservationClientError) {
+          if (err.code === 'INSUFFICIENT_AVAILABILITY') {
+            setReservationError(
+              'Não foi possível concluir sua reserva: a quantidade solicitada não está mais disponível no setor selecionado.',
+            );
+          } else if (err.code === 'SALES_CLOSED') {
+            setReservationError('Não foi possível concluir sua reserva: as vendas para este evento foram encerradas.');
+          } else if (err.code === 'EVENT_NOT_PUBLISHED') {
+            setReservationError('Não foi possível concluir sua reserva: este evento não está mais disponível para vendas.');
+          } else {
+            setReservationError(err.message || 'Não foi possível concluir a reserva.');
+          }
+        } else {
+          setReservationError('Ocorreu um erro ao processar sua reserva. Por favor, tente novamente.');
+        }
+      } finally {
+        setIsReserving(false);
       }
       return;
     }
@@ -376,6 +433,25 @@ export function PublicEventDetail({
         </section>
       ) : null}
 
+      {/* Alerta de Hold Ativo */}
+      {activeReservation && (
+        <section aria-label="Reserva ativa" style={{ margin: '1.5rem 0' }}>
+          <ActiveHoldCard
+            reservation={activeReservation}
+            sectorName={selectedSector?.name}
+            eventTitle={event.title}
+          />
+        </section>
+      )}
+
+      {/* Alerta de Erro de Reserva */}
+      {reservationError && (
+        <div className="edt-alert edt-alert--danger" role="alert" data-testid="reservation-error-alert">
+          <h2 className="edt-alert__title">Não foi possível reservar os ingressos</h2>
+          <p className="edt-alert__desc">{reservationError}</p>
+        </div>
+      )}
+
       {/* Alerta de Vendas Encerradas */}
       {salesClosed && (
         <div className="edt-alert edt-alert--warning" role="alert" data-testid="sales-closed-alert">
@@ -424,6 +500,7 @@ export function PublicEventDetail({
                   setQuantity(1);
                   setIntentionFeedback(null);
                   setRoleErrorMessage(null);
+                  setReservationError(null);
                 }}
               />
             ))}
@@ -445,6 +522,7 @@ export function PublicEventDetail({
                     setQuantity(val);
                     setIntentionFeedback(null);
                     setRoleErrorMessage(null);
+                    setReservationError(null);
                   }}
                 />
 
@@ -477,9 +555,11 @@ export function PublicEventDetail({
                     type="button"
                     className="edt-button edt-button--primary edt-button--large edt-event-detail__reserve-btn"
                     onClick={handleReserveClick}
+                    disabled={isReserving}
+                    aria-busy={isReserving}
                     aria-label={`Reservar ${quantity} ${quantity === 1 ? 'ingresso' : 'ingressos'} no setor ${selectedSector.name}`}
                   >
-                    Reservar Ingressos →
+                    {isReserving ? 'Garantindo ingressos…' : 'Reservar Ingressos →'}
                   </button>
                   <p className="edt-event-detail__cta-hint">
                     A escolha do setor e quantidade forma uma intenção de compra. A reserva com garantia de tempo será criada após a validação.

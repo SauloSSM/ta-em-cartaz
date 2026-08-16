@@ -446,6 +446,52 @@ paths:
           $ref: '#/components/responses/EventNotFound'
         '409':
           $ref: '#/components/responses/EventConflict'
+  /api/v1/events/{eventId}/sectors/{sectorId}/reservations:
+    post:
+      operationId: createReservation
+      summary: Cria um hold de reserva válido para um cliente autenticado (CUSTOMER)
+      description: Requer sessão autenticada com papel CUSTOMER e proteção CSRF. Revalida publicação do evento, vendas abertas, setor e disponibilidade antes de criar o hold com expiração de 10 minutos.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do evento.
+        - name: sectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador UUID único do setor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReservationRequest'
+      responses:
+        '201':
+          description: Hold de reserva criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '400':
+          $ref: '#/components/responses/AuthInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '404':
+          $ref: '#/components/responses/ReservationNotFound'
+        '422':
+          $ref: '#/components/responses/ReservationUnprocessable'
 components:
   securitySchemes:
     SessionCookie:
@@ -803,6 +849,71 @@ components:
         timestamp:
           type: string
           format: date-time
+    ReservationStatus:
+      type: string
+      enum: [HOLDING, CONFIRMED, EXPIRED]
+    CreateReservationRequest:
+      type: object
+      additionalProperties: false
+      required: [quantity]
+      properties:
+        quantity:
+          type: integer
+    ReservationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, customerId, eventId, sectorId, quantity, unitPrice, totalAmount, status, expiresAt, createdAt, serverNow]
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        sectorId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        totalAmount:
+          type: number
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        serverNow:
+          type: string
+          format: date-time
+    ReservationErrorCode:
+      type: string
+      enum: [INSUFFICIENT_AVAILABILITY, SALES_CLOSED, EVENT_NOT_PUBLISHED, EVENT_NOT_FOUND, SECTOR_NOT_FOUND, RESERVATION_NOT_FOUND, RESERVATION_EXPIRED, AUTH_INVALID_REQUEST, AUTH_FORBIDDEN, AUTH_UNAUTHENTICATED]
+    ReservationApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId, timestamp]
+      properties:
+        code:
+          $ref: '#/components/schemas/ReservationErrorCode'
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        traceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
   responses:
     AuthInvalidRequest:
       description: Corpo ausente ou inválido.
@@ -857,3 +968,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/EventApiError'
+    ReservationNotFound:
+      description: Evento, setor ou reserva não encontrada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ReservationApiError'
+    ReservationUnprocessable:
+      description: Erro de negócio ao criar reserva (ex. vendas encerradas, esgotado ou evento não publicado).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ReservationApiError'
+
