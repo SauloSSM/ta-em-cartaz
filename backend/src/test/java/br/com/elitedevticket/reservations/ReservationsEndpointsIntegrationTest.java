@@ -2,6 +2,7 @@ package br.com.elitedevticket.reservations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -297,6 +298,109 @@ class ReservationsEndpointsIntegrationTest {
         } finally {
             executor.shutdown();
         }
+    }
+
+    @Test
+    @DisplayName("Snapshot de preço da Reservation permanece imutável mesmo se o organizador alterar o preço do setor posteriormente")
+    void priceSnapshotRemainsImmutableWhenSectorPriceChangesLater() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Criar e publicar evento com setor a R$ 150.00
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Festival Rock In Rio 2026",
+                Instant.now().plus(15, ChronoUnit.DAYS).toString(),
+                "Pista Comum",
+                100,
+                "150.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // 2. Customer cria hold de 2 ingressos (R$ 300.00)
+        HttpResponse<String> reserveResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        assertThat(reserveResponse.statusCode()).isEqualTo(201);
+        String reservationId = extractJsonField(reserveResponse.body(), "id");
+        assertThat(reserveResponse.body()).contains("\"unitPrice\":150.00");
+        assertThat(reserveResponse.body()).contains("\"totalAmount\":300.00");
+
+        // 3. Organizador altera o preço do setor para R$ 220.00
+        String updateSectorPayload = """
+                {
+                  "name": "Pista Comum",
+                  "description": "Setor Comum",
+                  "capacity": 100,
+                  "price": 220.00
+                }
+                """;
+        HttpResponse<String> updateSectorResponse = put(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId,
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                updateSectorPayload
+        );
+        assertThat(updateSectorResponse.statusCode()).isEqualTo(200);
+
+        // 4. Verificar no banco que a Reservation mantém os valores originais do snapshot
+        BigDecimal unitPriceInDb = jdbcTemplate.queryForObject(
+                "SELECT unit_price FROM reservations WHERE id = ?",
+                BigDecimal.class,
+                UUID.fromString(reservationId)
+        );
+        BigDecimal totalAmountInDb = jdbcTemplate.queryForObject(
+                "SELECT total_amount FROM reservations WHERE id = ?",
+                BigDecimal.class,
+                UUID.fromString(reservationId)
+        );
+        assertThat(unitPriceInDb).isEqualByComparingTo(new BigDecimal("150.00"));
+        assertThat(totalAmountInDb).isEqualByComparingTo(new BigDecimal("300.00"));
+    }
+
+    @Test
+    @DisplayName("Cliente não pode sobrescrever preço no payload e backend calcula valor autoritativo")
+    void clientCannotOverridePriceInPayload() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String customerSession = loginSession("customer.one@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        String eventId = createAndPublishEvent(
+                organizerSession,
+                csrf,
+                "Concerto Sinfônico",
+                Instant.now().plus(20, ChronoUnit.DAYS).toString(),
+                "Plateia Nobre",
+                50,
+                "180.00"
+        );
+        String sectorId = getFirstSectorId(eventId);
+
+        // 1. Cliente tenta injetar campos de preço não permitidos -> rejeitado com 400 Bad Request
+        String maliciousPayload = "{\"quantity\":2,\"unitPrice\":1.00,\"totalAmount\":2.00}";
+        HttpResponse<String> maliciousResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                maliciousPayload
+        );
+        assertThat(maliciousResponse.statusCode()).isEqualTo(400);
+
+        // 2. Requisição canônica enviando apenas quantity -> calculada exclusivamente pelo backend
+        HttpResponse<String> validResponse = post(
+                "/api/v1/events/" + eventId + "/sectors/" + sectorId + "/reservations",
+                "EDT_SESSION=" + customerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"quantity\":2}"
+        );
+        assertThat(validResponse.statusCode()).isEqualTo(201);
+        assertThat(validResponse.body()).contains("\"unitPrice\":180.00");
+        assertThat(validResponse.body()).contains("\"totalAmount\":360.00");
     }
 
     private String createAndPublishEvent(

@@ -291,4 +291,52 @@ class CreateReservationUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(new CreateReservationCommand(customerId, eventId, sectorId, 7)))
                 .isInstanceOf(InvalidReservationQuantityException.class);
     }
+
+    @Test
+    @DisplayName("Calcula snapshot exato em BRL para unitPrice e totalAmount = unitPrice * quantity")
+    void shouldCalculateExactBrlSnapshotPriceForVariousQuantities() {
+        UUID customerId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID sectorId = UUID.randomUUID();
+
+        Event event = new Event(
+                eventId,
+                UUID.randomUUID(),
+                null,
+                null,
+                "Festival de Jazz",
+                "Descrição",
+                null,
+                "Música",
+                EventStatus.PUBLISHED,
+                "Local",
+                "Endereço",
+                now.plus(10, ChronoUnit.DAYS),
+                now,
+                now
+        );
+
+        TicketSector sector = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista",
+                "Setor Pista",
+                100,
+                50,
+                new BigDecimal("123.45"),
+                now,
+                now
+        );
+
+        when(eventStockPort.findEventById(eventId)).thenReturn(Optional.of(event));
+        when(eventStockPort.findSectorByIdWithLock(sectorId)).thenReturn(Optional.of(sector));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Reservation reservation = useCase.execute(new CreateReservationCommand(customerId, eventId, sectorId, 5));
+
+        assertThat(reservation.unitPrice()).isEqualTo(new BigDecimal("123.45"));
+        assertThat(reservation.totalAmount()).isEqualTo(new BigDecimal("617.25"));
+        assertThat(reservation.status()).isEqualTo(ReservationStatus.HOLDING);
+        assertThat(reservation.expiresAt()).isEqualTo(now.plus(10, ChronoUnit.MINUTES));
+    }
 }
