@@ -19,6 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +33,7 @@ public class CreateReservationUseCase {
     private final EventStockPort eventStockPort;
     private final ReservationRepository reservationRepository;
     private final ReservationIdempotencyRepository reservationIdempotencyRepository;
+    private final ExpireReservationUseCase expireReservationUseCase;
     private final Clock clock;
 
     public CreateReservationUseCase(
@@ -39,12 +41,14 @@ public class CreateReservationUseCase {
             EventStockPort eventStockPort,
             ReservationRepository reservationRepository,
             ReservationIdempotencyRepository reservationIdempotencyRepository,
+            ExpireReservationUseCase expireReservationUseCase,
             Clock clock
     ) {
         this.customerLockPort = customerLockPort;
         this.eventStockPort = eventStockPort;
         this.reservationRepository = reservationRepository;
         this.reservationIdempotencyRepository = reservationIdempotencyRepository;
+        this.expireReservationUseCase = expireReservationUseCase;
         this.clock = clock;
     }
 
@@ -87,23 +91,29 @@ public class CreateReservationUseCase {
             }
         }
 
-        // 3. Check if Customer already has an active HOLDING for the same event (AD-4)
-        Optional<Reservation> existingActiveHold =
+        // 3. Check if Customer already has a hold for the same event (AD-4, AD-6)
+        Optional<Reservation> existingHold =
                 reservationRepository.findHoldingByCustomerAndEvent(command.customerId(), command.eventId());
 
-        if (existingActiveHold.isPresent() && !existingActiveHold.get().isExpired(serverNow)) {
-            Reservation activeHold = existingActiveHold.get();
-            if (normalizedIdempotencyKey != null) {
-                reservationIdempotencyRepository.save(new ReservationIdempotencyRecord(
-                        UUID.randomUUID(),
-                        command.customerId(),
-                        normalizedIdempotencyKey,
-                        payloadHash,
-                        activeHold.id(),
-                        serverNow
-                ));
+        if (existingHold.isPresent()) {
+            Reservation hold = existingHold.get();
+            if (!hold.isExpired(serverNow)) {
+                // Active valid hold exists for this customer/event
+                if (normalizedIdempotencyKey != null) {
+                    reservationIdempotencyRepository.save(new ReservationIdempotencyRecord(
+                            UUID.randomUUID(),
+                            command.customerId(),
+                            normalizedIdempotencyKey,
+                            payloadHash,
+                            hold.id(),
+                            serverNow
+                    ));
+                }
+                return hold;
+            } else {
+                // Hold is expired: reconcile/expire it immediately to free stock (AD-6)
+                expireReservationUseCase.execute(hold.id());
             }
-            return activeHold;
         }
 
         // 4. Validate Event published & sales open
@@ -118,7 +128,13 @@ public class CreateReservationUseCase {
             throw new SalesClosedException("As vendas para este evento foram encerradas.");
         }
 
-        // 5. Lock TicketSector with PESSIMISTIC_WRITE (AD-3, AD-5)
+        // 5. Lazy expiry on sector to prevent false scarcity (AD-6)
+        List<UUID> expiredOnSector = reservationRepository.findExpiredHoldingIdsBySector(command.sectorId(), serverNow);
+        for (UUID expiredId : expiredOnSector) {
+            expireReservationUseCase.execute(expiredId);
+        }
+
+        // 6. Lock TicketSector with PESSIMISTIC_WRITE (AD-3, AD-5)
         TicketSector sector = eventStockPort.findSectorByIdWithLock(command.sectorId())
                 .orElseThrow(() -> new TicketSectorNotFoundException("Setor de ingressos não encontrado: " + command.sectorId()));
 
@@ -132,11 +148,11 @@ public class CreateReservationUseCase {
             );
         }
 
-        // 6. Decrement availableQuantity atomically
+        // 7. Decrement availableQuantity atomically
         int newAvailableQuantity = sector.availableQuantity() - command.quantity();
         eventStockPort.updateSectorAvailability(sector.id(), newAvailableQuantity);
 
-        // 7. Create and persist Reservation
+        // 8. Create and persist Reservation
         Reservation reservation = Reservation.createHolding(
                 UUID.randomUUID(),
                 command.customerId(),
@@ -148,7 +164,7 @@ public class CreateReservationUseCase {
         );
         Reservation savedReservation = reservationRepository.save(reservation);
 
-        // 8. Persist Idempotency Record if key was provided (AD-7)
+        // 9. Persist Idempotency Record if key was provided (AD-7)
         if (normalizedIdempotencyKey != null) {
             reservationIdempotencyRepository.save(new ReservationIdempotencyRecord(
                     UUID.randomUUID(),

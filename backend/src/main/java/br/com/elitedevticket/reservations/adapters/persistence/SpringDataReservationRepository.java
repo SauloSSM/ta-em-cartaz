@@ -2,9 +2,11 @@ package br.com.elitedevticket.reservations.adapters.persistence;
 
 import br.com.elitedevticket.reservations.domain.ReservationStatus;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -24,4 +26,18 @@ interface SpringDataReservationRepository extends JpaRepository<ReservationEntit
     );
 
     List<ReservationEntity> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
+
+    @Query("SELECT r.id FROM ReservationEntity r WHERE r.status = :status AND r.expiresAt <= :serverNow ORDER BY r.id ASC")
+    List<UUID> findExpiredHoldingIds(
+            @Param("status") ReservationStatus status,
+            @Param("serverNow") Instant serverNow,
+            Pageable pageable
+    );
+
+    @Query("SELECT r.id FROM ReservationEntity r WHERE r.sectorId = :sectorId AND r.status = :status AND r.expiresAt <= :serverNow ORDER BY r.id ASC")
+    List<UUID> findExpiredHoldingIdsBySector(
+            @Param("sectorId") UUID sectorId,
+            @Param("status") ReservationStatus status,
+            @Param("serverNow") Instant serverNow
+    );
 }

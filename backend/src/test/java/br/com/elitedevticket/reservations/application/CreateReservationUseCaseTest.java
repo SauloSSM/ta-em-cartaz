@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import br.com.elitedevticket.auth.application.CustomerLockPort;
 import br.com.elitedevticket.events.application.EventStockPort;
 import br.com.elitedevticket.events.domain.Event;
+import br.com.elitedevticket.events.domain.EventNotFoundException;
 import br.com.elitedevticket.events.domain.EventStatus;
 import br.com.elitedevticket.events.domain.TicketSector;
 import br.com.elitedevticket.events.domain.TicketSectorNotFoundException;
@@ -31,6 +32,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +47,7 @@ class CreateReservationUseCaseTest {
     private EventStockPort eventStockPort;
     private ReservationRepository reservationRepository;
     private ReservationIdempotencyRepository reservationIdempotencyRepository;
+    private ExpireReservationUseCase expireReservationUseCase;
     private Clock clock;
     private CreateReservationUseCase useCase;
 
@@ -55,12 +59,14 @@ class CreateReservationUseCaseTest {
         eventStockPort = mock(EventStockPort.class);
         reservationRepository = mock(ReservationRepository.class);
         reservationIdempotencyRepository = mock(ReservationIdempotencyRepository.class);
+        expireReservationUseCase = mock(ExpireReservationUseCase.class);
         clock = Clock.fixed(now, ZoneOffset.UTC);
         useCase = new CreateReservationUseCase(
                 customerLockPort,
                 eventStockPort,
                 reservationRepository,
                 reservationIdempotencyRepository,
+                expireReservationUseCase,
                 clock
         );
     }
@@ -469,6 +475,123 @@ class CreateReservationUseCaseTest {
         verify(eventStockPort, never()).findSectorByIdWithLock(any());
         verify(eventStockPort, never()).updateSectorAvailability(any(), any(Integer.class));
         verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Hold anterior do mesmo Customer que já venceu é expirado pelo lazy reconciler antes de criar novo hold")
+    void shouldReconcileExpiredPreviousHoldOfCustomerBeforeCreatingNewHold() {
+        UUID customerId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID sectorId = UUID.randomUUID();
+        UUID oldReservationId = UUID.randomUUID();
+
+        // Expired hold (created 15 min ago, expired 5 min ago)
+        Reservation expiredHold = new Reservation(
+                oldReservationId,
+                customerId,
+                eventId,
+                sectorId,
+                2,
+                new BigDecimal("150.00"),
+                new BigDecimal("300.00"),
+                ReservationStatus.HOLDING,
+                now.minus(5, ChronoUnit.MINUTES),
+                now.minus(15, ChronoUnit.MINUTES),
+                null
+        );
+
+        Event event = new Event(
+                eventId,
+                UUID.randomUUID(),
+                null,
+                null,
+                "Show",
+                "Descrição",
+                null,
+                "Música",
+                EventStatus.PUBLISHED,
+                "Local",
+                "Endereço",
+                now.plus(5, ChronoUnit.DAYS),
+                now.minus(1, ChronoUnit.DAYS),
+                now.minus(1, ChronoUnit.DAYS)
+        );
+
+        TicketSector sector = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista",
+                "Descrição",
+                50,
+                10,
+                new BigDecimal("150.00"),
+                now.minus(1, ChronoUnit.DAYS),
+                now.minus(1, ChronoUnit.DAYS)
+        );
+
+        when(reservationRepository.findHoldingByCustomerAndEvent(customerId, eventId))
+                .thenReturn(Optional.of(expiredHold));
+        when(eventStockPort.findEventById(eventId)).thenReturn(Optional.of(event));
+        when(eventStockPort.findSectorByIdWithLock(sectorId)).thenReturn(Optional.of(sector));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateReservationCommand command = new CreateReservationCommand(customerId, eventId, sectorId, 2);
+        Reservation result = useCase.execute(command);
+
+        verify(expireReservationUseCase).execute(oldReservationId);
+        assertThat(result.status()).isEqualTo(ReservationStatus.HOLDING);
+        assertThat(result.createdAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("Lazy expiry em setor com holds vencidos libera estoque e evita falsa escassez")
+    void shouldPerformLazyExpiryOnSectorToPreventFalseScarcity() {
+        UUID customerId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID sectorId = UUID.randomUUID();
+        UUID expiredReservationId = UUID.randomUUID();
+
+        Event event = new Event(
+                eventId,
+                UUID.randomUUID(),
+                null,
+                null,
+                "Show",
+                "Descrição",
+                null,
+                "Música",
+                EventStatus.PUBLISHED,
+                "Local",
+                "Endereço",
+                now.plus(5, ChronoUnit.DAYS),
+                now.minus(1, ChronoUnit.DAYS),
+                now.minus(1, ChronoUnit.DAYS)
+        );
+
+        TicketSector sectorAfterExpiry = new TicketSector(
+                sectorId,
+                eventId,
+                "Pista",
+                "Descrição",
+                50,
+                4, // now 4 available after lazy expiry of 4 tickets
+                new BigDecimal("150.00"),
+                now.minus(1, ChronoUnit.DAYS),
+                now.minus(1, ChronoUnit.DAYS)
+        );
+
+        when(eventStockPort.findEventById(eventId)).thenReturn(Optional.of(event));
+        when(reservationRepository.findExpiredHoldingIdsBySector(sectorId, now))
+                .thenReturn(List.of(expiredReservationId));
+        when(eventStockPort.findSectorByIdWithLock(sectorId)).thenReturn(Optional.of(sectorAfterExpiry));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateReservationCommand command = new CreateReservationCommand(customerId, eventId, sectorId, 4);
+        Reservation result = useCase.execute(command);
+
+        verify(expireReservationUseCase).execute(expiredReservationId);
+        assertThat(result.quantity()).isEqualTo(4);
+        assertThat(result.status()).isEqualTo(ReservationStatus.HOLDING);
     }
 
     private static String hashOf(String input) {

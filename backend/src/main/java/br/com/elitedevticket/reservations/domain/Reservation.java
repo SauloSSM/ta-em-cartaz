@@ -75,4 +75,23 @@ public record Reservation(
     public boolean isExpired(Instant serverNow) {
         return serverNow.isAfter(expiresAt) || serverNow.equals(expiresAt);
     }
+
+    public Reservation expire() {
+        if (this.status != ReservationStatus.HOLDING) {
+            return this;
+        }
+        return new Reservation(
+                id,
+                customerId,
+                eventId,
+                sectorId,
+                quantity,
+                unitPrice,
+                totalAmount,
+                ReservationStatus.EXPIRED,
+                expiresAt,
+                createdAt,
+                confirmedAt
+        );
+    }
 }

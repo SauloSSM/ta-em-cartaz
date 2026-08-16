@@ -3,9 +3,11 @@ package br.com.elitedevticket.reservations.adapters.persistence;
 import br.com.elitedevticket.reservations.application.ReservationRepository;
 import br.com.elitedevticket.reservations.domain.Reservation;
 import br.com.elitedevticket.reservations.domain.ReservationStatus;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -48,5 +50,23 @@ class JpaReservationRepository implements ReservationRepository {
                 .stream()
                 .map(ReservationEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<UUID> findExpiredHoldingIds(Instant serverNow, int limit) {
+        return repository.findExpiredHoldingIds(
+                ReservationStatus.HOLDING,
+                serverNow,
+                PageRequest.of(0, Math.max(1, limit))
+        );
+    }
+
+    @Override
+    public List<UUID> findExpiredHoldingIdsBySector(UUID sectorId, Instant serverNow) {
+        return repository.findExpiredHoldingIdsBySector(
+                sectorId,
+                ReservationStatus.HOLDING,
+                serverNow
+        );
     }
 }
