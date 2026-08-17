@@ -81,7 +81,7 @@ development_status:
   epic-7: in-progress
   7-1-selecionar-contexto-de-trabalho-da-gate: done
   7-2-validar-código-manual-com-resultado-atômico-e-auditável: done
-  7-3-garantir-replay-e-concorrência-seguros-da-validação: backlog
+  7-3-garantir-replay-e-concorrência-seguros-da-validação: done
   7-4-operar-câmera-qr-e-resultado-gate-em-interface-acessível: backlog
   epic-7-retrospective: optional
 

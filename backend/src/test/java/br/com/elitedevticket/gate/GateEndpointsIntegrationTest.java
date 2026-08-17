@@ -339,6 +339,115 @@ class GateEndpointsIntegrationTest {
     }
 
     @Test
+    @DisplayName("Replay com mesmo validationAttemptId e parametros identicos retorna o resultado original sem mutacao duplicada")
+    void replayWithSameAttemptIdAndSameFingerprintReturnsOriginalResult() throws Exception {
+        String gateSession = loginSession("gate@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        UUID attemptId = UUID.randomUUID();
+        String jsonPayload = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "%s",
+                    "method": "MANUAL"
+                }
+                """.formatted(attemptId, eventId1, ticketEvent1.manualCode());
+
+        HttpRequest request1 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response1 = client.send(request1, HttpResponse.BodyHandlers.ofString());
+        assertThat(response1.statusCode()).isEqualTo(200);
+        JsonNode body1 = objectMapper.readTree(response1.body());
+        assertThat(body1.get("result").asText()).isEqualTo("VALID");
+        String processedAt1 = body1.get("processedAt").asText();
+
+        // Replay
+        HttpRequest request2 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
+        assertThat(response2.statusCode()).isEqualTo(200);
+        JsonNode body2 = objectMapper.readTree(response2.body());
+        assertThat(body2.get("result").asText()).isEqualTo("VALID");
+        assertThat(body2.get("processedAt").asText()).isEqualTo(processedAt1);
+
+        // Verify only 1 audit record exists in DB
+        Integer attemptCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM validation_attempts WHERE id = ?",
+                Integer.class,
+                attemptId
+        );
+        assertThat(attemptCount).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Replay com mesmo validationAttemptId mas parametros conflitantes retorna 409 Conflict")
+    void replayWithSameAttemptIdAndDifferentParametersReturnsConflict() throws Exception {
+        String gateSession = loginSession("gate@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        UUID attemptId = UUID.randomUUID();
+        String jsonPayload1 = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "%s",
+                    "method": "MANUAL"
+                }
+                """.formatted(attemptId, eventId1, ticketEvent1.manualCode());
+
+        HttpRequest request1 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload1))
+                .build();
+
+        HttpResponse<String> response1 = client.send(request1, HttpResponse.BodyHandlers.ofString());
+        assertThat(response1.statusCode()).isEqualTo(200);
+
+        // Attempt reuse with different manual code (different fingerprint)
+        String jsonPayload2 = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "OTHER-CODE-1234",
+                    "method": "MANUAL"
+                }
+                """.formatted(attemptId, eventId1);
+
+        HttpRequest request2 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload2))
+                .build();
+
+        HttpResponse<String> response2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
+        assertThat(response2.statusCode()).isEqualTo(409);
+        JsonNode errorBody = objectMapper.readTree(response2.body());
+        assertThat(errorBody.get("code").asText()).isEqualTo("GATE_ATTEMPT_CONFLICT");
+
+        // Verify DB unchanged (still exactly 1 record for attemptId)
+        Integer attemptCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM validation_attempts WHERE id = ?",
+                Integer.class,
+                attemptId
+        );
+        assertThat(attemptCount).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("Usuarios sem papel GATE recebem 403 Forbidden")
     void customerCannotValidate() throws Exception {
         String customerSession = loginSession("customer.one@demo.elitedevticket.local");
