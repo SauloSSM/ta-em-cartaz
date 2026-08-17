@@ -102,7 +102,15 @@ describe('App session flow', () => {
     let completeLogin!: (response: Response) => void;
     globalThis.fetch = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse({ authenticated: false }))
-      .mockReturnValueOnce(new Promise((resolve) => { completeLogin = resolve; }));
+      .mockReturnValueOnce(new Promise((resolve) => { completeLogin = resolve; }))
+      .mockResolvedValueOnce(jsonResponse({
+        authenticated: true,
+        user: {
+          id: '00000000-0000-0000-0000-000000000002',
+          email: 'customer.one@demo.elitedevticket.local',
+          role: 'CUSTOMER',
+        },
+      }));
     const user = userEvent.setup();
     render(<App initialAnonymousView="login" />);
     await user.type(await screen.findByLabelText('E-mail'), 'customer.one@demo.elitedevticket.local');
@@ -157,6 +165,14 @@ describe('App session flow', () => {
           email: 'customer.one@demo.elitedevticket.local',
           role: 'CUSTOMER',
         },
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        authenticated: true,
+        user: {
+          id: '00000000-0000-0000-0000-000000000002',
+          email: 'customer.one@demo.elitedevticket.local',
+          role: 'CUSTOMER',
+        },
       }));
     const user = userEvent.setup();
     render(<App initialAnonymousView="login" />);
@@ -185,6 +201,14 @@ describe('App session flow', () => {
           email: 'customer.one@demo.elitedevticket.local',
           role: 'CUSTOMER',
         },
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        authenticated: true,
+        user: {
+          id: '00000000-0000-0000-0000-000000000002',
+          email: 'customer.one@demo.elitedevticket.local',
+          role: 'CUSTOMER',
+        },
       }));
     const user = userEvent.setup();
     render(<App initialAnonymousView="login" />);
@@ -196,6 +220,101 @@ describe('App session flow', () => {
     await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
     expect(screen.getByText('customer.one@demo.elitedevticket.local')).toBeTruthy();
     expect(screen.getByText('Cliente')).toBeTruthy();
+  });
+
+  it('login success executa session bootstrap, materializa XSRF-TOKEN e primeira mutation inclui header CSRF', async () => {
+    document.cookie = 'XSRF-TOKEN=initial-csrf; Path=/';
+    const fetchCalls: Array<{ url: string; method?: string; headers?: Record<string, string> }> = [];
+
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+      const headers = (init?.headers as Record<string, string>) || {};
+      fetchCalls.push({ url, method, headers });
+
+      if (url.includes('/api/v1/auth/session') && fetchCalls.length === 1) {
+        return jsonResponse({ authenticated: false });
+      }
+      if (url.includes('/api/v1/auth/login')) {
+        return jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000001',
+            email: 'organizer@demo.elitedevticket.local',
+            role: 'ORGANIZER',
+          },
+        });
+      }
+      if (url.includes('/api/v1/auth/session') && fetchCalls.length === 3) {
+        // Simula a materialização do cookie XSRF-TOKEN realizada pelo GET /session no browser
+        document.cookie = 'XSRF-TOKEN=materialized-after-session-bootstrap; Path=/';
+        return jsonResponse({
+          authenticated: true,
+          user: {
+            id: '00000000-0000-0000-0000-000000000001',
+            email: 'organizer@demo.elitedevticket.local',
+            role: 'ORGANIZER',
+          },
+        });
+      }
+      if (url.includes('/api/v1/catalog/events')) {
+        return jsonResponse({
+          events: [
+            {
+              externalId: 'tm-rock-2026',
+              title: 'Rock in Rio 2026',
+              description: 'Festival de música',
+              category: 'Música',
+            },
+          ],
+        });
+      }
+      if (url.includes('/api/v1/events/mine')) {
+        return jsonResponse({ events: [] });
+      }
+      if (url.includes('/api/v1/events/drafts') && method === 'POST') {
+        return jsonResponse({
+          id: 'ev-test-created-1',
+          organizerId: '00000000-0000-0000-0000-000000000001',
+          title: 'Rock in Rio 2026',
+          status: 'DRAFT',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }, 201);
+      }
+      return jsonResponse({ events: [] });
+    });
+
+    const user = userEvent.setup();
+    render(<App initialAnonymousView="login" />);
+
+    await user.type(await screen.findByLabelText('E-mail'), 'organizer@demo.elitedevticket.local');
+    await user.type(screen.getByLabelText('Senha'), 'password');
+    await user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    // Garante que o estado autenticado foi atingido e a tela do organizador foi carregada
+    await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
+    expect(screen.getByText('organizer@demo.elitedevticket.local')).toBeDefined();
+
+    // Verifica que GET /session foi chamado após POST /login antes de qualquer mutação
+    expect(fetchCalls[0].url).toContain('/api/v1/auth/session');
+    expect(fetchCalls[1].url).toContain('/api/v1/auth/login');
+    expect(fetchCalls[2].url).toContain('/api/v1/auth/session');
+
+    // Executa a primeira mutation: criar rascunho a partir do catálogo
+    await screen.findByRole('heading', { level: 2, name: 'Meus Eventos' });
+    await user.click(screen.getByRole('button', { name: '+ Novo evento do catálogo' }));
+    await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' });
+    const searchInput = screen.getByLabelText('Palavra-chave do evento');
+    await user.type(searchInput, 'Rock');
+    await user.click(screen.getByRole('button', { name: 'Buscar referências' }));
+    const selectBtn = await screen.findByRole('button', { name: 'Usar Rock in Rio 2026 como referência' });
+    await user.click(selectBtn);
+
+    // Verifica que a primeira mutation já continha o header X-XSRF-TOKEN materializado
+    const mutationCall = fetchCalls.find((c) => c.url.includes('/api/v1/events/drafts') && c.method === 'POST');
+    expect(mutationCall).toBeDefined();
+    expect(mutationCall?.headers?.['X-XSRF-TOKEN']).toBe('materialized-after-session-bootstrap');
   });
 
   it('encerra sessão, remove apenas a chave reservada e permite trocar de conta', async () => {

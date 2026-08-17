@@ -78,8 +78,12 @@ export function useSession() {
     if (!hasEmail(state)) return;
     dispatch({ type: 'LOGIN_STARTED' });
     try {
-      const session = await loginRequest(state.email, password);
-      dispatch({ type: 'LOGIN_SUCCEEDED', user: session.user });
+      const loginPayload = await loginRequest(state.email, password);
+      const session = await getSession();
+      dispatch({
+        type: 'LOGIN_SUCCEEDED',
+        user: session.authenticated ? session.user : loginPayload.user,
+      });
     } catch (error) {
       dispatch({ type: 'LOGIN_FAILED', message: loginMessage(error) });
     }
