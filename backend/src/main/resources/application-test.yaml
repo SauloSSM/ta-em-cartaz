@@ -7,5 +7,6 @@ auth:
   cors:
     allowed-origins:
       - https://allowed.example
+      - https://ta-em-cartaz.vercel.app
   jwt:
     ttl: PT1H

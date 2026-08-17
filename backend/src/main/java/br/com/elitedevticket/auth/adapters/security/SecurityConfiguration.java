@@ -101,7 +101,7 @@ public class SecurityConfiguration {
     CorsConfigurationSource corsConfigurationSource(AuthProperties properties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.getCors().getAllowedOrigins());
-        configuration.setAllowedMethods(java.util.List.of("GET", "POST", "OPTIONS"));
+        configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("Content-Type", "X-XSRF-TOKEN"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

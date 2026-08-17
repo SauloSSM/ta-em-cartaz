@@ -260,6 +260,12 @@ class AuthEndpointsIntegrationTest {
                 .contains("https://allowed.example");
         assertThat(allowed.headers().firstValue("Access-Control-Allow-Credentials")).contains("true");
 
+        HttpResponse<String> vercelAllowed = getSessionWithOrigin("https://ta-em-cartaz.vercel.app");
+        assertThat(vercelAllowed.statusCode()).isEqualTo(200);
+        assertThat(vercelAllowed.headers().firstValue("Access-Control-Allow-Origin"))
+                .contains("https://ta-em-cartaz.vercel.app");
+        assertThat(vercelAllowed.headers().firstValue("Access-Control-Allow-Credentials")).contains("true");
+
         HttpResponse<String> denied = getSessionWithOrigin("https://denied.example");
         assertThat(denied.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
         assertThat(denied.headers().firstValue("Access-Control-Allow-Credentials")).isEmpty();
@@ -268,7 +274,7 @@ class AuthEndpointsIntegrationTest {
     @Test
     void corsPreflightAllowsConfiguredLoginRequestWithCsrfHeaders() throws Exception {
         HttpRequest request = HttpRequest.newBuilder(uri("/api/v1/auth/login"))
-                .header("Origin", "https://allowed.example")
+                .header("Origin", "https://ta-em-cartaz.vercel.app")
                 .header("Access-Control-Request-Method", "POST")
                 .header("Access-Control-Request-Headers", "content-type,x-xsrf-token")
                 .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
@@ -278,10 +284,10 @@ class AuthEndpointsIntegrationTest {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("Access-Control-Allow-Origin"))
-                .contains("https://allowed.example");
+                .contains("https://ta-em-cartaz.vercel.app");
         assertThat(response.headers().firstValue("Access-Control-Allow-Credentials")).contains("true");
         assertThat(commaSeparatedHeader(response, "Access-Control-Allow-Methods"))
-                .contains("post");
+                .contains("get", "post", "put", "delete", "options");
         assertThat(commaSeparatedHeader(response, "Access-Control-Allow-Headers"))
                 .contains("content-type", "x-xsrf-token");
     }

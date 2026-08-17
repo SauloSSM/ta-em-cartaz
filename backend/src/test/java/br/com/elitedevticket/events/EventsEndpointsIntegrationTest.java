@@ -1429,6 +1429,82 @@ class EventsEndpointsIntegrationTest {
         assertThat(gatePubResponse.body()).contains("Published Event For Gate Test");
     }
 
+    @Test
+    @DisplayName("CORS em PUT: origem Vercel permitida com credenciais, origem não permitida rejeitada e CSRF continua obrigatório")
+    void actualPutFromVercelOriginAllowedByCorsAndEnforcesCsrfAndRejectsUnapprovedOrigin() throws Exception {
+        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        HttpResponse<String> createResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"title\":\"Evento para Teste CORS PUT\"}"
+        );
+        assertThat(createResponse.statusCode()).isEqualTo(201);
+        String location = createResponse.headers().firstValue("Location").orElseThrow();
+
+        // 1. Preflight OPTIONS para PUT com origem Vercel
+        HttpRequest preflightRequest = HttpRequest.newBuilder(uri(location))
+                .header("Origin", "https://ta-em-cartaz.vercel.app")
+                .header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "content-type,x-xsrf-token")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> preflightResponse = client.send(preflightRequest, HttpResponse.BodyHandlers.ofString());
+        assertThat(preflightResponse.statusCode()).isEqualTo(200);
+        assertThat(preflightResponse.headers().firstValue("Access-Control-Allow-Origin"))
+                .contains("https://ta-em-cartaz.vercel.app");
+        assertThat(preflightResponse.headers().firstValue("Access-Control-Allow-Credentials")).contains("true");
+        List<String> allowMethods = preflightResponse.headers().allValues("Access-Control-Allow-Methods").stream()
+                .flatMap(v -> List.of(v.split(",")).stream())
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .toList();
+        assertThat(allowMethods).contains("put");
+
+        // 2. Actual PUT vindo da origem Vercel com sessão e CSRF válidos -> 200 OK e CORS headers presentes
+        String updatePayload = "{\"title\":\"Título Atualizado via CORS Vercel\"}";
+        HttpResponse<String> actualPutAllowed = putWithOrigin(
+                location,
+                "https://ta-em-cartaz.vercel.app",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                updatePayload
+        );
+        assertThat(actualPutAllowed.statusCode()).isEqualTo(200);
+        assertThat(actualPutAllowed.headers().firstValue("Access-Control-Allow-Origin"))
+                .contains("https://ta-em-cartaz.vercel.app");
+        assertThat(actualPutAllowed.headers().firstValue("Access-Control-Allow-Credentials")).contains("true");
+        assertThat(actualPutAllowed.body()).contains("\"title\":\"Título Atualizado via CORS Vercel\"");
+
+        // 3. Actual PUT vindo de origem não aprovada -> 403 Invalid CORS request (rejeitado pelo CORS)
+        HttpResponse<String> actualPutUnapproved = putWithOrigin(
+                location,
+                "https://unapproved-origin.example",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + csrf,
+                csrf,
+                updatePayload
+        );
+        assertThat(actualPutUnapproved.statusCode()).isEqualTo(403);
+        assertThat(actualPutUnapproved.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+        assertThat(actualPutUnapproved.body()).contains("Invalid CORS request");
+
+        // 4. Actual PUT vindo da origem Vercel aprovada, mas SEM CSRF -> passa pelo CORS, mas é rejeitado pela proteção CSRF (403 AUTH_CSRF_INVALID)
+        HttpResponse<String> actualPutWithoutCsrf = putWithOrigin(
+                location,
+                "https://ta-em-cartaz.vercel.app",
+                "EDT_SESSION=" + organizerSession,
+                "",
+                updatePayload
+        );
+        assertThat(actualPutWithoutCsrf.statusCode()).isEqualTo(403);
+        assertThat(actualPutWithoutCsrf.headers().firstValue("Access-Control-Allow-Origin"))
+                .contains("https://ta-em-cartaz.vercel.app");
+        assertThat(actualPutWithoutCsrf.body()).contains("\"code\":\"AUTH_CSRF_INVALID\"");
+        assertThat(actualPutWithoutCsrf.body()).doesNotContain("Invalid CORS request");
+    }
+
     private String bootstrapCsrf() throws Exception {
         HttpResponse<String> response = get("/api/v1/auth/session", "");
         return cookieValue(response, "XSRF-TOKEN");
@@ -1456,9 +1532,16 @@ class EventsEndpointsIntegrationTest {
     }
 
     private HttpResponse<String> put(String path, String cookie, String csrf, String body) throws Exception {
+        return putWithOrigin(path, null, cookie, csrf, body);
+    }
+
+    private HttpResponse<String> putWithOrigin(String path, String origin, String cookie, String csrf, String body) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(uri(path))
                 .PUT(HttpRequest.BodyPublishers.ofString(body))
                 .header("Content-Type", "application/json");
+        if (origin != null && !origin.isBlank()) {
+            request.header("Origin", origin);
+        }
         if (!cookie.isBlank()) {
             request.header("Cookie", cookie);
         }
