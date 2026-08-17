@@ -22,14 +22,14 @@ function gfMul(x: number, y: number): number {
   return EXP_TABLE[LOG_TABLE[x] + LOG_TABLE[y]];
 }
 
-function rsGeneratorPoly(degree: number): Uint8Array {
+export function rsGeneratorPoly(degree: number): Uint8Array {
   let poly = new Uint8Array([1]);
   for (let i = 0; i < degree; i++) {
     const next = new Uint8Array(poly.length + 1);
     const root = EXP_TABLE[i];
     for (let j = 0; j < poly.length; j++) {
-      next[j] ^= gfMul(poly[j], root);
-      next[j + 1] ^= poly[j];
+      next[j] ^= poly[j];
+      next[j + 1] ^= gfMul(poly[j], root);
     }
     poly = next;
   }
@@ -41,10 +41,14 @@ function calculateECC(data: Uint8Array, eccCount: number): Uint8Array {
   const remainder = new Uint8Array(eccCount);
   for (let i = 0; i < data.length; i++) {
     const factor = data[i] ^ remainder[0];
-    remainder.set(remainder.subarray(1));
+    for (let j = 0; j < eccCount - 1; j++) {
+      remainder[j] = remainder[j + 1];
+    }
     remainder[eccCount - 1] = 0;
-    for (let j = 0; j < eccCount; j++) {
-      remainder[j] ^= gfMul(gen[gen.length - 1 - j], factor);
+    if (factor !== 0) {
+      for (let j = 0; j < eccCount; j++) {
+        remainder[j] ^= gfMul(gen[j + 1], factor);
+      }
     }
   }
   return remainder;
@@ -246,21 +250,41 @@ export function generateQrMatrix(text: string): boolean[][] {
     upwards = !upwards;
   }
 
-  // Write format info for EC Level L (01) + Mask 0 (000) -> 0b01000
-  // Standard format bits for 01000 with BCH(15, 5) and XOR mask 101010000010010:
-  // Precomputed for L-0: 0b111011111000100 (15 bits)
+  // Write format info for EC Level L + Mask 0 -> 0x77C4 (0b111011111000100)
+  // Format bits from MSB (bit 14) to LSB (bit 0):
   const formatBits = [1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0];
 
-  // Top-left
-  for (let i = 0; i <= 5; i++) matrix[8][i] = formatBits[i] === 1;
+  // Top-left:
+  // (x=0..5, y=8) -> bits 0..5 (MSB to bit 9)
+  // (x=7, y=8) -> bit 6 (bit 8)
+  // (x=8, y=8) -> bit 7 (bit 7)
+  // (x=8, y=7) -> bit 8 (bit 6)
+  // (x=8, y=5..0) -> bits 9..14 (bit 5 to LSB)
+  matrix[8][0] = formatBits[0] === 1;
+  matrix[8][1] = formatBits[1] === 1;
+  matrix[8][2] = formatBits[2] === 1;
+  matrix[8][3] = formatBits[3] === 1;
+  matrix[8][4] = formatBits[4] === 1;
+  matrix[8][5] = formatBits[5] === 1;
   matrix[8][7] = formatBits[6] === 1;
   matrix[8][8] = formatBits[7] === 1;
   matrix[7][8] = formatBits[8] === 1;
-  for (let i = 9; i < 15; i++) matrix[14 - i][8] = formatBits[i] === 1;
+  matrix[5][8] = formatBits[9] === 1;
+  matrix[4][8] = formatBits[10] === 1;
+  matrix[3][8] = formatBits[11] === 1;
+  matrix[2][8] = formatBits[12] === 1;
+  matrix[1][8] = formatBits[13] === 1;
+  matrix[0][8] = formatBits[14] === 1;
 
-  // Split around other finders
-  for (let i = 0; i < 7; i++) matrix[size - 1 - i][8] = formatBits[i] === 1;
-  for (let i = 7; i < 15; i++) matrix[8][size - 15 + i] = formatBits[i] === 1;
+  // Split around other finders:
+  // Bottom-left: (x=8, y=size-1 down to size-7) -> bits 0..6 (MSB to bit 8)
+  for (let i = 0; i < 7; i++) {
+    matrix[size - 1 - i][8] = formatBits[i] === 1;
+  }
+  // Top-right: (x=size-8 to size-1, y=8) -> bits 7..14 (bit 7 to LSB)
+  for (let i = 0; i < 8; i++) {
+    matrix[8][size - 8 + i] = formatBits[7 + i] === 1;
+  }
 
   return matrix.map((row) => row.map((cell) => cell === true));
 }
