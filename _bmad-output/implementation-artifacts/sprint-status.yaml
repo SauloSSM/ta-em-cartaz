@@ -87,7 +87,7 @@ development_status:
 
   epic-8: in-progress
   8-1-preparar-dados-e-execução-reproduzíveis-para-avaliação: done
-  8-2-documentar-avaliação-limitações-e-uso-responsável-de-ia: backlog
+  8-2-documentar-avaliação-limitações-e-uso-responsável-de-ia: done
   8-3-verificar-jornadas-ponta-a-ponta-e-invariantes-críticas: backlog
   epic-8-retrospective: optional
 
