@@ -156,6 +156,21 @@ function SessionContent({
   onLogout,
   onRetryBootstrap,
 }: SessionContentProps) {
+  if (
+    anonymousView === 'shared-ticket' &&
+    shareToken &&
+    state.status !== 'loading' &&
+    state.status !== 'bootstrap-error'
+  ) {
+    return (
+      <PublicSharedTicket
+        shareToken={shareToken}
+        onBrowseCatalog={onSelectCatalog}
+        onLoginClick={onSelectLogin}
+      />
+    );
+  }
+
   switch (state.status) {
     case 'loading':
       return <p role="status">Verificando sessão…</p>;
@@ -170,15 +185,6 @@ function SessionContent({
         </section>
       );
     case 'anonymous':
-      if (anonymousView === 'shared-ticket' && shareToken) {
-        return (
-          <PublicSharedTicket
-            shareToken={shareToken}
-            onBrowseCatalog={onSelectCatalog}
-            onLoginClick={onSelectLogin}
-          />
-        );
-      }
       if (anonymousView === 'detail' && selectedEventId) {
         return (
           <PublicEventDetail
