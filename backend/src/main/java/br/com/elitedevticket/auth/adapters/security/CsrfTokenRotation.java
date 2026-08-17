@@ -18,6 +18,8 @@ public final class CsrfTokenRotation {
         repository.saveToken(null, request, response);
         CsrfToken token = repository.generateToken(request);
         repository.saveToken(token, request, response);
+        request.setAttribute(CsrfToken.class.getName(), token);
+        request.setAttribute("_csrf", token);
         return token;
     }
 }

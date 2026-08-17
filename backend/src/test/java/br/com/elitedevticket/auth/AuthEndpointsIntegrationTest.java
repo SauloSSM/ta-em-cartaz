@@ -292,6 +292,87 @@ class AuthEndpointsIntegrationTest {
                 .contains("content-type", "x-xsrf-token");
     }
 
+    @Test
+    void csrfLifecycleEagerlyPopulatesXsrfTokenAndAllowsImmediateFirstMutationWithoutPriorForbidden() throws Exception {
+        // 1. Initial bootstrap GET emits readable XSRF-TOKEN without HttpOnly and without requiring a prior 403
+        HttpResponse<String> sessionResponse = getSession("");
+        assertThat(sessionResponse.statusCode()).isEqualTo(200);
+        assertThat(sessionResponse.body()).isEqualTo("{\"authenticated\":false}");
+        assertThat(setCookies(sessionResponse)).anySatisfy(cookie -> {
+            assertThat(cookie).startsWith("XSRF-TOKEN=");
+            assertThat(cookie)
+                    .contains("SameSite=Lax", "Path=/")
+                    .doesNotContain("HttpOnly");
+        });
+        String bootstrapCsrf = cookieValue(sessionResponse, "XSRF-TOKEN");
+
+        // 2. Login succeeds and provides HttpOnly EDT_SESSION + readable rotated XSRF-TOKEN
+        HttpResponse<String> loginResponse = post("/api/v1/auth/login", csrfCookie(bootstrapCsrf), bootstrapCsrf,
+                "{\"email\":\"organizer@demo.elitedevticket.local\",\"password\":\"password\"}");
+        assertThat(loginResponse.statusCode()).isEqualTo(200);
+        assertThat(loginResponse.body()).contains("\"authenticated\":true", "\"role\":\"ORGANIZER\"");
+
+        assertThat(setCookies(loginResponse)).anySatisfy(cookie -> {
+            assertThat(cookie).startsWith("EDT_SESSION=");
+            assertThat(cookie).contains("HttpOnly", "SameSite=Lax", "Path=/");
+        });
+        assertThat(setCookies(loginResponse)).anySatisfy(cookie -> {
+            assertThat(cookie).startsWith("XSRF-TOKEN=");
+            assertThat(cookie)
+                    .contains("SameSite=Lax", "Path=/")
+                    .doesNotContain("HttpOnly");
+        });
+
+        String sessionCookie = cookieValue(loginResponse, "EDT_SESSION");
+        String activeCsrf = cookieValue(loginResponse, "XSRF-TOKEN");
+        assertThat(activeCsrf).isNotEqualTo(bootstrapCsrf);
+
+        // 3. First POST mutation succeeds on the very first attempt (no prior 403 needed)
+        String postPayload = "{\"title\":\"Festival Primeira Tentativa\"}";
+        HttpResponse<String> firstPostResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + sessionCookie + "; " + csrfCookie(activeCsrf),
+                activeCsrf,
+                postPayload);
+        assertThat(firstPostResponse.statusCode()).isEqualTo(201);
+        assertThat(firstPostResponse.body()).contains("\"title\":\"Festival Primeira Tentativa\"");
+        var eventIdMatcher = Pattern.compile("\"id\":\"([^\"]+)\"").matcher(firstPostResponse.body());
+        assertThat(eventIdMatcher.find()).isTrue();
+        String eventId = eventIdMatcher.group(1);
+
+        // 4. First PUT mutation succeeds on the very first attempt (no prior 403 needed)
+        String putPayload = "{\"title\":\"Festival Primeira Tentativa Editado\"}";
+        HttpResponse<String> firstPutResponse = put(
+                "/api/v1/events/" + eventId,
+                "EDT_SESSION=" + sessionCookie + "; " + csrfCookie(activeCsrf),
+                activeCsrf,
+                putPayload);
+        assertThat(firstPutResponse.statusCode()).isEqualTo(200);
+        assertThat(firstPutResponse.body()).contains("\"title\":\"Festival Primeira Tentativa Editado\"");
+
+        // 5. Mutation without CSRF token/header is rejected with 403 AUTH_CSRF_INVALID
+        HttpResponse<String> unauthenticatedCsrf = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + sessionCookie + "; " + csrfCookie(activeCsrf),
+                "",
+                "{\"title\":\"Tentativa Sem Header CSRF\"}");
+        assertAuthError(unauthenticatedCsrf, 403, "AUTH_CSRF_INVALID");
+
+        // 6. Logout succeeds without requiring prior 403, clears session and rotates CSRF
+        HttpResponse<String> logoutResponse = post(
+                "/api/v1/auth/logout",
+                "EDT_SESSION=" + sessionCookie + "; " + csrfCookie(activeCsrf),
+                activeCsrf,
+                null);
+        assertThat(logoutResponse.statusCode()).isEqualTo(204);
+        assertThat(setCookies(logoutResponse))
+                .filteredOn(cookie -> cookie.startsWith("EDT_SESSION="))
+                .singleElement()
+                .satisfies(cookie -> assertThat(cookie).contains("Max-Age=0", "HttpOnly"));
+        String postLogoutCsrf = cookieValue(logoutResponse, "XSRF-TOKEN");
+        assertThat(postLogoutCsrf).isNotEqualTo(activeCsrf);
+    }
+
     private String bootstrapCsrf() throws Exception {
         return cookieValue(getSession(""), "XSRF-TOKEN");
     }
@@ -347,6 +428,21 @@ class AuthEndpointsIntegrationTest {
         if (contentType != null) {
             request.header("Content-Type", contentType);
         }
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> put(String path, String cookie, String csrf, String body) throws Exception {
+        HttpRequest.BodyPublisher publisher = body == null
+                ? HttpRequest.BodyPublishers.noBody()
+                : HttpRequest.BodyPublishers.ofString(body);
+        HttpRequest.Builder request = HttpRequest.newBuilder(uri(path)).PUT(publisher);
+        if (!cookie.isBlank()) {
+            request.header("Cookie", cookie);
+        }
+        if (!csrf.isBlank()) {
+            request.header("X-XSRF-TOKEN", csrf);
+        }
+        request.header("Content-Type", "application/json");
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
 

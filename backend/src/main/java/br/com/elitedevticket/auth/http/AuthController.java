@@ -37,7 +37,9 @@ public final class AuthController {
 
     @GetMapping("/session")
     public SessionResponse session(Authentication authentication, CsrfToken csrfToken) {
-        csrfToken.getToken();
+        if (csrfToken != null) {
+            csrfToken.getToken();
+        }
         if (authentication == null || !(authentication.getPrincipal() instanceof SessionUser user)) {
             return new AnonymousSessionResponse();
         }
