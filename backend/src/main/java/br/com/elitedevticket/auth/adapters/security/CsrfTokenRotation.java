@@ -15,7 +15,6 @@ public final class CsrfTokenRotation {
     }
 
     public CsrfToken rotate(HttpServletRequest request, HttpServletResponse response) {
-        repository.saveToken(null, request, response);
         CsrfToken token = repository.generateToken(request);
         repository.saveToken(token, request, response);
         request.setAttribute(CsrfToken.class.getName(), token);

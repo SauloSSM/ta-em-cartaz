@@ -85,6 +85,13 @@ class AuthEndpointsIntegrationTest {
                         .doesNotContain("Secure"));
         assertThat(cookieMaxAge(sessionCookie)).isBetween(3599L, 3600L);
 
+        assertThat(setCookies(login))
+                .filteredOn(cookie -> cookie.startsWith("XSRF-TOKEN="))
+                .singleElement()
+                .satisfies(cookie -> assertThat(cookie)
+                        .contains("SameSite=Lax", "Path=/")
+                        .doesNotContain("HttpOnly", "Max-Age=0", "Expires=Thu, 01 Jan 1970"));
+
         HttpResponse<String> current = getSession("EDT_SESSION=" + session);
         assertThat(current.statusCode()).isEqualTo(200);
         assertThat(current.body()).contains(
@@ -306,26 +313,33 @@ class AuthEndpointsIntegrationTest {
         });
         String bootstrapCsrf = cookieValue(sessionResponse, "XSRF-TOKEN");
 
-        // 2. Login succeeds and provides HttpOnly EDT_SESSION + readable rotated XSRF-TOKEN
+        // 2. Login succeeds and provides HttpOnly EDT_SESSION + readable rotated XSRF-TOKEN (without deletion header)
         HttpResponse<String> loginResponse = post("/api/v1/auth/login", csrfCookie(bootstrapCsrf), bootstrapCsrf,
                 "{\"email\":\"organizer@demo.elitedevticket.local\",\"password\":\"password\"}");
         assertThat(loginResponse.statusCode()).isEqualTo(200);
         assertThat(loginResponse.body()).contains("\"authenticated\":true", "\"role\":\"ORGANIZER\"");
 
-        assertThat(setCookies(loginResponse)).anySatisfy(cookie -> {
-            assertThat(cookie).startsWith("EDT_SESSION=");
-            assertThat(cookie).contains("HttpOnly", "SameSite=Lax", "Path=/");
-        });
-        assertThat(setCookies(loginResponse)).anySatisfy(cookie -> {
-            assertThat(cookie).startsWith("XSRF-TOKEN=");
-            assertThat(cookie)
-                    .contains("SameSite=Lax", "Path=/")
-                    .doesNotContain("HttpOnly");
-        });
+        assertThat(setCookies(loginResponse))
+                .filteredOn(cookie -> cookie.startsWith("EDT_SESSION="))
+                .singleElement()
+                .satisfies(cookie -> assertThat(cookie).contains("HttpOnly", "SameSite=Lax", "Path=/"));
+
+        assertThat(setCookies(loginResponse))
+                .filteredOn(cookie -> cookie.startsWith("XSRF-TOKEN="))
+                .singleElement()
+                .satisfies(cookie -> assertThat(cookie)
+                        .contains("SameSite=Lax", "Path=/")
+                        .doesNotContain("HttpOnly", "Max-Age=0", "Expires=Thu, 01 Jan 1970"));
 
         String sessionCookie = cookieValue(loginResponse, "EDT_SESSION");
         String activeCsrf = cookieValue(loginResponse, "XSRF-TOKEN");
-        assertThat(activeCsrf).isNotEqualTo(bootstrapCsrf);
+        assertThat(activeCsrf).isNotBlank().isNotEqualTo(bootstrapCsrf);
+
+        // 2.5 Canonical post-login session bootstrap confirms authenticated user and preserves valid CSRF
+        HttpResponse<String> postLoginSession = getSession(
+                "EDT_SESSION=" + sessionCookie + "; " + csrfCookie(activeCsrf));
+        assertThat(postLoginSession.statusCode()).isEqualTo(200);
+        assertThat(postLoginSession.body()).contains("\"authenticated\":true", "\"role\":\"ORGANIZER\"");
 
         // 3. First POST mutation succeeds on the very first attempt (no prior 403 needed)
         String postPayload = "{\"title\":\"Festival Primeira Tentativa\"}";
@@ -369,8 +383,14 @@ class AuthEndpointsIntegrationTest {
                 .filteredOn(cookie -> cookie.startsWith("EDT_SESSION="))
                 .singleElement()
                 .satisfies(cookie -> assertThat(cookie).contains("Max-Age=0", "HttpOnly"));
+        assertThat(setCookies(logoutResponse))
+                .filteredOn(cookie -> cookie.startsWith("XSRF-TOKEN="))
+                .singleElement()
+                .satisfies(cookie -> assertThat(cookie)
+                        .contains("SameSite=Lax", "Path=/")
+                        .doesNotContain("HttpOnly", "Max-Age=0", "Expires=Thu, 01 Jan 1970"));
         String postLogoutCsrf = cookieValue(logoutResponse, "XSRF-TOKEN");
-        assertThat(postLogoutCsrf).isNotEqualTo(activeCsrf);
+        assertThat(postLogoutCsrf).isNotBlank().isNotEqualTo(activeCsrf);
     }
 
     private String bootstrapCsrf() throws Exception {
