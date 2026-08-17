@@ -8,6 +8,7 @@ const originalFetch = globalThis.fetch;
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/';
 });
 
 describe('TicketmasterResultCard', () => {
@@ -220,6 +221,7 @@ describe('TicketmasterSearch (Superfície S10)', () => {
           201,
         ),
       );
+    document.cookie = 'XSRF-TOKEN=xsrf-ticketmaster-ref; Path=/';
     globalThis.fetch = fetchMock;
 
     render(
@@ -241,6 +243,10 @@ describe('TicketmasterSearch (Superfície S10)', () => {
       '/api/v1/events/drafts',
       expect.objectContaining({
         method: 'POST',
+        credentials: 'same-origin',
+        headers: expect.objectContaining({
+          'X-XSRF-TOKEN': 'xsrf-ticketmaster-ref',
+        }),
         body: JSON.stringify({
           title: 'Concerto Sinfônico',
           externalId: 'tm-ref-1',

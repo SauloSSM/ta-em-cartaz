@@ -329,6 +329,9 @@ function csrfHeaders(): HeadersInit {
 }
 
 function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
   const prefix = `${encodeURIComponent(name)}=`;
   const cookie = document.cookie
     .split(';')

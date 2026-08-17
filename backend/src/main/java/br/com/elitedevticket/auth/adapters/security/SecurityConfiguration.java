@@ -91,6 +91,7 @@ public class SecurityConfiguration {
         repository.setHeaderName("X-XSRF-TOKEN");
         repository.setCookiePath("/");
         repository.setCookieCustomizer(builder -> builder
+                .httpOnly(false)
                 .sameSite("Lax")
                 .secure(properties.secureCookies()));
         return repository;

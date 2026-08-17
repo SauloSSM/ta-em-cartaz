@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -71,17 +72,60 @@ class EventsEndpointsIntegrationTest {
     }
 
     @Test
-    void createDraftWithoutCsrfReturns403Forbidden() throws Exception {
-        String organizerSession = loginSession("organizer@demo.elitedevticket.local");
-        HttpResponse<String> response = post(
-                "/api/v1/events/drafts",
-                "EDT_SESSION=" + organizerSession,
-                "",
-                "{\"title\":\"Sem CSRF\"}"
-        );
+    void createDraftCsrfVerificationEnforcesReadableXsrfCookieAndHttpOnlySession() throws Exception {
+        // 1. Session bootstrap returns readable XSRF-TOKEN without HttpOnly
+        HttpResponse<String> sessionResponse = get("/api/v1/auth/session", "");
+        assertThat(sessionResponse.statusCode()).isEqualTo(200);
+        List<String> bootstrapCookies = sessionResponse.headers().allValues("Set-Cookie");
+        assertThat(bootstrapCookies).anySatisfy(cookie -> {
+            assertThat(cookie).startsWith("XSRF-TOKEN=");
+            assertThat(cookie)
+                    .contains("SameSite=Lax", "Path=/")
+                    .doesNotContain("HttpOnly");
+        });
+        String csrf = cookieValue(sessionResponse, "XSRF-TOKEN");
 
-        assertThat(response.statusCode()).isEqualTo(403);
-        assertThat(response.body()).contains("\"code\":\"AUTH_CSRF_INVALID\"");
+        // 2. Login returns EDT_SESSION with HttpOnly and rotated XSRF-TOKEN without HttpOnly
+        HttpResponse<String> loginResponse = post(
+                "/api/v1/auth/login",
+                "XSRF-TOKEN=" + csrf,
+                csrf,
+                "{\"email\":\"organizer@demo.elitedevticket.local\",\"password\":\"password\"}"
+        );
+        assertThat(loginResponse.statusCode()).isEqualTo(200);
+        List<String> loginCookies = loginResponse.headers().allValues("Set-Cookie");
+        assertThat(loginCookies).anySatisfy(cookie -> {
+            assertThat(cookie).startsWith("EDT_SESSION=");
+            assertThat(cookie).contains("HttpOnly", "SameSite=Lax", "Path=/");
+        });
+        assertThat(loginCookies).anySatisfy(cookie -> {
+            assertThat(cookie).startsWith("XSRF-TOKEN=");
+            assertThat(cookie)
+                    .contains("SameSite=Lax", "Path=/")
+                    .doesNotContain("HttpOnly");
+        });
+        String organizerSession = cookieValue(loginResponse, "EDT_SESSION");
+        String activeCsrf = cookieValue(loginResponse, "XSRF-TOKEN");
+
+        // 3. Mutation without X-XSRF-TOKEN header returns 403 AUTH_CSRF_INVALID
+        HttpResponse<String> forbiddenResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + activeCsrf,
+                "",
+                "{\"title\":\"Tentativa Sem Header CSRF\"}"
+        );
+        assertThat(forbiddenResponse.statusCode()).isEqualTo(403);
+        assertThat(forbiddenResponse.body()).contains("\"code\":\"AUTH_CSRF_INVALID\"");
+
+        // 4. Mutation with cookie + header corresponding passes with 201 Created
+        HttpResponse<String> successResponse = post(
+                "/api/v1/events/drafts",
+                "EDT_SESSION=" + organizerSession + "; XSRF-TOKEN=" + activeCsrf,
+                activeCsrf,
+                "{\"title\":\"Evento Criado Com CSRF Válido\"}"
+        );
+        assertThat(successResponse.statusCode()).isEqualTo(201);
+        assertThat(successResponse.body()).contains("\"title\":\"Evento Criado Com CSRF Válido\"");
     }
 
     @Test
