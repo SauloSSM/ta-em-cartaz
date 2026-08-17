@@ -17,5 +17,9 @@ interface SpringDataTicketRepository extends JpaRepository<TicketEntity, UUID> {
 
     Optional<TicketEntity> findByManualCode(String manualCode);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT t FROM TicketEntity t WHERE t.manualCode = :manualCode")
+    Optional<TicketEntity> findByManualCodeForUpdate(@org.springframework.data.repository.query.Param("manualCode") String manualCode);
+
     Optional<TicketEntity> findByShareToken(String shareToken);
 }

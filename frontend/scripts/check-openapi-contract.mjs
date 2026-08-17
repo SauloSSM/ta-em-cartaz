@@ -27,6 +27,10 @@ const ticketsTypeSource = readFileSync(
   new URL('../src/features/tickets/api/ticketsApi.ts', import.meta.url),
   'utf8',
 );
+const gateTypeSource = readFileSync(
+  new URL('../src/features/gate/api/gateApi.ts', import.meta.url),
+  'utf8',
+);
 
 const authSourceFile = ts.createSourceFile(
   'authApi.ts',
@@ -70,6 +74,13 @@ const ticketsSourceFile = ts.createSourceFile(
   true,
   ts.ScriptKind.TS,
 );
+const gateSourceFile = ts.createSourceFile(
+  'gateApi.ts',
+  gateTypeSource,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
 
 const allStatements = [
   ...authSourceFile.statements,
@@ -78,6 +89,7 @@ const allStatements = [
   ...reservationsSourceFile.statements,
   ...paymentsSourceFile.statements,
   ...ticketsSourceFile.statements,
+  ...gateSourceFile.statements,
 ];
 
 const aliases = new Map(
@@ -141,7 +153,8 @@ function parseOperations(source) {
       && !pathMarker[1].startsWith('/api/v1/events')
       && !pathMarker[1].startsWith('/api/v1/reservations')
       && !pathMarker[1].startsWith('/api/v1/my-tickets')
-      && !pathMarker[1].startsWith('/api/v1/public/tickets')) {
+      && !pathMarker[1].startsWith('/api/v1/public/tickets')
+      && !pathMarker[1].startsWith('/api/v1/gate')) {
       return [];
     }
     const methodMarkers = [...pathBlock.matchAll(/^    (get|post|put|patch|delete|options|head|trace):$/gm)];
@@ -351,8 +364,8 @@ function assertClientOperation(operation, functions, responses) {
   for (const [status, response] of operation.responses) {
     if (!status.startsWith('2')) {
       const component = response.componentRef === undefined ? undefined : responses.get(response.componentRef);
-      if (component?.schemaRef !== 'ApiError' && component?.schemaRef !== 'CatalogApiError' && component?.schemaRef !== 'EventApiError' && component?.schemaRef !== 'ReservationApiError' && component?.schemaRef !== 'TicketApiError') {
-        fail(`resposta ${status} de ${operation.path} não referencia ApiError, CatalogApiError, EventApiError, ReservationApiError ou TicketApiError via component response`);
+      if (component?.schemaRef !== 'ApiError' && component?.schemaRef !== 'CatalogApiError' && component?.schemaRef !== 'EventApiError' && component?.schemaRef !== 'ReservationApiError' && component?.schemaRef !== 'TicketApiError' && component?.schemaRef !== 'GateApiError') {
+        fail(`resposta ${status} de ${operation.path} não referencia ApiError, CatalogApiError, EventApiError, ReservationApiError, TicketApiError ou GateApiError via component response`);
       }
     }
   }

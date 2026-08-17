@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { SessionUser } from '../../../app/api/authApi';
 import type { GateEvent } from '../api/gateApi';
 import { GateContextSelector } from './GateContextSelector';
+import { GateManualValidation } from './GateManualValidation';
 import './gate.css';
 
 export type GateViewProps = {
@@ -76,8 +77,9 @@ export function GateView({
 
       {/* Selected Event Prominent Banner */}
       {selectedEvent ? (
-        <section
-          aria-labelledby="gate-selected-event-title"
+        <>
+          <section
+            aria-labelledby="gate-selected-event-title"
           className="edt-gate-selected-banner"
           data-testid="gate-selected-event-banner"
         >
@@ -111,17 +113,16 @@ export function GateView({
               Trocar evento
             </button>
           </div>
-
-          {/* Operational Area Placeholder for Stories 7.2–7.4 */}
-          <div className="edt-gate-operational-placeholder" data-testid="gate-operational-ready">
-            <p className="edt-gate-operational-placeholder__status">
-              ✓ Evento configurado para conferência
-            </p>
-            <p className="edt-gate-operational-placeholder__hint">
-              Contexto operacional ativo ({selectedEvent.id}). Pronto para validação de ingressos.
-            </p>
-          </div>
         </section>
+
+        {/* Operational Area: Manual Validation */}
+        <div className="edt-gate-operational-container" data-testid="gate-operational-ready">
+          <GateManualValidation
+            selectedEvent={selectedEvent}
+            onAnnouncement={(msg) => setAnnouncement(msg)}
+          />
+        </div>
+      </>
       ) : (
         /* Event Selection Area */
         <GateContextSelector

@@ -73,6 +73,18 @@ class JpaTicketRepository implements TicketRepository {
     }
 
     @Override
+    public Optional<Ticket> findByManualCodeForUpdate(String manualCode) {
+        if (manualCode == null || manualCode.isBlank()) {
+            return Optional.empty();
+        }
+        String normalized = br.com.elitedevticket.tickets.domain.TicketCredentialGenerator.normalizeManualCode(manualCode);
+        if (normalized == null || normalized.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByManualCodeForUpdate(normalized).map(TicketEntity::toDomain);
+    }
+
+    @Override
     public Optional<Ticket> findByShareToken(String shareToken) {
         if (shareToken == null || shareToken.isBlank()) {
             return Optional.empty();

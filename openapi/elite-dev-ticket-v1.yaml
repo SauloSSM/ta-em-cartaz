@@ -610,6 +610,35 @@ paths:
                 $ref: '#/components/schemas/PublicTicketResponse'
         '404':
           $ref: '#/components/responses/TicketNotFound'
+  /api/v1/gate/validations:
+    post:
+      operationId: validateTicket
+      summary: Validação de ingresso na portaria
+      description: Requer sessão autenticada com papel GATE e proteção CSRF. Validação atômica e auditável de ingresso por código manual no evento selecionado.
+      security:
+        - CsrfCookie: []
+          CsrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateTicketRequest'
+      responses:
+        '200':
+          description: Resultado funcional da validação (VALID, INVALID, ALREADY_USED ou WRONG_EVENT).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateTicketResponse'
+        '400':
+          $ref: '#/components/responses/GateInvalidRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthenticated'
+        '403':
+          $ref: '#/components/responses/AuthForbidden'
+        '409':
+          $ref: '#/components/responses/GateConflict'
 components:
   securitySchemes:
     SessionCookie:
@@ -1165,6 +1194,69 @@ components:
         timestamp:
           type: string
           format: date-time
+    ValidationMethod:
+      type: string
+      enum: [MANUAL, QR]
+    GateValidationResult:
+      type: string
+      enum: [VALID, INVALID, ALREADY_USED, WRONG_EVENT]
+    ValidateTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [manualCode, method, selectedEventId, validationAttemptId]
+      properties:
+        manualCode:
+          type: string
+        method:
+          $ref: '#/components/schemas/ValidationMethod'
+        selectedEventId:
+          type: string
+          format: uuid
+        validationAttemptId:
+          type: string
+          format: uuid
+    ValidateTicketResponse:
+      type: object
+      additionalProperties: false
+      required: [method, processedAt, result, selectedEventId, validationAttemptId]
+      properties:
+        method:
+          $ref: '#/components/schemas/ValidationMethod'
+        processedAt:
+          type: string
+          format: date-time
+        result:
+          $ref: '#/components/schemas/GateValidationResult'
+        selectedEventId:
+          type: string
+          format: uuid
+        ticketId:
+          type: string
+          format: uuid
+        validationAttemptId:
+          type: string
+          format: uuid
+    GateErrorCode:
+      type: string
+      enum: [GATE_INVALID_REQUEST, GATE_ATTEMPT_CONFLICT, AUTH_UNAUTHENTICATED, AUTH_FORBIDDEN]
+    GateApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId, timestamp]
+      properties:
+        code:
+          $ref: '#/components/schemas/GateErrorCode'
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        traceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
   responses:
     AuthInvalidRequest:
       description: Corpo ausente ou inválido.
@@ -1243,4 +1335,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/TicketApiError'
+    GateInvalidRequest:
+      description: Requisição de validação inválida ou malformada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GateApiError'
+    GateConflict:
+      description: Conflito de tentativa de validação com parâmetros incompatíveis.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GateApiError'
 

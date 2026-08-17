@@ -283,25 +283,254 @@
   align-self: flex-start;
 }
 
-/* Operational Ready Area (for 7.2+) */
-.edt-gate-operational-placeholder {
+/* Operational Area & Manual Validation (Story 7.2) */
+.edt-gate-operational-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.edt-gate-manual-section {
   background-color: var(--neutral-900, #10100F);
-  border: 1px dashed var(--neutral-700, #3F3D39);
+  border: 1px solid var(--neutral-700, #3F3D39);
   border-radius: var(--radius-container, 8px);
   padding: var(--space-6, 24px) var(--space-4, 16px);
-  text-align: center;
-  margin-top: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
 }
 
-.edt-gate-operational-placeholder__status {
-  font-size: var(--type-body-m-size, 1rem);
-  font-weight: 600;
-  color: var(--brand-green, #4D9A6C);
-  margin: 0 0 var(--space-2, 8px) 0;
+.edt-gate-manual-section__title {
+  font-family: var(--font-body, sans-serif);
+  font-size: var(--type-heading-m-size, 1.25rem);
+  font-weight: 700;
+  color: var(--brand-paper-soft, #FFF8F0);
+  margin: 0;
 }
 
-.edt-gate-operational-placeholder__hint {
+.edt-gate-manual-section__subtitle {
   font-size: var(--type-body-s-size, 0.875rem);
   color: var(--neutral-300, #A5A098);
   margin: 0;
+  line-height: 1.4;
+}
+
+.edt-gate-manual-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  margin-top: var(--space-2, 8px);
+}
+
+.edt-gate-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.edt-gate-form-label {
+  font-size: var(--type-body-s-size, 0.875rem);
+  font-weight: 600;
+  color: var(--neutral-200, #D6C8B7);
+}
+
+.edt-gate-code-input {
+  padding: 12px 14px;
+  background-color: #1A1918;
+  color: var(--neutral-050, #FFF8F0);
+  border: 2px solid var(--neutral-500, #6E6A63);
+  border-radius: var(--radius-control, 4px);
+  font-size: 1.25rem;
+  font-family: monospace, var(--font-body, sans-serif);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.edt-gate-code-input:focus {
+  outline: var(--focus-width, 3px) solid var(--focus-ring, #175CD3);
+  outline-offset: var(--focus-offset, 2px);
+  border-color: transparent;
+}
+
+.edt-gate-btn--full {
+  width: 100%;
+}
+
+.edt-gate-error-banner {
+  display: flex;
+  gap: var(--space-2, 8px);
+  background-color: rgba(180, 35, 24, 0.15);
+  border: 1px solid var(--semantic-danger, #B42318);
+  border-radius: var(--radius-control, 4px);
+  padding: var(--space-3, 12px);
+  color: #FCA5A5;
+}
+
+.edt-gate-error-banner__msg {
+  font-weight: 600;
+  font-size: var(--type-body-s-size, 0.875rem);
+  margin: 0 0 4px 0;
+}
+
+.edt-gate-error-banner__hint {
+  font-size: var(--type-label-size, 0.75rem);
+  color: #FECDD3;
+  margin: 0;
+}
+
+/* Validation Result Cards — Distinct Visual Hierarchy & Treatment */
+.edt-gate-result-card {
+  border-radius: var(--radius-container, 8px);
+  padding: var(--space-6, 24px) var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  border: 3px solid;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.edt-gate-result-card:focus {
+  outline: var(--focus-width, 3px) solid var(--focus-ring, #175CD3);
+  outline-offset: var(--focus-offset, 2px);
+}
+
+.edt-gate-result-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+}
+
+.edt-gate-result-card__icon {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.edt-gate-result-card__badge {
+  font-size: var(--type-label-size, 0.75rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--type-label-track, 0.08em);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill, 999px);
+}
+
+.edt-gate-result-card__title {
+  font-family: var(--font-display, Impact, sans-serif);
+  font-size: 2rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.edt-gate-result-card__instruction {
+  font-size: var(--type-body-l-size, 1.125rem);
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.edt-gate-result-card__meta {
+  display: flex;
+  gap: var(--space-4, 16px);
+  font-size: var(--type-body-s-size, 0.875rem);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: var(--space-2, 8px);
+  margin-top: var(--space-1, 4px);
+}
+
+.edt-gate-result-card__actions {
+  margin-top: var(--space-3, 12px);
+}
+
+/* VALID: Emerald Green Background & High-Contrast White Text */
+.edt-gate-result-card--valid {
+  background-color: #064E3B;
+  border-color: #10B981;
+  color: #ECFDF5;
+}
+
+.edt-gate-result-card--valid .edt-gate-result-card__badge {
+  background-color: #10B981;
+  color: #064E3B;
+}
+
+.edt-gate-result-card--valid .edt-gate-result-card__title {
+  color: #FFFFFF;
+}
+
+.edt-gate-result-card--valid .edt-gate-result-card__instruction {
+  color: #D1FAE5;
+}
+
+/* INVALID: Dark Red Background & High-Contrast White/Red Text */
+.edt-gate-result-card--invalid {
+  background-color: #7F1D1D;
+  border-color: #EF4444;
+  color: #FEF2F2;
+}
+
+.edt-gate-result-card--invalid .edt-gate-result-card__badge {
+  background-color: #EF4444;
+  color: #7F1D1D;
+}
+
+.edt-gate-result-card--invalid .edt-gate-result-card__title {
+  color: #FFFFFF;
+}
+
+.edt-gate-result-card--invalid .edt-gate-result-card__instruction {
+  color: #FEE2E2;
+}
+
+/* ALREADY_USED: Dark Amber Background & High-Contrast Amber Text */
+.edt-gate-result-card--already_used,
+.edt-gate-result-card--already-used {
+  background-color: #78350F;
+  border-color: #F59E0B;
+  color: #FFFBEB;
+}
+
+.edt-gate-result-card--already_used .edt-gate-result-card__badge,
+.edt-gate-result-card--already-used .edt-gate-result-card__badge {
+  background-color: #F59E0B;
+  color: #78350F;
+}
+
+.edt-gate-result-card--already_used .edt-gate-result-card__title,
+.edt-gate-result-card--already-used .edt-gate-result-card__title {
+  color: #FFFFFF;
+}
+
+.edt-gate-result-card--already_used .edt-gate-result-card__instruction,
+.edt-gate-result-card--already-used .edt-gate-result-card__instruction {
+  color: #FEF3C7;
+}
+
+/* WRONG_EVENT: Dark Purple Background & High-Contrast Light Purple Text */
+.edt-gate-result-card--wrong_event,
+.edt-gate-result-card--wrong-event {
+  background-color: #3B0764;
+  border-color: #A855F7;
+  color: #FAF5FF;
+}
+
+.edt-gate-result-card--wrong_event .edt-gate-result-card__badge,
+.edt-gate-result-card--wrong-event .edt-gate-result-card__badge {
+  background-color: #A855F7;
+  color: #3B0764;
+}
+
+.edt-gate-result-card--wrong_event .edt-gate-result-card__title,
+.edt-gate-result-card--wrong-event .edt-gate-result-card__title {
+  color: #FFFFFF;
+}
+
+.edt-gate-result-card--wrong_event .edt-gate-result-card__instruction,
+.edt-gate-result-card--wrong-event .edt-gate-result-card__instruction {
+  color: #F3E8FF;
 }

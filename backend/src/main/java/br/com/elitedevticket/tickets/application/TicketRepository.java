@@ -19,6 +19,8 @@ public interface TicketRepository {
     Optional<Ticket> findByValidationToken(String validationToken);
 
     Optional<Ticket> findByManualCode(String manualCode);
+ 
+    Optional<Ticket> findByManualCodeForUpdate(String manualCode);
 
     Optional<Ticket> findByShareToken(String shareToken);
 }

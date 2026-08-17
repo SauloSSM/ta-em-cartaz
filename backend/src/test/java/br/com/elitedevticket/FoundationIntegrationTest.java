@@ -261,7 +261,8 @@ class FoundationIntegrationTest {
                 "reservations",
                 "reservation_idempotency_keys",
                 "payments",
-                "tickets"
+                "tickets",
+                "validation_attempts"
         );
     }
 

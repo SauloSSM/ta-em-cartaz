@@ -78,4 +78,25 @@ public record Ticket(
                 null
         );
     }
+
+    public Ticket markAsUsed(Instant usedAt, UUID gateUserId) {
+        Objects.requireNonNull(usedAt, "usedAt must not be null");
+        Objects.requireNonNull(gateUserId, "gateUserId must not be null");
+        return new Ticket(
+                id,
+                reservationId,
+                eventId,
+                sectorId,
+                customerId,
+                ordinal,
+                TicketStatus.USED,
+                validationToken,
+                manualCode,
+                shareToken,
+                createdAt,
+                usedAt,
+                gateUserId
+        );
+    }
 }
+
