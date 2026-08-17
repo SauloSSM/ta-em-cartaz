@@ -1,4 +1,8 @@
 spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/elitedevticket}
+    username: ${DATABASE_USERNAME:elitedevticket}
+    password: ${DATABASE_PASSWORD:}
   flyway:
     locations: classpath:db/migration,classpath:db/seed/demo
 auth:
@@ -6,3 +10,4 @@ auth:
     secure: ${AUTH_COOKIES_SECURE:false}
   cors:
     allowed-origins: http://localhost:5173
+

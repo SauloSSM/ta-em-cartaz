@@ -8,49 +8,95 @@ Base executável do MVP: uma SPA React, API Spring Boot e PostgreSQL. Contas pro
 - Java 21 para executar o backend fora do Docker;
 - Node.js 22.12+ LTS (a versão está registrada em `frontend/.nvmrc`) para executar o frontend fora do Docker.
 
+## Configuração de Ambiente (.env)
+
+Consulte o arquivo `.env.example` para obter os nomes e propósitos de todas as variáveis suportadas. Para desenvolvimento e avaliação local, nenhum segredo externo é obrigatório:
+- `TICKETMASTER_API_KEY`: opcional (caso não informada, a busca externa opera com fallback de erro gracioso sem interromper o sistema);
+- `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`: configuradas com defaults locais prontos para execução.
+
 ## Execução local com Docker
+
+Para subir todo o ambiente de uma só vez (SPA, API e PostgreSQL):
 
 ```sh
 docker compose up --build
 ```
 
-Abra `http://localhost:5173`. O Vite encaminha `/api` internamente para a API, preservando a mesma origem lógica no navegador. A API também fica disponível em `http://localhost:8080`; os probes operacionais são `/actuator/health/liveness` e `/actuator/health/readiness`.
-
-O Compose usa PostgreSQL apenas na rede interna e autenticação `trust` para desenvolvimento local. Não use essa configuração fora do ambiente local.
+- **Frontend (SPA):** acesse `http://localhost:5173`. O Vite encaminha chamadas `/api` internamente para a API, preservando a mesma origem lógica no navegador.
+- **Backend (API):** disponível em `http://localhost:8080`.
+- **Probes operacionais de readiness e liveness:**
+  - Liveness: `http://localhost:8080/actuator/health/liveness`
+  - Readiness: `http://localhost:8080/actuator/health/readiness` (avalia integridade de conexão ao banco e migrations Flyway).
 
 ## Execução fora do Docker
 
+1. **Subir apenas o PostgreSQL:**
 ```sh
-backend/mvnw test
-npm --prefix frontend ci
-npm --prefix frontend run build
+docker compose up -d postgres
 ```
 
-Para iniciar a API localmente, configure `SPRING_PROFILES_ACTIVE=local` e `DATABASE_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD` conforme necessário. `DATABASE_PASSWORD` é uma credencial e não deve ser versionada quando o banco exigir senha.
+2. **Executar o Backend:**
+```sh
+# Linux/macOS
+./backend/mvnw -f backend/pom.xml spring-boot:run
 
-O profile padrão é `prod`. Ele exige explicitamente `DATABASE_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD` externos, falhando na inicialização se algum estiver ausente. O profile `prod` aplica apenas a migration comum: não usa defaults de conexão, seeds, contas demo ou segredos versionados.
+# Windows (PowerShell)
+.\backend\mvnw.cmd -f backend/pom.xml spring-boot:run
+```
+O perfil `local` é ativado por padrão com conexão em `jdbc:postgresql://localhost:5432/elitedevticket` (usuário `elitedevticket`, sem senha).
 
-## Autenticação e sessão
+3. **Executar o Frontend:**
+```sh
+npm --prefix frontend install
+npm --prefix frontend run dev
+```
+Acesse `http://localhost:5173`.
 
-A SPA inicializa a sessão em `GET /api/v1/auth/session` e usa o cookie CSRF `XSRF-TOKEN` com o header `X-XSRF-TOKEN` no login e logout. O JWT fica somente no cookie HttpOnly `EDT_SESSION`; não o copie para código ou armazenamento do navegador.
+4. **Executar Testes:**
+```sh
+# Backend (testes de unidade, contratos e arquitetura)
+backend/mvnw test
 
-`local` e `test` geram uma chave JWT efêmera quando nenhuma é informada. `demo`, `prod` e o profile padrão exigem `AUTH_JWT_SECRET` externo em Base64 com pelo menos 32 bytes e usam cookies `Secure`, proteção que não pode ser desativada nesses profiles por `AUTH_COOKIES_SECURE`. O TTL padrão é `PT8H` (`AUTH_JWT_TTL`), o custo BCrypt padrão é 10 (`AUTH_BCRYPT_COST`) e origens CORS adicionais, quando necessárias, são configuradas em `AUTH_CORS_ALLOWED_ORIGINS`.
+# Frontend (testes unitários, de componentes e de integração)
+npm --prefix frontend test
+```
 
-## Perfis e dados de demonstração
+## Perfis e Dados de Demonstração
 
 Flyway é o único dono do schema e o Hibernate executa somente com `ddl-auto=validate`.
 
-- `local` e `test`: aplicam `db/migration` e `db/seed/demo` com a configuração de banco apropriada ao ambiente.
-- `demo`: aplica as mesmas migrations e seeds, mas exige `DATABASE_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD` externos.
-- `prod`: aplica somente `db/migration`; não há seed ou credencial demo.
+- `local` e `test`: aplicam `db/migration` e `db/seed/demo` com a configuração apropriada ao ambiente.
+- `demo`: aplica as mesmas migrations e seeds, mas exige `DATABASE_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD` externos e `AUTH_JWT_SECRET`.
+- `prod`: aplica somente `db/migration`; não há seed, credenciais ou eventos demo.
 
-As credenciais abaixo são intencionalmente públicas apenas para os perfis permitidos e usam a senha `password`:
+### Contas Provisionadas (Senha: `password`)
 
-| Papel | E-mail |
-| --- | --- |
-| ORGANIZER | organizer@demo.elitedevticket.local |
-| CUSTOMER | customer.one@demo.elitedevticket.local |
-| CUSTOMER | customer.two@demo.elitedevticket.local |
-| GATE | gate@demo.elitedevticket.local |
+| Papel | E-mail | Propósito |
+| --- | --- | --- |
+| `ORGANIZER` | `organizer@demo.elitedevticket.local` | Criar, editar, configurar setores e gerenciar eventos |
+| `CUSTOMER` | `customer.one@demo.elitedevticket.local` | Navegar no catálogo, reservar ingressos, pagar e visualizar ingressos próprios |
+| `CUSTOMER` | `customer.two@demo.elitedevticket.local` | Segundo comprador com ingressos próprios |
+| `GATE` | `gate@demo.elitedevticket.local` | Validação de ingressos na portaria (manual e QR Code) |
 
-Não versione segredos nem credenciais reais de produção.
+### Eventos e Ingressos Seedados para Avaliação
+
+Os seeds de demonstração inicializam o catálogo com eventos `PUBLISHED` e ingressos emitidos respeitando todas as invariantes do domínio (Customer → Reservation CONFIRMED → Payment APPROVED → Ticket):
+
+1. **Event A — "Show Acústico de Demonstração (Event A)"**
+   - Setor `Pista Premium`: R$ 150,00 (98 disponíveis de 100)
+   - Setor `Camarote VIP`: R$ 320,00 (50 disponíveis de 50 — disponível para novas compras)
+2. **Event B — "Festival Indie Brasil (Event B)"**
+   - Setor `Pista Geral`: R$ 120,00 (199 disponíveis de 200)
+
+### Demonstração dos Resultados de Validação da Portaria (Gate)
+
+Para testar os 4 desfechos da portaria com o operador `gate@demo.elitedevticket.local`:
+
+| Teste | Evento Selecionado no Gate | Código Manual / QR | Resultado Esperado |
+| --- | --- | --- | --- |
+| **Ingresso Válido** | `Show Acústico Demo (Event A)` | `DEM0A1C0DE` (ou `DEM0-A1C0-DE`) | **VALID** (marca como usado) |
+| **Ingresso Já Utilizado** | `Show Acústico Demo (Event A)` | `DEM0A1C0DE` (tentativa subsequente) | **ALREADY_USED** |
+| **Ingresso Já Usado no Seed** | `Show Acústico Demo (Event A)` | `DEM0A2C0DE` (ou `DEM0-A2C0-DE`) | **ALREADY_USED** |
+| **Evento Incorreto** | `Show Acústico Demo (Event A)` | `DEM0B1C0DE` (pertence ao Event B) | **WRONG_EVENT** (não consome) |
+| **Código Inexistente** | Qualquer Evento | `INVALID999` | **INVALID** |
+
