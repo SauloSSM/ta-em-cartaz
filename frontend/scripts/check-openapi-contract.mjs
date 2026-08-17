@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 const contract = readFileSync(
-  new URL('../../openapi/elite-dev-ticket-v1.yaml', import.meta.url),
+  new URL('../../openapi/ta-em-cartaz-v1.yaml', import.meta.url),
   'utf8',
 ).replaceAll('\r\n', '\n');
 

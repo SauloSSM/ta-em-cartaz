@@ -1,25 +1,54 @@
 openapi: 3.1.0
 info:
-  title: EliteDevTicket API
+  title: Tá em Cartaz API
   version: 1.0.0
-  description: Contrato mínimo de autenticação da Story 1.2.
+  description: >
+    API pública e operacional da plataforma Tá em Cartaz.
+    Fornece autenticação com cookies seguros e proteção CSRF, pesquisa e descoberta pública de eventos,
+    gestão de eventos e setores para organizadores, importação de referências externas do Ticketmaster,
+    fluxo de reserva com hold temporário e proteção contra overselling, simulação de pagamentos idempotentes,
+    emissão de ingressos com visualização pública segura e validação na portaria via QR Code e código manual.
 servers:
   - url: /
+    description: Servidor da aplicação Tá em Cartaz
+tags:
+  - name: Autenticação & Sessão
+    description: Gerenciamento de sessão, autenticação com cookie EDT_SESSION e proteção CSRF.
+  - name: Catálogo Externo
+    description: Consulta e importação de eventos de referência externa (Ticketmaster).
+  - name: Eventos Públicos
+    description: Descoberta e consulta pública de eventos em cartaz.
+  - name: Gestão de Eventos
+    description: Criação em rascunho, edição, exclusão e publicação de eventos por organizadores.
+  - name: Setores de Ingressos
+    description: Configuração de capacidade, preços e setores de ingressos para eventos.
+  - name: Reservas
+    description: Criação de hold temporal de reserva (10 minutos) com proteção contra overselling e idempotência.
+  - name: Pagamentos
+    description: Processamento simulado de pagamento com idempotência canônica v1.
+  - name: Meus Ingressos
+    description: Consulta de ingressos emitidos e confirmados do comprador autenticado.
+  - name: Ingresso Público
+    description: Visualização pública de ingresso e QR Code via token permanente de compartilhamento.
+  - name: Portaria & Validação
+    description: Validação segura de ingressos na portaria (manual ou via scanner de QR Code) com idempotência.
 paths:
   /api/v1/auth/session:
     get:
+      tags:
+        - Autenticação & Sessão
       operationId: getAuthSession
       summary: Inicializa ou consulta a sessão atual
-      description: Um JWT ausente, expirado ou inválido é tratado como sessão anônima. A resposta nunca expõe o JWT e emite o cookie CSRF quando necessário.
+      description: Consulta o estado da sessão atual. Sessões sem JWT válido ou expirado retornam authenticated=false (anônima) e emitem o cookie XSRF-TOKEN. Sessões autenticadas retornam os dados do usuário conectado. A resposta nunca expõe tokens sensíveis.
       security:
         - SessionCookie: []
         - {}
       responses:
         '200':
-          description: Estado atual da sessão.
+          description: Estado atual da sessão retornado com sucesso.
           headers:
             Set-Cookie:
-              description: XSRF-TOKEN legível pela SPA, SameSite=Lax, Path=/ e Secure em demo/prod.
+              description: Cookie XSRF-TOKEN legível pela SPA, SameSite=Lax, Path=/ e Secure em produção.
               schema:
                 type: string
           content:
@@ -28,9 +57,11 @@ paths:
                 $ref: '#/components/schemas/SessionResponse'
   /api/v1/auth/login:
     post:
+      tags:
+        - Autenticação & Sessão
       operationId: login
       summary: Autentica uma conta provisionada
-      description: Exige o header X-XSRF-TOKEN correspondente ao cookie XSRF-TOKEN. Renova sessão e CSRF em caso de sucesso.
+      description: Autentica um usuário na plataforma Tá em Cartaz. Exige o header X-XSRF-TOKEN correspondente ao cookie XSRF-TOKEN. Emite o cookie EDT_SESSION (HttpOnly) e renova o XSRF-TOKEN.
       security:
         - CsrfCookie: []
           CsrfHeader: []
@@ -42,10 +73,10 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Conta autenticada.
+          description: Conta autenticada com sucesso.
           headers:
             Set-Cookie:
-              description: EDT_SESSION HttpOnly e XSRF-TOKEN renovado; SameSite=Lax, Path=/, Secure em demo/prod. EDT_SESSION expira junto com o JWT (TTL padrão PT8H).
+              description: EDT_SESSION HttpOnly e XSRF-TOKEN renovado; SameSite=Lax, Path=/, Secure em produção. EDT_SESSION expira junto com o JWT (TTL padrão PT8H).
               schema:
                 type: string
           content:
@@ -60,27 +91,31 @@ paths:
           $ref: '#/components/responses/AuthInvalidCsrf'
   /api/v1/auth/logout:
     post:
+      tags:
+        - Autenticação & Sessão
       operationId: logout
       summary: Encerra a sessão atual
-      description: Idempotente para sessão autenticada ou anônima. Expira EDT_SESSION e renova XSRF-TOKEN.
+      description: Encerra a sessão do usuário. Operação idempotente para sessão autenticada ou anônima que expira o cookie EDT_SESSION e renova o XSRF-TOKEN.
       security:
         - CsrfCookie: []
           CsrfHeader: []
       responses:
         '204':
-          description: Sessão encerrada.
+          description: Sessão encerrada com sucesso.
           headers:
             Set-Cookie:
-              description: EDT_SESSION expirado e XSRF-TOKEN renovado, com os atributos do ambiente.
+              description: EDT_SESSION expirado e XSRF-TOKEN renovado, com os atributos de segurança do ambiente.
               schema:
                 type: string
         '403':
           $ref: '#/components/responses/AuthInvalidCsrf'
   /api/v1/catalog/events:
     get:
+      tags:
+        - Catálogo Externo
       operationId: searchCatalogEvents
       summary: Pesquisa referências de eventos no catálogo Ticketmaster
-      description: Requer sessão autenticada com papel ORGANIZER. Consulta o catálogo externo Ticketmaster através do adapter backend com recuperação segura e orçamento de tempo controlado.
+      description: Requer sessão autenticada com papel ORGANIZER. Consulta o catálogo externo Ticketmaster através do adapter backend com recuperação segura e timeout controlado.
       security:
         - SessionCookie: []
       parameters:
@@ -107,9 +142,11 @@ paths:
           $ref: '#/components/responses/CatalogUnavailable'
   /api/v1/events:
     get:
+      tags:
+        - Eventos Públicos
       operationId: listPublicEvents
       summary: Lista e pesquisa eventos públicos publicados
-      description: Acesso público sem autenticação. Retorna exclusivamente eventos com status PUBLISHED. Permite busca textual simples por título.
+      description: Acesso público sem autenticação. Retorna exclusivamente eventos com status PUBLISHED disponíveis na plataforma Tá em Cartaz. Permite busca textual simples por título.
       security:
         - SessionCookie: []
         - {}
@@ -131,9 +168,11 @@ paths:
           $ref: '#/components/responses/AuthInvalidRequest'
   /api/v1/events/drafts:
     post:
+      tags:
+        - Gestão de Eventos
       operationId: createDraftEvent
       summary: Cria um novo Event em rascunho (DRAFT) a partir de snapshot
-      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Cria um evento interno DRAFT independente com identidade própria.
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Cria um evento interno em rascunho (DRAFT) independente, com identidade própria, a partir de dados manuais ou referência externa.
       security:
         - CsrfCookie: []
           CsrfHeader: []
@@ -158,14 +197,16 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
   /api/v1/events/mine:
     get:
+      tags:
+        - Gestão de Eventos
       operationId: listMyEvents
       summary: Lista os eventos do Organizer autenticado
-      description: Requer sessão autenticada com papel ORGANIZER. Retorna a lista de todos os eventos (DRAFT e PUBLISHED) pertencentes ao organizador.
+      description: Requer sessão autenticada com papel ORGANIZER. Retorna a lista de todos os eventos (DRAFT e PUBLISHED) pertencentes ao organizador conectado.
       security:
         - SessionCookie: []
       responses:
         '200':
-          description: Lista de eventos do organizador.
+          description: Lista de eventos do organizador recuperada com sucesso.
           content:
             application/json:
               schema:
@@ -176,6 +217,8 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
   /api/v1/events/{id}:
     get:
+      tags:
+        - Gestão de Eventos
       operationId: getEvent
       summary: Consulta os dados de um evento por ID
       description: Acesso público para eventos publicados (PUBLISHED). Se o evento estiver em rascunho (DRAFT), somente o Organizer proprietário pode acessá-lo.
@@ -204,6 +247,8 @@ paths:
         '404':
           $ref: '#/components/responses/EventNotFound'
     put:
+      tags:
+        - Gestão de Eventos
       operationId: updateDraftEvent
       summary: Atualiza os dados de um evento em rascunho (DRAFT)
       description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Permite alterar campos de um evento em DRAFT pertencente ao organizador.
@@ -242,6 +287,8 @@ paths:
         '409':
           $ref: '#/components/responses/EventConflict'
     delete:
+      tags:
+        - Gestão de Eventos
       operationId: deleteDraftEvent
       summary: Exclui um evento em rascunho (DRAFT)
       description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Exclui um evento DRAFT pertencente ao organizador. Eventos PUBLISHED não podem ser excluídos.
@@ -269,6 +316,8 @@ paths:
           $ref: '#/components/responses/EventConflict'
   /api/v1/events/{id}/publish:
     post:
+      tags:
+        - Gestão de Eventos
       operationId: publishEvent
       summary: Publica um evento em rascunho (DRAFT)
       description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Valida todas as pendências mínimas (título, local, data futura, referência externa e pelo menos um setor de ingressos) e transiciona o evento para PUBLISHED de forma transacional.
@@ -302,6 +351,8 @@ paths:
           $ref: '#/components/responses/EventConflict'
   /api/v1/events/{eventId}/sectors:
     get:
+      tags:
+        - Setores de Ingressos
       operationId: listTicketSectors
       summary: Lista os setores de um evento
       description: Acesso público para eventos publicados (PUBLISHED). Se o evento estiver em rascunho (DRAFT), somente o Organizer proprietário pode acessá-lo.
@@ -318,7 +369,7 @@ paths:
           description: Identificador UUID único do evento.
       responses:
         '200':
-          description: Lista de setores do evento.
+          description: Lista de setores do evento recuperada com sucesso.
           content:
             application/json:
               schema:
@@ -330,9 +381,11 @@ paths:
         '404':
           $ref: '#/components/responses/EventNotFound'
     post:
+      tags:
+        - Setores de Ingressos
       operationId: createTicketSector
       summary: Adiciona um novo setor ao evento em rascunho (DRAFT)
-      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Permite adicionar um setor a um evento DRAFT pertencente ao organizador.
+      description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Permite adicionar um setor de ingressos a um evento DRAFT pertencente ao organizador.
       security:
         - CsrfCookie: []
           CsrfHeader: []
@@ -369,6 +422,8 @@ paths:
           $ref: '#/components/responses/EventConflict'
   /api/v1/events/{eventId}/sectors/{sectorId}:
     put:
+      tags:
+        - Setores de Ingressos
       operationId: updateTicketSector
       summary: Atualiza os dados de um setor de um evento em rascunho (DRAFT)
       description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Permite alterar campos de um setor de um evento em DRAFT pertencente ao organizador.
@@ -414,6 +469,8 @@ paths:
         '409':
           $ref: '#/components/responses/EventConflict'
     delete:
+      tags:
+        - Setores de Ingressos
       operationId: deleteTicketSector
       summary: Exclui um setor de um evento em rascunho (DRAFT)
       description: Requer sessão autenticada com papel ORGANIZER e proteção CSRF. Exclui um setor de um evento DRAFT pertencente ao organizador.
@@ -448,6 +505,8 @@ paths:
           $ref: '#/components/responses/EventConflict'
   /api/v1/events/{eventId}/sectors/{sectorId}/reservations:
     post:
+      tags:
+        - Reservas
       operationId: createReservation
       summary: Cria um hold de reserva válido para um cliente autenticado (CUSTOMER)
       description: Requer sessão autenticada com papel CUSTOMER e proteção CSRF. Revalida publicação do evento, vendas abertas, setor e disponibilidade antes de criar o hold com expiração de 10 minutos.
@@ -502,6 +561,8 @@ paths:
           $ref: '#/components/responses/ReservationUnprocessable'
   /api/v1/reservations/{reservationId}/payments:
     post:
+      tags:
+        - Pagamentos
       operationId: processPayment
       summary: Processa uma tentativa simulada de pagamento para uma reserva
       description: Requer sessão autenticada com papel CUSTOMER e proteção CSRF. Somente o dono da reserva HOLDING vigente pode realizar a tentativa. O processamento é idempotente por paymentAttemptId com fingerprint v1 canônico.
@@ -543,6 +604,8 @@ paths:
           $ref: '#/components/responses/ReservationUnprocessable'
   /api/v1/my-tickets:
     get:
+      tags:
+        - Meus Ingressos
       operationId: listMyTickets
       summary: Lista todos os ingressos pertencentes ao comprador autenticado
       description: Requer sessão autenticada com papel CUSTOMER. Retorna exclusivamente os ingressos do usuário da sessão, ordenados por data de criação decrescente.
@@ -550,7 +613,7 @@ paths:
         - SessionCookie: []
       responses:
         '200':
-          description: Lista de ingressos do cliente.
+          description: Lista de ingressos do cliente recuperada com sucesso.
           content:
             application/json:
               schema:
@@ -561,6 +624,8 @@ paths:
           $ref: '#/components/responses/AuthForbidden'
   /api/v1/my-tickets/{ticketId}:
     get:
+      tags:
+        - Meus Ingressos
       operationId: getMyTicket
       summary: Consulta os detalhes de um ingresso próprio do comprador
       description: Requer sessão autenticada com papel CUSTOMER. Somente o comprador proprietário do ingresso pode acessá-lo. Não-proprietários recebem 404 seguro.
@@ -576,7 +641,7 @@ paths:
           description: Identificador UUID único do ingresso.
       responses:
         '200':
-          description: Detalhes do ingresso próprio.
+          description: Detalhes do ingresso próprio recuperados com sucesso.
           content:
             application/json:
               schema:
@@ -589,6 +654,8 @@ paths:
           $ref: '#/components/responses/TicketNotFound'
   /api/v1/public/tickets/{shareToken}:
     get:
+      tags:
+        - Ingresso Público
       operationId: getPublicTicket
       summary: Consulta pública de um ingresso por shareToken
       description: Acesso público anônimo sem autenticação. Resolve o ingresso exclusivamente pelo shareToken permanente. Não expõe dados pessoais do comprador ou identificadores de reserva. Retorna 404 neutro se o token for inválido ou não existir.
@@ -603,7 +670,7 @@ paths:
           description: Token público permanente de compartilhamento do ingresso.
       responses:
         '200':
-          description: Dados públicos do ingresso para apresentação.
+          description: Dados públicos do ingresso para apresentação recuperados com sucesso.
           content:
             application/json:
               schema:
@@ -612,9 +679,11 @@ paths:
           $ref: '#/components/responses/TicketNotFound'
   /api/v1/gate/validations:
     post:
+      tags:
+        - Portaria & Validação
       operationId: validateTicket
       summary: Validação de ingresso na portaria
-      description: Requer sessão autenticada com papel GATE e proteção CSRF. Validação atômica e auditável de ingresso por código manual no evento selecionado.
+      description: Requer sessão autenticada com papel GATE e proteção CSRF. Validação atômica e auditável de ingresso por código manual ou token QR no evento selecionado.
       security:
         - CsrfCookie: []
           CsrfHeader: []
@@ -645,17 +714,17 @@ components:
       type: apiKey
       in: cookie
       name: EDT_SESSION
-      description: JWT HS256 stateless; HttpOnly, SameSite=Lax, Path=/ e Secure em demo/prod.
+      description: JWT HS256 stateless com claims de sessão; HttpOnly, SameSite=Lax, Path=/ e Secure em produção.
     CsrfHeader:
       type: apiKey
       in: header
       name: X-XSRF-TOKEN
-      description: Valor do cookie XSRF-TOKEN, que não é HttpOnly e é rotacionado após login/logout.
+      description: Header com o token CSRF anti-tampering correspondente ao cookie XSRF-TOKEN.
     CsrfCookie:
       type: apiKey
       in: cookie
       name: XSRF-TOKEN
-      description: Cookie legível pela SPA cujo valor deve acompanhar o header X-XSRF-TOKEN.
+      description: Cookie legível pela SPA para envio no header X-XSRF-TOKEN em requisições de mutação.
   schemas:
     LoginRequest:
       type: object
@@ -1279,7 +1348,7 @@ components:
     AuthInvalidCredentials:
       headers:
         Set-Cookie:
-          description: EDT_SESSION expirado para eliminar uma sessao existente; HttpOnly, SameSite=Lax, Path=/ e Secure em demo/prod.
+          description: EDT_SESSION expirado para eliminar uma sessão existente; HttpOnly, SameSite=Lax, Path=/ e Secure em produção.
           schema:
             type: string
       description: Credenciais inválidas sem revelar se o e-mail existe.
@@ -1347,4 +1416,3 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/GateApiError'
-

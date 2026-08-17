@@ -142,7 +142,7 @@ class TicketsOpenApiContractTest {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> loadContract() throws IOException {
-        String source = Files.readString(Path.of("..", "openapi", "elite-dev-ticket-v1.yaml"));
+        String source = Files.readString(Path.of("..", "openapi", "ta-em-cartaz-v1.yaml"));
         return (Map<String, Object>) new Yaml().load(source);
     }
 
