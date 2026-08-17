@@ -534,3 +534,190 @@
 .edt-gate-result-card--wrong-event .edt-gate-result-card__instruction {
   color: #F3E8FF;
 }
+
+/* =========================================================
+   QR Scanner (Story 7.4) — GateQrScanner & GateValidationArea
+   ========================================================= */
+
+/* Validation area container */
+.edt-gate-validation-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+/* Mode switcher (return to QR button row) */
+.edt-gate-mode-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-2, 8px);
+}
+
+/* Scanner section container */
+.edt-gate-scanner {
+  background-color: var(--neutral-900, #10100F);
+  border: 1px solid var(--neutral-700, #3F3D39);
+  border-radius: var(--radius-container, 8px);
+  padding: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.edt-gate-scanner__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+}
+
+.edt-gate-scanner__title {
+  font-family: var(--font-body, sans-serif);
+  font-size: var(--type-body-l-size, 1.125rem);
+  font-weight: 700;
+  color: var(--brand-paper-soft, #FFF8F0);
+  margin: 0;
+}
+
+/* Viewfinder — responsive, portrait + landscape */
+.edt-gate-scanner__viewfinder {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-color: #000;
+  border-radius: var(--radius-control, 4px);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--neutral-700, #3F3D39);
+  transition: border-color var(--motion-fast, 120ms) ease;
+}
+
+.edt-gate-scanner__viewfinder--paused {
+  border-color: var(--brand-orange, #F25709);
+  opacity: 0.85;
+}
+
+.edt-gate-scanner__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Hidden canvas — only for rAF fallback pixel decoding */
+.edt-gate-scanner__canvas {
+  display: none;
+}
+
+/* Overlay for requesting/paused states */
+.edt-gate-scanner__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.65);
+  color: var(--brand-paper-soft, #FFF8F0);
+  font-size: var(--type-body-m-size, 1rem);
+  font-weight: 600;
+  text-align: center;
+  padding: var(--space-4, 16px);
+  z-index: 1;
+}
+
+.edt-gate-scanner__overlay--paused {
+  background-color: rgba(242, 87, 9, 0.25);
+  color: #FFF8F0;
+}
+
+/* Error banner inside scanner */
+.edt-gate-scanner__error {
+  display: flex;
+  gap: var(--space-3, 12px);
+  align-items: flex-start;
+  background-color: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--neutral-700, #3F3D39);
+  border-radius: var(--radius-control, 4px);
+  padding: var(--space-4, 16px);
+  min-height: 44px;
+}
+
+.edt-gate-scanner__error-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.edt-gate-scanner__error-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.edt-gate-scanner__error-msg {
+  font-size: var(--type-body-s-size, 0.875rem);
+  color: var(--neutral-200, #D6C8B7);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Camera selector dropdown */
+.edt-gate-scanner__camera-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.edt-gate-scanner__camera-select {
+  padding: 8px 12px;
+  background-color: var(--neutral-900, #10100F);
+  color: var(--neutral-050, #FFF8F0);
+  border: 1px solid var(--neutral-500, #6E6A63);
+  border-radius: var(--radius-control, 4px);
+  font-size: var(--type-body-s-size, 0.875rem);
+  font-family: var(--font-body, sans-serif);
+  min-height: 44px; /* touch target */
+  cursor: pointer;
+}
+
+.edt-gate-scanner__camera-select:focus {
+  outline: var(--focus-width, 3px) solid var(--focus-ring, #175CD3);
+  outline-offset: var(--focus-offset, 2px);
+  border-color: transparent;
+}
+
+/* Hint text with inline link */
+.edt-gate-scanner__hint {
+  font-size: var(--type-body-s-size, 0.875rem);
+  color: var(--neutral-400, #8A8680);
+  margin: 0;
+}
+
+.edt-gate-scanner__hint-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand-orange, #F25709);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  min-height: 44px; /* touch target */
+}
+
+.edt-gate-scanner__hint-link:focus-visible {
+  outline: var(--focus-width, 3px) solid var(--focus-ring, #175CD3);
+  outline-offset: var(--focus-offset, 2px);
+  border-radius: 2px;
+}
+
+/* Landscape: taller viewfinder */
+@media (orientation: landscape) and (max-height: 600px) {
+  .edt-gate-scanner__viewfinder {
+    aspect-ratio: 16 / 9;
+    max-height: 55vh;
+  }
+}

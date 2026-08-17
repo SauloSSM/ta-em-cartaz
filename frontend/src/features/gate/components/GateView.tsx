@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { SessionUser } from '../../../app/api/authApi';
 import type { GateEvent } from '../api/gateApi';
 import { GateContextSelector } from './GateContextSelector';
-import { GateManualValidation } from './GateManualValidation';
+import { GateValidationArea } from './GateValidationArea';
 import './gate.css';
 
 export type GateViewProps = {
@@ -115,9 +115,9 @@ export function GateView({
           </div>
         </section>
 
-        {/* Operational Area: Manual Validation */}
+        {/* Operational Area: QR Scanner (primary) + Manual Validation (fallback) */}
         <div className="edt-gate-operational-container" data-testid="gate-operational-ready">
-          <GateManualValidation
+          <GateValidationArea
             selectedEvent={selectedEvent}
             onAnnouncement={(msg) => setAnnouncement(msg)}
           />

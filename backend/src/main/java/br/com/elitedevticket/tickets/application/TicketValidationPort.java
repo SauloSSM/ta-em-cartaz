@@ -9,5 +9,7 @@ public interface TicketValidationPort {
 
     Optional<Ticket> findByManualCodeForValidation(String manualCode);
 
+    Optional<Ticket> findByValidationTokenForValidation(String validationToken);
+
     Ticket markTicketAsUsed(UUID ticketId, Instant usedAt, UUID gateUserId);
 }

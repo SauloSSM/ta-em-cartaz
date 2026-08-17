@@ -30,6 +30,15 @@ public class DefaultTicketValidationPort implements TicketValidationPort {
 
     @Override
     @Transactional
+    public Optional<Ticket> findByValidationTokenForValidation(String validationToken) {
+        if (validationToken == null || validationToken.isBlank()) {
+            return Optional.empty();
+        }
+        return ticketRepository.findByValidationTokenForUpdate(validationToken.trim());
+    }
+
+    @Override
+    @Transactional
     public Ticket markTicketAsUsed(UUID ticketId, Instant usedAt, UUID gateUserId) {
         Objects.requireNonNull(ticketId, "ticketId must not be null");
         Objects.requireNonNull(usedAt, "usedAt must not be null");

@@ -15,6 +15,10 @@ interface SpringDataTicketRepository extends JpaRepository<TicketEntity, UUID> {
 
     Optional<TicketEntity> findByValidationToken(String validationToken);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT t FROM TicketEntity t WHERE t.validationToken = :validationToken")
+    Optional<TicketEntity> findByValidationTokenForUpdate(@org.springframework.data.repository.query.Param("validationToken") String validationToken);
+
     Optional<TicketEntity> findByManualCode(String manualCode);
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

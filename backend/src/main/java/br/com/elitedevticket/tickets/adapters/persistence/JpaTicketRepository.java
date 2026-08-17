@@ -61,6 +61,14 @@ class JpaTicketRepository implements TicketRepository {
     }
 
     @Override
+    public Optional<Ticket> findByValidationTokenForUpdate(String validationToken) {
+        if (validationToken == null || validationToken.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByValidationTokenForUpdate(validationToken.trim()).map(TicketEntity::toDomain);
+    }
+
+    @Override
     public Optional<Ticket> findByManualCode(String manualCode) {
         if (manualCode == null || manualCode.isBlank()) {
             return Optional.empty();

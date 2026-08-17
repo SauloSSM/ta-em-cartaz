@@ -65,37 +65,45 @@ public class ValidateTicketUseCase {
 
         Instant serverNow = clock.instant().truncatedTo(ChronoUnit.MICROS);
 
-        GateValidationResult outcome;
-        UUID matchedTicketId = null;
-
+        Optional<Ticket> ticketOpt;
         if (command.method() == ValidationMethod.MANUAL) {
             String rawCode = command.manualCode();
             String normalizedCode = TicketCredentialGenerator.normalizeManualCode(rawCode);
-
             if (normalizedCode == null || normalizedCode.isBlank()) {
-                outcome = GateValidationResult.INVALID;
+                ticketOpt = Optional.empty();
             } else {
-                Optional<Ticket> ticketOpt = ticketValidationPort.findByManualCodeForValidation(normalizedCode);
-                if (ticketOpt.isEmpty()) {
-                    outcome = GateValidationResult.INVALID;
-                } else {
-                    Ticket ticket = ticketOpt.get();
-                    matchedTicketId = ticket.id();
-
-                    if (!ticket.eventId().equals(command.selectedEventId())) {
-                        outcome = GateValidationResult.WRONG_EVENT;
-                    } else if (ticket.status() == TicketStatus.USED) {
-                        outcome = GateValidationResult.ALREADY_USED;
-                    } else if (ticket.status() == TicketStatus.VALID) {
-                        outcome = GateValidationResult.VALID;
-                        ticketValidationPort.markTicketAsUsed(ticket.id(), serverNow, command.gateUserId());
-                    } else {
-                        outcome = GateValidationResult.INVALID;
-                    }
-                }
+                ticketOpt = ticketValidationPort.findByManualCodeForValidation(normalizedCode);
+            }
+        } else if (command.method() == ValidationMethod.QR) {
+            String rawToken = command.manualCode();
+            if (rawToken == null || rawToken.isBlank()) {
+                ticketOpt = Optional.empty();
+            } else {
+                ticketOpt = ticketValidationPort.findByValidationTokenForValidation(rawToken.trim());
             }
         } else {
             throw new UnsupportedOperationException("Metodo de validacao ainda nao suportado: " + command.method());
+        }
+
+        GateValidationResult outcome;
+        UUID matchedTicketId = null;
+
+        if (ticketOpt.isEmpty()) {
+            outcome = GateValidationResult.INVALID;
+        } else {
+            Ticket ticket = ticketOpt.get();
+            matchedTicketId = ticket.id();
+
+            if (!ticket.eventId().equals(command.selectedEventId())) {
+                outcome = GateValidationResult.WRONG_EVENT;
+            } else if (ticket.status() == TicketStatus.USED) {
+                outcome = GateValidationResult.ALREADY_USED;
+            } else if (ticket.status() == TicketStatus.VALID) {
+                outcome = GateValidationResult.VALID;
+                ticketValidationPort.markTicketAsUsed(ticket.id(), serverNow, command.gateUserId());
+            } else {
+                outcome = GateValidationResult.INVALID;
+            }
         }
 
         ValidationAttempt attempt = new ValidationAttempt(

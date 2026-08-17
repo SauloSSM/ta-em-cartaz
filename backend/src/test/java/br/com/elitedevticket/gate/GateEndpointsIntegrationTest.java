@@ -475,6 +475,151 @@ class GateEndpointsIntegrationTest {
         assertThat(response.statusCode()).isEqualTo(403);
     }
 
+    @Test
+    @DisplayName("Validacao QR com sucesso: envia validationToken exato, resultado VALID e ingresso marcado como USED")
+    void validateValidQrCodeSuccessfully() throws Exception {
+        String gateSession = loginSession("gate@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        UUID attemptId = UUID.randomUUID();
+        String jsonPayload = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "%s",
+                    "method": "QR"
+                }
+                """.formatted(attemptId, eventId1, ticketEvent1.validationToken());
+
+        HttpRequest request = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+
+        JsonNode body = objectMapper.readTree(response.body());
+        assertThat(body.get("result").asText()).isEqualTo("VALID");
+        assertThat(body.get("validationAttemptId").asText()).isEqualTo(attemptId.toString());
+        assertThat(body.get("selectedEventId").asText()).isEqualTo(eventId1.toString());
+        assertThat(body.get("ticketId").asText()).isEqualTo(ticketEvent1.id().toString());
+        assertThat(body.get("method").asText()).isEqualTo("QR");
+
+        // Verify ticket state in DB
+        Ticket updatedTicket = ticketRepository.findById(ticketEvent1.id()).orElseThrow();
+        assertThat(updatedTicket.status()).isEqualTo(TicketStatus.USED);
+        assertThat(updatedTicket.usedAt()).isNotNull();
+        assertThat(updatedTicket.usedByGateUserId()).isEqualTo(gateUserId);
+    }
+
+    @Test
+    @DisplayName("Isolamento de credencial: QR recusado ao passar manualCode, shareToken ou ticketId")
+    void qrRejectsManualCodeShareTokenAndTicketId() throws Exception {
+        String gateSession = loginSession("gate@demo.elitedevticket.local");
+        String csrf = bootstrapCsrf();
+
+        // 1. Sending manualCode in QR method -> INVALID
+        UUID attemptId1 = UUID.randomUUID();
+        String jsonPayload1 = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "%s",
+                    "method": "QR"
+                }
+                """.formatted(attemptId1, eventId1, ticketEvent1.manualCode());
+
+        HttpRequest req1 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload1))
+                .build();
+
+        HttpResponse<String> res1 = client.send(req1, HttpResponse.BodyHandlers.ofString());
+        assertThat(res1.statusCode()).isEqualTo(200);
+        JsonNode body1 = objectMapper.readTree(res1.body());
+        assertThat(body1.get("result").asText()).isEqualTo("INVALID");
+
+        // 2. Sending shareToken in QR method -> INVALID
+        UUID attemptId2 = UUID.randomUUID();
+        String jsonPayload2 = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "%s",
+                    "method": "QR"
+                }
+                """.formatted(attemptId2, eventId1, ticketEvent1.shareToken());
+
+        HttpRequest req2 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload2))
+                .build();
+
+        HttpResponse<String> res2 = client.send(req2, HttpResponse.BodyHandlers.ofString());
+        assertThat(res2.statusCode()).isEqualTo(200);
+        JsonNode body2 = objectMapper.readTree(res2.body());
+        assertThat(body2.get("result").asText()).isEqualTo("INVALID");
+
+        // 3. Sending ticketId in QR method -> INVALID
+        UUID attemptId3 = UUID.randomUUID();
+        String jsonPayload3 = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "%s",
+                    "method": "QR"
+                }
+                """.formatted(attemptId3, eventId1, ticketEvent1.id().toString());
+
+        HttpRequest req3 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload3))
+                .build();
+
+        HttpResponse<String> res3 = client.send(req3, HttpResponse.BodyHandlers.ofString());
+        assertThat(res3.statusCode()).isEqualTo(200);
+        JsonNode body3 = objectMapper.readTree(res3.body());
+        assertThat(body3.get("result").asText()).isEqualTo("INVALID");
+
+        // 4. Sending validationToken in MANUAL method -> INVALID
+        UUID attemptId4 = UUID.randomUUID();
+        String jsonPayload4 = """
+                {
+                    "validationAttemptId": "%s",
+                    "selectedEventId": "%s",
+                    "manualCode": "%s",
+                    "method": "MANUAL"
+                }
+                """.formatted(attemptId4, eventId1, ticketEvent1.validationToken());
+
+        HttpRequest req4 = HttpRequest.newBuilder(uri("/api/v1/gate/validations"))
+                .header("Content-Type", "application/json")
+                .header("Cookie", "EDT_SESSION=" + gateSession + "; XSRF-TOKEN=" + csrf)
+                .header("X-XSRF-TOKEN", csrf)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload4))
+                .build();
+
+        HttpResponse<String> res4 = client.send(req4, HttpResponse.BodyHandlers.ofString());
+        assertThat(res4.statusCode()).isEqualTo(200);
+        JsonNode body4 = objectMapper.readTree(res4.body());
+        assertThat(body4.get("result").asText()).isEqualTo("INVALID");
+
+        // Ticket remains untouched / VALID
+        Ticket ticketAfter = ticketRepository.findById(ticketEvent1.id()).orElseThrow();
+        assertThat(ticketAfter.status()).isEqualTo(TicketStatus.VALID);
+        assertThat(ticketAfter.usedAt()).isNull();
+    }
+
     private String loginSession(String email) throws Exception {
         String csrf = bootstrapCsrf();
         HttpRequest loginRequest = HttpRequest.newBuilder(uri("/api/v1/auth/login"))

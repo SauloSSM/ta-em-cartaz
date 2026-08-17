@@ -1,10 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GateView } from '../GateView';
 import * as gateApi from '../../api/gateApi';
 import type { GateEvent, ValidateTicketResponse } from '../../api/gateApi';
 import type { SessionUser } from '../../../../app/api/authApi';
+
+function makeMockStream() {
+  const track = { stop: vi.fn(), kind: 'video' };
+  return {
+    getTracks: vi.fn().mockReturnValue([track]),
+    _track: track,
+  } as unknown as MediaStream;
+}
 
 describe('GateView component (Área Operacional da Portaria)', () => {
   const gateUser: SessionUser = {
@@ -44,6 +52,22 @@ describe('GateView component (Área Operacional da Portaria)', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
+    vi.stubGlobal('navigator', {
+      mediaDevices: {
+        getUserMedia: vi.fn().mockResolvedValue(makeMockStream()),
+        enumerateDevices: vi.fn().mockResolvedValue([
+          { kind: 'videoinput', deviceId: 'cam-1', label: 'Rear Camera', groupId: '' } as MediaDeviceInfo,
+        ]),
+      },
+    });
+    vi.stubGlobal('BarcodeDetector', undefined);
+    vi.stubGlobal('requestAnimationFrame', vi.fn().mockImplementation(() => 1));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('renderiza cabeçalho operacional com badge de Portaria e e-mail do operador', async () => {
@@ -56,7 +80,7 @@ describe('GateView component (Área Operacional da Portaria)', () => {
     expect(screen.getByText('Validação de Ingressos')).toBeDefined();
   });
 
-  it('permite selecionar um evento publicado e exibe o banner explícito com contexto ativo', async () => {
+  it('permite selecionar um evento publicado e exibe o banner explícito com scanner QR ativo', async () => {
     const user = userEvent.setup();
     vi.spyOn(gateApi, 'listGateEvents').mockResolvedValue(mockPublishedEvents);
     const onEventChange = vi.fn();
@@ -76,8 +100,13 @@ describe('GateView component (Área Operacional da Portaria)', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Festival Rock Paulista 2026' })).toBeDefined();
     expect(screen.getByText(/Allianz Parque/i)).toBeDefined();
 
-    // Operational ready container with manual validation form
+    // Operational ready container with QR scanner by default
     expect(screen.getByTestId('gate-operational-ready')).toBeDefined();
+    expect(screen.getByTestId('gate-qr-scanner')).toBeDefined();
+
+    // Can switch to manual mode
+    const switchBtn = screen.getByTestId('gate-scanner-switch-manual-btn');
+    await user.click(switchBtn);
     expect(screen.getByTestId('gate-manual-section')).toBeDefined();
     expect(screen.getByTestId('gate-manual-code-input')).toBeDefined();
 
@@ -94,7 +123,7 @@ describe('GateView component (Área Operacional da Portaria)', () => {
         user={gateUser}
         initialSelectedEvent={mockPublishedEvents[0]}
         onEventChange={onEventChange}
-      />
+      />,
     );
 
     // Starts with event 1 selected
@@ -120,7 +149,7 @@ describe('GateView component (Área Operacional da Portaria)', () => {
     expect(onEventChange).toHaveBeenCalledWith(mockPublishedEvents[1]);
   });
 
-  describe('Validação Manual (Story 7.2)', () => {
+  describe('Validação Manual (Story 7.2 / Fallback Story 7.4)', () => {
     it('executa validação com código manual e exibe resultado VALID com opção de validar próximo', async () => {
       const user = userEvent.setup();
       const mockResponse: ValidateTicketResponse = {
@@ -137,8 +166,11 @@ describe('GateView component (Área Operacional da Portaria)', () => {
         <GateView
           user={gateUser}
           initialSelectedEvent={mockPublishedEvents[0]}
-        />
+        />,
       );
+
+      // Switch to manual mode
+      await user.click(screen.getByTestId('gate-scanner-switch-manual-btn'));
 
       const input = screen.getByTestId('gate-manual-code-input');
       const submitBtn = screen.getByTestId('gate-validate-btn');
@@ -156,7 +188,7 @@ describe('GateView component (Área Operacional da Portaria)', () => {
           selectedEventId: 'event-uuid-1',
           manualCode: 'ABCD-1234-EF',
           method: 'MANUAL',
-        })
+        }),
       );
 
       // Result card VALID
@@ -194,9 +226,10 @@ describe('GateView component (Área Operacional da Portaria)', () => {
         <GateView
           user={gateUser}
           initialSelectedEvent={mockPublishedEvents[0]}
-        />
+        />,
       );
 
+      await user.click(screen.getByTestId('gate-scanner-switch-manual-btn'));
       await user.type(screen.getByTestId('gate-manual-code-input'), 'INVALID-CODE');
       await user.click(screen.getByTestId('gate-validate-btn'));
 
@@ -223,9 +256,10 @@ describe('GateView component (Área Operacional da Portaria)', () => {
         <GateView
           user={gateUser}
           initialSelectedEvent={mockPublishedEvents[0]}
-        />
+        />,
       );
 
+      await user.click(screen.getByTestId('gate-scanner-switch-manual-btn'));
       await user.type(screen.getByTestId('gate-manual-code-input'), 'USED-1234');
       await user.click(screen.getByTestId('gate-validate-btn'));
 
@@ -252,9 +286,10 @@ describe('GateView component (Área Operacional da Portaria)', () => {
         <GateView
           user={gateUser}
           initialSelectedEvent={mockPublishedEvents[0]}
-        />
+        />,
       );
 
+      await user.click(screen.getByTestId('gate-scanner-switch-manual-btn'));
       await user.type(screen.getByTestId('gate-manual-code-input'), 'OTHER-EVENT-CODE');
       await user.click(screen.getByTestId('gate-validate-btn'));
 
@@ -268,16 +303,17 @@ describe('GateView component (Área Operacional da Portaria)', () => {
     it('exibe banner de erro de rede permitindo retry sem consumir ingresso', async () => {
       const user = userEvent.setup();
       vi.spyOn(gateApi, 'validateTicket').mockRejectedValue(
-        new gateApi.GateClientError('GATE_INVALID_RESPONSE', 'Falha na conexão com o servidor.')
+        new gateApi.GateClientError('GATE_INVALID_RESPONSE', 'Falha na conexão com o servidor.'),
       );
 
       render(
         <GateView
           user={gateUser}
           initialSelectedEvent={mockPublishedEvents[0]}
-        />
+        />,
       );
 
+      await user.click(screen.getByTestId('gate-scanner-switch-manual-btn'));
       await user.type(screen.getByTestId('gate-manual-code-input'), 'ABCD-1234-EF');
       await user.click(screen.getByTestId('gate-validate-btn'));
 

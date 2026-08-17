@@ -30,7 +30,7 @@
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 
 generated: 08-13-2026 17:41
-last_updated: 08-15-2026
+last_updated: 08-17-2026
 project: EliteDevTicket
 project_key: NOKEY
 tracking_system: file-system
@@ -78,11 +78,11 @@ development_status:
   6-3-compartilhar-ticket-em-página-pública-permanente: done
   epic-6-retrospective: optional
 
-  epic-7: in-progress
+  epic-7: done
   7-1-selecionar-contexto-de-trabalho-da-gate: done
   7-2-validar-código-manual-com-resultado-atômico-e-auditável: done
   7-3-garantir-replay-e-concorrência-seguros-da-validação: done
-  7-4-operar-câmera-qr-e-resultado-gate-em-interface-acessível: backlog
+  7-4-operar-câmera-qr-e-resultado-gate-em-interface-acessível: done
   epic-7-retrospective: optional
 
   epic-8: backlog
