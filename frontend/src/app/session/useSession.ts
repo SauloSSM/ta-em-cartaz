@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import {
   AuthApiError,
   getSession,
@@ -38,6 +38,7 @@ type SessionAction =
 
 export function useSession() {
   const [state, dispatch] = useReducer(reduceSession, { status: 'loading' });
+  const isAuthenticatingRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -75,7 +76,8 @@ export function useSession() {
   }
 
   async function authenticate(password: string) {
-    if (!hasEmail(state)) return;
+    if (!hasEmail(state) || isAuthenticatingRef.current) return;
+    isAuthenticatingRef.current = true;
     dispatch({ type: 'LOGIN_STARTED' });
     try {
       const loginPayload = await loginRequest(state.email, password);
@@ -86,6 +88,8 @@ export function useSession() {
       });
     } catch (error) {
       dispatch({ type: 'LOGIN_FAILED', message: loginMessage(error) });
+    } finally {
+      isAuthenticatingRef.current = false;
     }
   }
 

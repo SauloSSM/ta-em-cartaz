@@ -296,7 +296,11 @@ describe('App session flow', () => {
     await screen.findByRole('heading', { level: 2, name: 'Sessão atual' });
     expect(screen.getByText('organizer@demo.elitedevticket.local')).toBeDefined();
 
-    // Verifica que GET /session foi chamado após POST /login antes de qualquer mutação
+    // Verifica que GET /session foi chamado exatamente uma vez no mount e exatamente uma vez pós-login antes de qualquer mutação
+    const sessionCalls = fetchCalls.filter((c) => c.url.includes('/api/v1/auth/session'));
+    const loginCalls = fetchCalls.filter((c) => c.url.includes('/api/v1/auth/login'));
+    expect(loginCalls).toHaveLength(1);
+    expect(sessionCalls).toHaveLength(2); // exatamente 1 no bootstrap inicial do app + exatamente 1 pós-login
     expect(fetchCalls[0].url).toContain('/api/v1/auth/session');
     expect(fetchCalls[1].url).toContain('/api/v1/auth/login');
     expect(fetchCalls[2].url).toContain('/api/v1/auth/session');

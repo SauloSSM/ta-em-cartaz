@@ -20,10 +20,18 @@ export function LoginForm({ email, busy, error, notice, onEmailChange, onLogin }
     }
   }, [error]);
 
+  const isSubmittingRef = useRef(false);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onLogin(password);
-    setPassword('');
+    if (busy || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    try {
+      await onLogin(password);
+      setPassword('');
+    } finally {
+      isSubmittingRef.current = false;
+    }
   }
 
   return (
