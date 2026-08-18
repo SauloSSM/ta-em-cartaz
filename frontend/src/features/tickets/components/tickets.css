@@ -619,3 +619,177 @@
     display: none;
   }
 }
+
+/* ======================================================================
+   Gate + Shared — public shared ticket final foundation
+   Keeps the same public share contract; only presentation is enriched.
+   ====================================================================== */
+.edt-shared-ticket-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.edt-shared-ticket-page__masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1030px, 100%);
+  margin: 0 auto 16px;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid rgba(16, 16, 15, 0.22);
+  color: var(--brand-ink);
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.edt-shared-ticket-page__masthead strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.edt-shared-ticket-page > .edt-ticket-detail__navigation {
+  width: min(1030px, 100%);
+  margin: 0 auto 18px;
+}
+
+.edt-shared-ticket__intro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(1030px, 100%);
+  margin: 0 auto 14px;
+  padding: 10px 12px;
+  border-left: 7px solid var(--brand-pink);
+  background: rgba(255, 248, 240, 0.46);
+}
+
+.edt-shared-ticket__kicker {
+  flex: 0 0 auto;
+  color: var(--brand-ink);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.edt-shared-ticket__intro p {
+  margin: 0;
+  color: var(--neutral-700);
+  font-size: 0.62rem;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.edt-shared-ticket-page .edt-my-tickets__loading,
+.edt-shared-ticket-page .edt-my-tickets__error {
+  position: relative;
+  width: min(760px, 100%);
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.edt-shared-ticket-page .edt-my-tickets__loading::after,
+.edt-shared-ticket-page .edt-my-tickets__error::after {
+  content: 'TC';
+  position: absolute;
+  right: 28px;
+  bottom: 24px;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--brand-pink);
+  color: var(--brand-ink);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  transform: rotate(7deg);
+}
+
+.edt-shared-ticket__shell {
+  width: min(1030px, 100%);
+}
+
+.edt-shared-ticket .edt-ticket-detail__header {
+  background:
+    linear-gradient(rgba(236, 167, 5, 0.97), rgba(236, 167, 5, 0.97)),
+    url('../../../assets/ta-em-cartaz/decorative/paper-texture.png') center/420px repeat;
+}
+
+.edt-shared-ticket .edt-ticket-detail__header::before {
+  content: 'COMPARTILHADO';
+  position: absolute;
+  top: 78px;
+  left: 34px;
+  z-index: 4;
+  padding: 4px 7px;
+  background: var(--brand-pink);
+  color: var(--brand-ink);
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+
+.edt-shared-ticket-page .edt-ticket-detail__used-notice {
+  width: min(1030px, 100%);
+  margin: 0 auto 14px;
+  border: 1.5px solid var(--brand-ink);
+  background: var(--brand-yellow);
+  color: var(--brand-ink);
+}
+
+.edt-shared-ticket__error-actions {
+  position: relative;
+  z-index: 2;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .edt-shared-ticket-page__masthead,
+  .edt-shared-ticket-page > .edt-ticket-detail__navigation,
+  .edt-shared-ticket__intro {
+    width: 100%;
+  }
+
+  .edt-shared-ticket-page__masthead {
+    align-items: flex-start;
+  }
+
+  .edt-shared-ticket__intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .edt-shared-ticket__intro p {
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .edt-shared-ticket-page__masthead strong {
+    font-size: 0.9rem;
+  }
+
+  .edt-shared-ticket .edt-ticket-detail__header::before {
+    top: 68px;
+    left: 18px;
+  }
+
+  .edt-shared-ticket__error-actions .edt-button {
+    width: 100%;
+  }
+}

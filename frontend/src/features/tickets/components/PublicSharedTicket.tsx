@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getPublicTicket, type PublicTicketResponse, TicketClientError } from '../api/ticketsApi';
 import { getEvent, listTicketSectors, type EventResponse } from '../../events/api/eventsApi';
 import { QRCodePanel } from './QRCodePanel';
+import { EventArtwork } from '../../../shared/components/EventArtwork/EventArtwork';
 
 export type PublicSharedTicketProps = {
   shareToken: string;
@@ -71,6 +72,11 @@ export function PublicSharedTicket({
 
   return (
     <div className="edt-shared-ticket-page" data-testid="shared-ticket-page">
+      <div className="edt-shared-ticket-page__masthead" aria-hidden="true">
+        <span>TC / ACESSO COMPARTILHADO</span>
+        <strong>INGRESSO DIGITAL</strong>
+      </div>
+
       {/* Navigation bar */}
       <div className="edt-ticket-detail__navigation">
         {onBrowseCatalog && (
@@ -132,49 +138,11 @@ export function PublicSharedTicket({
 
       {/* Valid or Used ticket display */}
       {!isLoading && !error && ticket && (
-        <article className="edt-ticket-detail" data-testid="shared-ticket-view">
-          <header className="edt-ticket-detail__header">
-            <div className="edt-ticket-detail__meta-top">
-              <span className="edt-ticket-detail__unit-tag">Ingresso #{ticket.ordinal}</span>
-              <span
-                className={`edt-status-badge ${
-                  isUsed ? 'edt-status-badge--used' : 'edt-status-badge--valid'
-                }`}
-                data-testid="shared-ticket-status-badge"
-              >
-                {statusLabel}
-              </span>
-            </div>
-            <h2 className="edt-ticket-detail__title" data-testid="shared-ticket-title">
-              {eventData?.title || 'Show / Evento'}
-            </h2>
-            <div className="edt-ticket-detail__event-info">
-              {sectorName && (
-                <p className="edt-ticket-detail__info-line">
-                  <strong>Setor:</strong> {sectorName}
-                </p>
-              )}
-              {eventData?.startsAt && (
-                <p className="edt-ticket-detail__info-line">
-                  <strong>Data e Hora:</strong>{' '}
-                  {new Date(eventData.startsAt).toLocaleDateString('pt-BR', {
-                    weekday: 'long',
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              )}
-              {(eventData?.venueName || eventData?.venueAddress) && (
-                <p className="edt-ticket-detail__info-line">
-                  <strong>Local:</strong>{' '}
-                  {[eventData?.venueName, eventData?.venueAddress].filter(Boolean).join(' — ')}
-                </p>
-              )}
-            </div>
-          </header>
+        <article className="edt-ticket-detail edt-shared-ticket" data-testid="shared-ticket-view">
+          <div className="edt-shared-ticket__intro">
+            <span className="edt-shared-ticket__kicker">INGRESSO COMPARTILHADO / SEM DADOS PESSOAIS</span>
+            <p>Apresente o QR ou o código manual na entrada. O ingresso continua válido uma única vez.</p>
+          </div>
 
           {/* AC: Estado textual precede a credencial quando usado */}
           {isUsed && (
@@ -190,12 +158,67 @@ export function PublicSharedTicket({
             </div>
           )}
 
-          <section className="edt-ticket-detail__credentials-section" aria-label="Credenciais de Acesso">
-            <QRCodePanel
-              validationToken={ticket.validationToken}
-              manualCode={ticket.manualCode}
-            />
-          </section>
+          <div className="edt-ticket-detail__shell edt-shared-ticket__shell">
+            <header className="edt-ticket-detail__header">
+              <div className="edt-ticket-detail__meta-top">
+                <span className="edt-ticket-detail__unit-tag">Ingresso #{ticket.ordinal}</span>
+                <span
+                  className={`edt-status-badge ${
+                    isUsed ? 'edt-status-badge--used' : 'edt-status-badge--valid'
+                  }`}
+                  data-testid="shared-ticket-status-badge"
+                >
+                  {statusLabel}
+                </span>
+              </div>
+              <div className="edt-ticket-detail__brandline">TC · TÁ EM CARTAZ</div>
+              <h2 className="edt-ticket-detail__title" data-testid="shared-ticket-title">
+                {eventData?.title || 'Show / Evento'}
+              </h2>
+              <div className="edt-ticket-detail__art" aria-hidden="true">
+                <EventArtwork
+                  eventId={ticket.eventId}
+                  eventTitle=""
+                  imageUrl={eventData?.imageUrl}
+                  aspectRatio="4/3"
+                  className="edt-ticket-detail__artwork"
+                />
+              </div>
+              <div className="edt-ticket-detail__event-info">
+                {sectorName && (
+                  <p className="edt-ticket-detail__info-line">
+                    <strong>Setor:</strong> {sectorName}
+                  </p>
+                )}
+                {eventData?.startsAt && (
+                  <p className="edt-ticket-detail__info-line">
+                    <strong>Data e Hora:</strong>{' '}
+                    {new Date(eventData.startsAt).toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+                {(eventData?.venueName || eventData?.venueAddress) && (
+                  <p className="edt-ticket-detail__info-line">
+                    <strong>Local:</strong>{' '}
+                    {[eventData?.venueName, eventData?.venueAddress].filter(Boolean).join(' — ')}
+                  </p>
+                )}
+              </div>
+            </header>
+
+            <section className="edt-ticket-detail__credentials-section" aria-label="Credenciais de Acesso">
+              <QRCodePanel
+                validationToken={ticket.validationToken}
+                manualCode={ticket.manualCode}
+              />
+            </section>
+          </div>
         </article>
       )}
     </div>

@@ -1042,3 +1042,279 @@
   .edt-gate-scanner__viewfinder { width: 100%; }
   .edt-gate-result-card { min-height: 390px; padding-inline: 10px; }
 }
+
+/* ======================================================================
+   Gate Secondary — operational selection, fallback and error polish
+   Visual authority: canonical Gate anchor. Functional state machine untouched.
+   ====================================================================== */
+.edt-gate-root::before {
+  content: '';
+  background: url('../../../assets/ta-em-cartaz/gate/tc-badge-white.png') center/contain no-repeat;
+  border-radius: 0;
+}
+
+.edt-gate-root::after {
+  content: 'PORTARIA / CHECK-IN';
+  position: absolute;
+  top: 21px;
+  left: 54px;
+  z-index: 3;
+  color: rgba(255, 248, 240, 0.64);
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.edt-gate-selector {
+  position: relative;
+  gap: 10px;
+}
+
+.edt-gate-selector::before {
+  content: '01 / DEFINA O CONTEXTO';
+  display: block;
+  margin-bottom: 4px;
+  color: var(--brand-pink);
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.edt-gate-selector > .edt-gate-header__title {
+  max-width: 360px;
+  margin-bottom: 2px;
+  font-family: var(--font-display);
+  font-size: 2rem !important;
+  line-height: 0.95;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.edt-gate-selector > .edt-gate-header__subtitle {
+  max-width: 380px;
+  margin-bottom: 8px;
+}
+
+.edt-gate-search-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 7px;
+  margin: 6px 0 10px;
+}
+
+.edt-gate-search-input {
+  min-height: 42px;
+  border-radius: 2px;
+  font-size: 0.72rem;
+}
+
+.edt-gate-event-list {
+  counter-reset: gate-event;
+}
+
+.edt-gate-event-item {
+  counter-increment: gate-event;
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'index header action'
+    'index meta action';
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 92px;
+  padding: 12px 12px;
+  overflow: hidden;
+}
+
+.edt-gate-event-item::before {
+  content: counter(gate-event, decimal-leading-zero);
+  grid-area: index;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  border-right: 1px solid rgba(255, 248, 240, 0.14);
+  color: rgba(255, 248, 240, 0.35);
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+}
+
+.edt-gate-event-item--active::before {
+  color: var(--brand-pink);
+}
+
+.edt-gate-event-item__header { grid-area: header; }
+.edt-gate-event-item__meta { grid-area: meta; }
+.edt-gate-event-item__action {
+  grid-area: action;
+  align-self: center;
+  margin: 0;
+}
+
+.edt-gate-event-item__title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.edt-gate-event-item__category {
+  border: 1px solid rgba(255, 248, 240, 0.2);
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.46rem;
+}
+
+.edt-gate-event-item__meta {
+  gap: 1px;
+  font-size: 0.52rem;
+}
+
+.edt-gate-status {
+  position: relative;
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 30px 22px;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.09) 1px, transparent 1.4px) 0 0/10px 10px,
+    #111;
+  overflow: hidden;
+}
+
+.edt-gate-status::before {
+  content: 'TC';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  color: rgba(255, 248, 240, 0.16);
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+.edt-gate-manual-section {
+  position: relative;
+  margin-top: 6px;
+  padding: 24px 18px 18px;
+  border: 1px solid rgba(255, 248, 240, 0.18);
+  background:
+    linear-gradient(rgba(18,18,18,.94), rgba(18,18,18,.94)),
+    radial-gradient(circle, rgba(255,255,255,.12) 1px, transparent 1.4px) 0 0/9px 9px;
+  overflow: hidden;
+}
+
+.edt-gate-manual-section::before {
+  content: 'FALLBACK / CÓDIGO MANUAL';
+  display: block;
+  margin-bottom: 10px;
+  color: var(--brand-orange);
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.edt-gate-manual-section::after {
+  content: '';
+  position: absolute;
+  right: -18px;
+  bottom: -22px;
+  width: 96px;
+  height: 96px;
+  opacity: 0.18;
+  background: url('../../../assets/ta-em-cartaz/decorative/burst-asterisk-shape.svg') center/contain no-repeat;
+  filter: invert(1);
+  pointer-events: none;
+}
+
+.edt-gate-manual-section__title,
+.edt-gate-manual-section__subtitle,
+.edt-gate-manual-form {
+  position: relative;
+  z-index: 1;
+}
+
+.edt-gate-form-label {
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.edt-gate-code-input {
+  min-height: 62px;
+  border: 1.5px solid rgba(255, 248, 240, 0.46);
+  background: #0c0c0c;
+  font-size: clamp(1.1rem, 4vw, 1.55rem);
+}
+
+.edt-gate-error-banner,
+.edt-gate-scanner__error {
+  border-radius: 2px;
+  background: rgba(255, 61, 56, 0.08);
+}
+
+.edt-gate-mode-switcher {
+  justify-content: flex-start;
+  margin: 0 0 8px;
+}
+
+.edt-gate-mode-switcher .edt-gate-btn {
+  border-style: dashed;
+}
+
+.edt-gate-scanner__camera-select {
+  border-radius: 2px;
+}
+
+.edt-gate-result-card__actions .edt-gate-btn {
+  border-color: currentColor;
+  background: currentColor;
+  color: #10100f;
+}
+
+@media (max-width: 560px) {
+  .edt-gate-root::after {
+    display: none;
+  }
+
+  .edt-gate-search-box {
+    grid-template-columns: 1fr auto;
+  }
+
+  .edt-gate-search-box .edt-gate-btn--secondary {
+    grid-column: 1 / -1;
+  }
+
+  .edt-gate-event-item {
+    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-areas:
+      'index header'
+      'index meta'
+      'action action';
+  }
+
+  .edt-gate-event-item__action {
+    margin-top: 7px;
+  }
+
+  .edt-gate-event-item__action .edt-gate-btn {
+    width: 100%;
+  }
+}
+
+.edt-gate-result-card__actions .edt-gate-btn {
+  background: #fff8f0;
+  color: #10100f;
+}
+.edt-gate-result-card--valid .edt-gate-result-card__actions .edt-gate-btn { background: #59dc66; }
+.edt-gate-result-card--invalid .edt-gate-result-card__actions .edt-gate-btn { background: #ff3d38; }
+.edt-gate-result-card--already_used .edt-gate-result-card__actions .edt-gate-btn,
+.edt-gate-result-card--already-used .edt-gate-result-card__actions .edt-gate-btn { background: #f2c332; }
+.edt-gate-result-card--wrong_event .edt-gate-result-card__actions .edt-gate-btn,
+.edt-gate-result-card--wrong-event .edt-gate-result-card__actions .edt-gate-btn { background: #ff6a1a; }
