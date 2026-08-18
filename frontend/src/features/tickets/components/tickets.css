@@ -502,3 +502,120 @@
   .edt-ticket-detail__credentials-section::after { left: auto; right: -9px; top: -9px; bottom: auto; }
   .edt-ticket-detail__share-btn { min-width: 0; width: 100%; }
 }
+
+/* --- Customer secondary refinement pass -------------------------------- */
+.edt-my-tickets__loading,
+.edt-my-tickets__error,
+.edt-my-tickets__empty {
+  position: relative;
+  overflow: hidden;
+}
+
+.edt-my-tickets__loading::before,
+.edt-my-tickets__error::before,
+.edt-my-tickets__empty::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 84px;
+  height: 60px;
+  background: url('../../../assets/ta-em-cartaz/decorative/scribble-pink-underline-short.png') center/contain no-repeat;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.edt-ticket-card__main::after {
+  content: 'CULTURA\AQUE CONECTA';
+  white-space: pre;
+  position: absolute;
+  top: 20px;
+  right: 210px;
+  transform: rotate(-8deg);
+  padding: 6px 8px;
+  border: 1px solid rgba(16, 16, 15, 0.7);
+  background: rgba(255, 248, 240, 0.75);
+  color: var(--brand-ink);
+  font-size: 0.48rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.edt-ticket-card__actions .edt-button {
+  background: rgba(255, 248, 240, 0.74);
+}
+
+.edt-ticket-detail__share-section {
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.edt-ticket-detail__share-section::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 14px;
+  background: url('../../../assets/ta-em-cartaz/decorative/scribble-pink-underline-long.png') center/100% 100% no-repeat;
+  pointer-events: none;
+}
+
+.edt-ticket-detail__section-title {
+  margin: 0;
+  color: var(--brand-ink);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.edt-ticket-detail__share-btn {
+  background: rgba(255, 248, 240, 0.74) !important;
+}
+
+.edt-shared-ticket-page {
+  position: relative;
+}
+
+.edt-shared-ticket-page::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 120px;
+  width: 120px;
+  height: 120px;
+  background: url('../../../assets/ta-em-cartaz/decorative/burst-green.png') center/contain no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+@media (max-width: 780px) {
+  .edt-ticket-card__main::after {
+    right: 136px;
+    top: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .edt-ticket-card__main::after {
+    top: 18px;
+    right: 18px;
+  }
+
+  .edt-ticket-card__title {
+    max-width: 60%;
+  }
+
+  .edt-ticket-detail__section-title {
+    font-size: 1.25rem;
+  }
+
+  .edt-shared-ticket-page::before {
+    display: none;
+  }
+}

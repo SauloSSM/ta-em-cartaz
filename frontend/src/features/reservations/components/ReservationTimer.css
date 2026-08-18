@@ -1,20 +1,40 @@
 /* Tá em Cartaz — reservation timer foundation */
 .edt-reservation-timer {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas: 'header display';
   align-items: end;
   gap: 12px;
-  padding: 17px 18px 15px;
-  border: 1px solid rgba(16, 16, 15, .18);
+  padding: 20px 22px 18px;
+  border: 1px solid rgba(16, 16, 15, 0.18);
   border-radius: 0;
-  background: rgba(255,248,240,.46);
+  background: rgba(255, 248, 240, 0.52);
   color: var(--brand-ink);
+  overflow: hidden;
 }
 
-.edt-reservation-timer__header { grid-area: header; display: flex; align-items: flex-start; gap: 0; }
+.edt-reservation-timer::after {
+  content: '';
+  position: absolute;
+  top: 18px;
+  right: 14px;
+  width: 112px;
+  height: 82px;
+  background: url('../../../assets/ta-em-cartaz/decorative/sticker-viva-agora-green-square.png') center/contain no-repeat;
+  transform: rotate(-2deg);
+  pointer-events: none;
+}
+
+.edt-reservation-timer__header { 
+  grid-area: header; 
+  display: flex; 
+  align-items: flex-start; 
+  gap: 0; 
+  min-width: 0;
+}
 .edt-reservation-timer__icon { display: none; }
-.edt-reservation-timer__info { display: flex; flex-direction: column; gap: 3px; }
+.edt-reservation-timer__info { display: flex; flex-direction: column; gap: 4px; max-width: 260px; }
 
 .edt-reservation-timer__title {
   font-size: 0;
@@ -22,8 +42,8 @@
 }
 .edt-reservation-timer__title::before {
   content: 'SUA RESERVA ESTÁ GARANTIDA POR';
-  font: 800 .58rem/1.2 var(--font-body);
-  letter-spacing: .035em;
+  font: 800 0.6rem/1.2 var(--font-body);
+  letter-spacing: 0.04em;
 }
 
 .edt-reservation-timer__badge {
@@ -33,18 +53,22 @@
   border-radius: 0;
   background: transparent !important;
   color: var(--neutral-700) !important;
-  font-size: .55rem;
+  font-size: 0.56rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.edt-reservation-timer__display { grid-area: display; }
+.edt-reservation-timer__display { 
+  grid-area: display; 
+  position: relative;
+  padding-right: 124px;
+}
 .edt-reservation-timer__countdown {
   display: block;
   font-family: var(--font-display);
-  font-size: clamp(2.7rem, 5vw, 4.6rem);
-  line-height: .8;
-  letter-spacing: -.03em;
+  font-size: clamp(2.9rem, 5vw, 4.9rem);
+  line-height: 0.82;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -52,16 +76,44 @@
 .edt-reservation-timer--warning,
 .edt-reservation-timer--critical,
 .edt-reservation-timer--expired {
-  border-color: rgba(16, 16, 15, .18);
-  background: rgba(255,248,240,.46);
+  border-color: rgba(16, 16, 15, 0.18);
+  background: rgba(255, 248, 240, 0.52);
   color: var(--brand-ink);
 }
 
 .edt-reservation-timer--warning { border-bottom: 4px solid var(--brand-yellow); }
 .edt-reservation-timer--critical { border-bottom: 4px solid var(--semantic-danger); }
-.edt-reservation-timer--expired { opacity: .7; }
+.edt-reservation-timer--expired { opacity: 0.76; }
+
+@media (max-width: 720px) {
+  .edt-reservation-timer::after {
+    width: 88px;
+    height: 64px;
+    top: 16px;
+    right: 10px;
+  }
+
+  .edt-reservation-timer__display {
+    padding-right: 96px;
+  }
+}
 
 @media (max-width: 480px) {
-  .edt-reservation-timer { align-items: center; }
+  .edt-reservation-timer {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'header'
+      'display';
+    align-items: start;
+  }
+
+  .edt-reservation-timer::after {
+    display: none;
+  }
+
+  .edt-reservation-timer__display {
+    padding-right: 0;
+  }
+
   .edt-reservation-timer__countdown { font-size: 3rem; }
 }

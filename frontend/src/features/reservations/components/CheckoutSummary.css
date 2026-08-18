@@ -125,3 +125,32 @@
   .edt-checkout-summary__event-info { padding-left: 100px; min-height: 104px; }
   .edt-checkout-summary__event-info::before { width: 88px; }
 }
+
+/* --- Customer secondary refinement pass -------------------------------- */
+.edt-checkout-summary__card {
+  padding: 22px 22px 18px;
+  border: 1px solid rgba(16, 16, 15, 0.18);
+  background: rgba(255, 248, 240, 0.42);
+}
+
+.edt-checkout-summary__event-info {
+  background: rgba(255, 248, 240, 0.46);
+}
+
+.edt-checkout-summary__event-title {
+  max-width: 16ch;
+}
+
+.edt-checkout-summary__row dd {
+  margin-left: auto;
+}
+
+.edt-checkout-summary__disclaimer {
+  margin-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .edt-checkout-summary__card {
+    padding: 18px 16px 16px;
+  }
+}
