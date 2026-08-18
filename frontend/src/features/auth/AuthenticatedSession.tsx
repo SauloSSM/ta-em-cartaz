@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { SessionUser } from '../../app/api/authApi';
 import { TicketmasterSearch } from '../catalog';
 import {
@@ -101,6 +102,13 @@ export function AuthenticatedSession({ user, busy, error }: AuthenticatedSession
   const [restoredEventId, setRestoredEventId] = useState<string | null>(() => {
     return user.role === 'CUSTOMER' ? (getPurchaseIntention()?.eventId ?? null) : null;
   });
+  const [headerCustomerNavTarget, setHeaderCustomerNavTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (user.role === 'CUSTOMER') {
+      setHeaderCustomerNavTarget(document.getElementById('tc-header-customer-nav-slot'));
+    }
+  }, [user.role]);
 
   useEffect(() => {
     if (user.role !== 'CUSTOMER') {
@@ -236,8 +244,8 @@ export function AuthenticatedSession({ user, busy, error }: AuthenticatedSession
         </div>
       ) : null}
 
-      {user.role === 'CUSTOMER' ? (
-        <section className="session-view__customer-strip" aria-label="Navegação do cliente">
+      {user.role === 'CUSTOMER' ? (() => {
+        const customerNavUi = (
           <nav aria-label="Navegação do cliente" className="customer-nav customer-nav--header">
             <button
               type="button"
@@ -264,8 +272,16 @@ export function AuthenticatedSession({ user, busy, error }: AuthenticatedSession
               Meus Ingressos
             </button>
           </nav>
-        </section>
-      ) : null}
+        );
+
+        return headerCustomerNavTarget ? (
+          createPortal(customerNavUi, headerCustomerNavTarget)
+        ) : (
+          <section className="session-view__customer-strip" aria-label="Navegação do cliente">
+            {customerNavUi}
+          </section>
+        );
+      })() : null}
 
       {isRestoringIntention && (
         <div

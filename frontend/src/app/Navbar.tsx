@@ -81,6 +81,9 @@ export function Navbar({
           <span className="tc-visually-hidden">TÁ EM CARTAZ</span>
         </button>
 
+        {/* Customer navigation slot for authenticated customer actions */}
+        <div id="tc-header-customer-nav-slot" className="tc-header__customer-nav-slot" />
+
         {/* The public catalog mounts its real search form here via a React portal. */}
         <div id="tc-header-search-slot" className="tc-header__search-slot" />
 
