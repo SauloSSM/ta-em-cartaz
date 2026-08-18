@@ -756,3 +756,282 @@
   .edt-ticket-sector-card,
   .edt-event-detail__reserve-btn { transition: none; }
 }
+
+/* ======================================================================
+   Final visual refinement — 2026-08-18
+   Cleaner event composition: natural event photography, no content overlap.
+   ====================================================================== */
+.edt-event-detail {
+  width: min(100%, 1500px);
+  padding-inline: clamp(18px, 4vw, 64px);
+}
+
+.edt-event-detail__hero {
+  grid-template-columns: minmax(0, 46%) minmax(0, 54%);
+  column-gap: clamp(30px, 4vw, 72px);
+  padding-top: clamp(28px, 3.4vw, 48px);
+}
+
+.edt-event-detail__hero-copy {
+  min-width: 0;
+  min-height: clamp(330px, 31vw, 440px);
+  justify-content: center;
+  padding: 8px 0 28px;
+}
+
+.edt-event-detail__hero-kicker {
+  margin-bottom: 14px;
+}
+
+.edt-event-detail__category-sticker,
+.edt-event-detail__badge {
+  box-shadow: none;
+  transform: none;
+  border-width: 1px;
+  border-radius: 4px;
+  padding: 5px 10px 4px;
+}
+
+.edt-event-detail__category-sticker {
+  background: var(--brand-yellow);
+}
+
+.edt-event-detail__title {
+  width: 100%;
+  max-width: 100%;
+  font-size: clamp(3.35rem, 6.2vw, 7rem);
+  line-height: .88;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.edt-event-detail__title::after {
+  content: '';
+  display: block;
+  width: min(430px, 78%);
+  height: 9px;
+  margin-top: 14px;
+  background: url('../../../assets/ta-em-cartaz/decorative/scribble-pink-underline-long.png') center / 100% 100% no-repeat;
+}
+
+.edt-event-detail__culture-sticker,
+.edt-event-detail__crowd-strip,
+.edt-event-detail__viva-sticker,
+.edt-event-detail__color-collage {
+  display: none;
+}
+
+.edt-event-detail__hero-art {
+  min-width: 0;
+  min-height: clamp(330px, 31vw, 440px);
+  display: grid;
+  place-items: center;
+  overflow: visible;
+}
+
+.edt-event-detail__hero-art::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 4% 0 5% 6%;
+  background:
+    url('../../../assets/ta-em-cartaz/decorative/event-torn-orange-panel.png') 78% 2% / 58% auto no-repeat,
+    url('../../../assets/ta-em-cartaz/decorative/event-torn-pink-vertical.png') 100% 18% / 19% auto no-repeat;
+  pointer-events: none;
+}
+
+.edt-event-detail__hero-art::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  right: 1%;
+  bottom: 4%;
+  width: 120px;
+  height: 78px;
+  opacity: .5;
+  background-image: radial-gradient(circle, var(--brand-ink) 1.3px, transparent 1.6px);
+  background-size: 10px 10px;
+  pointer-events: none;
+}
+
+.edt-event-detail__artist-image,
+.edt-event-detail__artist-fallback {
+  position: relative;
+  z-index: 2;
+  inset: auto;
+  width: min(92%, 720px);
+  height: clamp(280px, 27vw, 400px);
+  justify-self: end;
+  clip-path: polygon(5% 1%, 94% 0, 100% 9%, 98% 95%, 89% 100%, 2% 97%, 0 10%);
+  border: 1px solid rgba(16,16,15,.28);
+  background: var(--brand-paper-soft);
+}
+
+.edt-event-detail__artist-image {
+  object-fit: cover;
+  object-position: center 28%;
+  filter: none;
+  mix-blend-mode: normal;
+}
+
+.edt-event-detail__metadata {
+  margin-top: 16px;
+  min-height: 84px;
+  background: rgba(255,248,240,.34);
+}
+
+.edt-event-detail__meta-item {
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 16px clamp(20px, 2.5vw, 38px) 16px 0;
+}
+
+.edt-event-detail__meta-item p {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.edt-event-detail__description-section {
+  display: grid;
+  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+  gap: 26px;
+  align-items: center;
+  margin: 20px 0 18px;
+  padding: 18px 22px;
+  border: 1px solid rgba(16,16,15,.24);
+  border-left: 6px solid var(--brand-pink);
+  background: rgba(255,248,240,.62);
+}
+
+.edt-event-detail__description-section .edt-section-title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2vw, 1.8rem);
+}
+
+.edt-event-detail__description-text {
+  max-width: 100%;
+  font-size: .88rem;
+  line-height: 1.5;
+}
+
+.edt-event-detail__purchase-section {
+  margin-top: 10px;
+}
+
+.edt-event-detail__purchase-section > .edt-section-title::before,
+.edt-event-detail__purchase-section > .edt-section-title::after {
+  font-size: clamp(1.55rem, 2.35vw, 2.3rem);
+}
+
+.edt-event-detail__sectors-grid {
+  margin-top: 12px;
+  border-radius: 8px;
+  background: rgba(255,248,240,.7);
+}
+
+.edt-ticket-sector-card {
+  grid-template-columns: 130px minmax(0, 1fr) minmax(160px, 205px) minmax(150px, 190px);
+  min-width: 0;
+  min-height: 108px;
+}
+
+.edt-ticket-sector-card__content,
+.edt-ticket-sector-card__price-block,
+.edt-ticket-sector-card__control {
+  min-width: 0;
+}
+
+.edt-ticket-sector-card__name,
+.edt-ticket-sector-card__desc {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.edt-event-detail__purchase-bar {
+  margin-top: 12px;
+  border-radius: 6px;
+  clip-path: none;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+.edt-event-detail__reserve-btn {
+  border-radius: 3px;
+  background: #edf21b;
+}
+
+@media (max-width: 980px) {
+  .edt-event-detail__hero {
+    grid-template-columns: minmax(0, 48%) minmax(0, 52%);
+  }
+
+  .edt-event-detail__artist-image,
+  .edt-event-detail__artist-fallback {
+    width: 96%;
+  }
+
+  .edt-ticket-sector-card {
+    grid-template-columns: 104px minmax(0,1fr) 148px 150px;
+  }
+}
+
+@media (max-width: 760px) {
+  .edt-event-detail__hero {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'copy'
+      'art'
+      'meta';
+  }
+
+  .edt-event-detail__hero-copy {
+    min-height: auto;
+    padding-bottom: 18px;
+  }
+
+  .edt-event-detail__title {
+    max-width: 100%;
+    font-size: clamp(3.15rem, 14vw, 5rem);
+  }
+
+  .edt-event-detail__hero-art {
+    min-height: 280px;
+    margin-top: 4px;
+  }
+
+  .edt-event-detail__artist-image,
+  .edt-event-detail__artist-fallback {
+    width: 100%;
+    height: 270px;
+    justify-self: center;
+  }
+
+  .edt-event-detail__hero-art::after {
+    width: 92px;
+    height: 56px;
+  }
+
+  .edt-event-detail__description-section {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .edt-event-detail {
+    padding-inline: 14px;
+  }
+
+  .edt-event-detail__artist-image,
+  .edt-event-detail__artist-fallback {
+    height: 230px;
+  }
+
+  .edt-event-detail__metadata {
+    display: grid;
+  }
+
+  .edt-ticket-sector-card {
+    grid-template-columns: 74px minmax(0,1fr) 104px;
+  }
+}
