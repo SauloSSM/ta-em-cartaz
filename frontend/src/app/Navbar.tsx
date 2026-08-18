@@ -102,8 +102,11 @@ export function Navbar({
           </button>
         </nav>
 
-        {/* The public catalog mounts its real search form here via a React portal. */}
-        <div id="tc-header-search-slot" className="tc-header__search-slot" />
+        {/* Center Area: Customer Navigation (when authenticated) + Search Slot */}
+        <div className="tc-header__center-area">
+          <div id="tc-header-customer-nav-slot" className="tc-header__customer-nav-slot" />
+          <div id="tc-header-search-slot" className="tc-header__search-slot" />
+        </div>
 
         {/* Actions / Auth */}
         <div className="tc-header__actions">

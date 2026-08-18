@@ -103,7 +103,12 @@
 
 /* Arrow Icon */
 .tc-btn__arrow {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.1em;
+  transform: translateY(-0.5px);
   transition: transform var(--motion-fast) var(--ease-standard);
 }
 

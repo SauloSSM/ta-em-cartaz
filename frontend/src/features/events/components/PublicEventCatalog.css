@@ -50,6 +50,9 @@
 }
 
 .tc-home-search__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 46px;
   min-width: 46px;
   min-height: 40px;
@@ -57,12 +60,26 @@
   padding: 0;
   border-radius: 6px;
   font-size: 0;
+  line-height: 1;
+}
+
+.tc-home-search__submit > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
 }
 
 .tc-home-search__submit > span::after {
   content: '→';
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-0.5px);
 }
 
 .tc-home-search-fallback {
@@ -74,18 +91,23 @@
    Programming section — left identity / real event list / culture panel.
    -------------------------------------------------------------------------- */
 .tc-cartaz-section {
-  padding: 10px 0 12px;
+  padding: 12px 0 16px;
   background: transparent;
 }
 
 .tc-cartaz-layout {
   display: grid;
-  grid-template-columns: minmax(190px, 18%) minmax(0, 1fr) minmax(220px, 21%);
+  grid-template-columns: minmax(215px, 21%) minmax(0, 1fr) minmax(215px, 20%);
   align-items: start;
-  gap: clamp(14px, 1.4vw, 20px);
+  gap: clamp(16px, 1.6vw, 24px);
 }
 
-.tc-cartaz-layout__editorial,
+.tc-cartaz-layout__editorial {
+  min-width: 0;
+  overflow: visible;
+  position: relative;
+}
+
 .tc-cartaz-layout__culture {
   min-width: 0;
   overflow: hidden;
@@ -96,21 +118,18 @@
   display: block;
   width: 100%;
   height: auto;
+  image-rendering: auto;
 }
 
 .tc-cartaz-layout__editorial-art {
   margin-top: 0;
-  transform: scale(1.02);
+  transform: scale(1.05);
   transform-origin: top left;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.07));
 }
 
 .tc-cartaz-layout__culture-art {
   margin-top: 4px;
-}
-
-.tc-cartaz-layout__editorial-art,
-.tc-cartaz-layout__culture-art {
-  image-rendering: auto;
 }
 
 .tc-cartaz-layout__programming {
