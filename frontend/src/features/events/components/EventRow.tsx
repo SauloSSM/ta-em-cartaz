@@ -36,7 +36,7 @@ export function EventRow({ event, onClick }: EventRowProps) {
         </h3>
         <div className="tc-event-row__tags">
           {event.category ? (
-            <span className="tc-event-row__category">{event.category}</span>
+            <span className={`tc-event-row__category tc-event-row__category--${theme}`}>{event.category}</span>
           ) : null}
           {event.salesClosed ? (
             <span className="tc-event-row__status-badge" role="status">
@@ -71,18 +71,17 @@ export function EventRow({ event, onClick }: EventRowProps) {
             aria-label={`Ver detalhes de ${event.title}`}
           >
             <svg
-              width="20"
-              height="20"
+              width="18"
+              height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.5"
               strokeLinecap="round"
-              strokeLinejoin="round"
               aria-hidden="true"
             >
+              <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
             </svg>
           </button>
         )}

@@ -1,5 +1,7 @@
-import { BrandSeal } from '../shared/components/Brand/BrandSeal';
 import './Footer.css';
+
+const tcSealPinkPng = new URL('../assets/ta-em-cartaz/brand/tc-seal-pink.png', import.meta.url).href;
+const cultureConnectStampBlackPng = new URL('../assets/ta-em-cartaz/brand/culture-connect-stamp-black.png', import.meta.url).href;
 
 export type FooterProps = {
   onNavigateCatalog?: () => void;
@@ -12,7 +14,12 @@ export function Footer({ onNavigateCatalog, onNavigateLogin }: FooterProps) {
       <div className="tc-container tc-footer__inner">
         {/* Brand Block */}
         <div className="tc-footer__brand-block">
-          <BrandSeal variant="accent" size={48} />
+          <img
+            src={tcSealPinkPng}
+            alt=""
+            aria-hidden="true"
+            className="tc-footer__seal-img"
+          />
           <div className="tc-footer__brand-info">
             <span className="tc-footer__brand-name">TÁ EM CARTAZ</span>
             <span className="tc-footer__handle">@TAEMCARTAZ.BR</span>
@@ -52,8 +59,12 @@ export function Footer({ onNavigateCatalog, onNavigateLogin }: FooterProps) {
 
         {/* Stamp Motif */}
         <div className="tc-footer__stamp" aria-hidden="true">
-          <span className="tc-footer__stamp-text">CULTURA QUE CONECTA.</span>
-          <BrandSeal variant="primary" size={24} />
+          <img
+            src={cultureConnectStampBlackPng}
+            alt=""
+            aria-hidden="true"
+            className="tc-footer__stamp-img"
+          />
         </div>
 
         {/* Bottom Legal / Year */}

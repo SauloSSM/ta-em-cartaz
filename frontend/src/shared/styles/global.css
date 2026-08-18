@@ -29,8 +29,19 @@ html {
 body {
   min-height: 100vh;
   background-color: var(--brand-paper);
+  background-image: url('../../assets/ta-em-cartaz/decorative/paper-texture.png');
+  background-repeat: repeat;
+  background-size: 400px 400px;
+  background-attachment: scroll;
   color: var(--brand-ink);
   overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+  body {
+    background-attachment: fixed;
+    background-size: 512px 512px;
+  }
 }
 
 /* --- Skip to Main Content --- */

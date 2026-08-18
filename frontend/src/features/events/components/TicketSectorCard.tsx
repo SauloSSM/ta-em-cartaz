@@ -1,9 +1,12 @@
+import type { ReactNode } from 'react';
 import type { TicketSectorResponse } from '../api/eventsApi';
 
 export type TicketSectorCardProps = {
   sector: TicketSectorResponse;
   selected: boolean;
   disabled?: boolean;
+  index?: number;
+  control?: ReactNode;
   onSelect: (sector: TicketSectorResponse) => void;
 };
 
@@ -11,20 +14,27 @@ export function TicketSectorCard({
   sector,
   selected,
   disabled = false,
+  index = 1,
+  control,
   onSelect,
 }: TicketSectorCardProps) {
   const isSoldOut = sector.availableQuantity <= 0;
   const isSelectable = !disabled && !isSoldOut;
-
   const formattedPrice = formatCurrency(sector.price);
+  const accentIndex = ((Math.max(1, index) - 1) % 4) + 1;
 
   return (
     <div
-      className={`edt-ticket-sector-card ${selected ? 'edt-ticket-sector-card--selected' : ''} ${isSoldOut ? 'edt-ticket-sector-card--sold-out' : ''} ${disabled ? 'edt-ticket-sector-card--disabled' : ''}`}
+      className={`edt-ticket-sector-card edt-ticket-sector-card--accent-${accentIndex} ${selected ? 'edt-ticket-sector-card--selected' : ''} ${isSoldOut ? 'edt-ticket-sector-card--sold-out' : ''} ${disabled ? 'edt-ticket-sector-card--disabled' : ''}`}
       data-testid={`sector-card-${sector.id}`}
       aria-disabled={!isSelectable}
     >
-      <div className="edt-ticket-sector-card__header">
+      <div className="edt-ticket-sector-card__tab" aria-hidden="true">
+        <span>SETOR</span>
+        <strong>{String(index).padStart(2, '0')}</strong>
+      </div>
+
+      <div className="edt-ticket-sector-card__content">
         <div className="edt-ticket-sector-card__selection">
           <input
             type="radio"
@@ -46,18 +56,12 @@ export function TicketSectorCard({
           </label>
         </div>
 
-        <span className="edt-ticket-sector-card__price" id={`sector-price-${sector.id}`}>
-          {formattedPrice}
-        </span>
-      </div>
+        {sector.description ? (
+          <p className="edt-ticket-sector-card__desc" id={`sector-desc-${sector.id}`}>
+            {sector.description}
+          </p>
+        ) : null}
 
-      {sector.description ? (
-        <p className="edt-ticket-sector-card__desc" id={`sector-desc-${sector.id}`}>
-          {sector.description}
-        </p>
-      ) : null}
-
-      <div className="edt-ticket-sector-card__footer">
         <div className="edt-ticket-sector-card__availability" id={`sector-avail-${sector.id}`}>
           {isSoldOut ? (
             <span className="edt-ticket-sector-card__sold-out-badge" role="status">
@@ -65,20 +69,30 @@ export function TicketSectorCard({
             </span>
           ) : (
             <span className="edt-ticket-sector-card__available-text" role="status">
-              {sector.availableQuantity} {sector.availableQuantity === 1 ? 'ingresso disponível' : 'ingressos disponíveis'}
+              Disponíveis · {sector.availableQuantity}
             </span>
           )}
         </div>
+      </div>
 
-        {isSelectable && (
-          <button
-            type="button"
-            className={`edt-button edt-button--small ${selected ? 'edt-button--primary' : 'edt-button--secondary'}`}
-            onClick={() => onSelect(sector)}
-            aria-label={`Selecionar setor ${sector.name} por ${formattedPrice}`}
-          >
-            {selected ? 'Selecionado' : 'Selecionar'}
-          </button>
+      <div className="edt-ticket-sector-card__price-block" id={`sector-price-${sector.id}`}>
+        <span>A PARTIR DE</span>
+        <strong>{formattedPrice}</strong>
+        <small>POR INGRESSO</small>
+      </div>
+
+      <div className="edt-ticket-sector-card__control">
+        {control ?? (
+          isSelectable ? (
+            <button
+              type="button"
+              className={`edt-ticket-sector-card__select-btn ${selected ? 'edt-ticket-sector-card__select-btn--selected' : ''}`}
+              onClick={() => onSelect(sector)}
+              aria-label={`Selecionar setor ${sector.name} por ${formattedPrice}`}
+            >
+              {selected ? 'Selecionado' : '+'}
+            </button>
+          ) : null
         )}
       </div>
     </div>

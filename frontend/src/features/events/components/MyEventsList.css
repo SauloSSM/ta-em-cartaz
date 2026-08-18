@@ -1,0 +1,218 @@
+/* Tá em Cartaz — Organizer foundation
+   Productivity-first layout using the canonical organizer anchor. */
+.my-events-section {
+  width: min(1180px, calc(100% - 40px));
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 0 66px;
+}
+
+.my-events-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(16,16,15,.18);
+}
+
+.my-events-header > div { position: relative; }
+.my-events-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.1rem, 6vw, 5.2rem);
+  line-height: .9;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: -.02em;
+}
+.my-events-header > div::after {
+  content: '';
+  display: block;
+  width: 72%;
+  height: 8px;
+  margin-top: 7px;
+  background: url('../../../assets/ta-em-cartaz/decorative/scribble-pink-underline-long.png') center/100% 100% no-repeat;
+}
+.my-events-subtitle { margin: 10px 0 0; color: var(--neutral-700); font-size: .76rem; }
+
+.my-events-new-btn {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--brand-pink);
+  border-radius: 0;
+  background: var(--brand-pink);
+  color: var(--brand-ink);
+  font: 800 .68rem/1 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  cursor: pointer;
+}
+.my-events-new-btn:hover { transform: translateY(-1px); box-shadow: 4px 4px 0 var(--brand-ink); }
+
+.my-events-content { padding-top: 6px; }
+.my-events-list { list-style: none; margin: 0; padding: 0; }
+.my-events-item { margin: 0; padding: 0; border-bottom: 1px solid rgba(16,16,15,.22); }
+
+.my-event-card {
+  display: grid;
+  grid-template-columns: 230px minmax(0,1fr);
+  gap: 24px;
+  align-items: stretch;
+  min-height: 146px;
+  padding: 16px 0;
+}
+
+.my-event-card-art {
+  position: relative;
+  min-height: 114px;
+  overflow: hidden;
+  border: 1px solid var(--brand-ink);
+  background: var(--brand-orange);
+}
+.my-event-card-art::after {
+  content: '*';
+  position: absolute;
+  right: 8px;
+  top: 4px;
+  z-index: 3;
+  color: var(--brand-paper-soft);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+}
+.my-event-card-artwork { width: 100%; height: 100%; }
+.my-event-card-artwork .tc-artwork__img { filter: grayscale(1) contrast(1.12); mix-blend-mode: multiply; }
+.my-events-item:nth-child(4n + 2) .my-event-card-art { background: var(--brand-pink); }
+.my-events-item:nth-child(4n + 3) .my-event-card-art { background: var(--brand-yellow); }
+.my-events-item:nth-child(4n + 4) .my-event-card-art { background: var(--brand-green); }
+
+.my-event-card-main {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  grid-template-areas:
+    'header actions'
+    'meta actions';
+  gap: 8px 20px;
+  align-items: center;
+  min-width: 0;
+}
+
+.my-event-card-header { grid-area: header; align-self: end; }
+.my-event-card-title-group { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.my-event-card-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 2.5vw, 2.5rem);
+  line-height: .96;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: -.012em;
+}
+
+.event-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid var(--brand-ink);
+  border-radius: 0;
+  color: var(--brand-ink);
+  font-size: .52rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.status-draft { background: var(--brand-orange); }
+.status-published { background: #6fc985; }
+
+.my-event-card-meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  align-self: start;
+  color: var(--brand-ink);
+  font-size: .65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.my-event-card-tag {
+  padding: 2px 5px;
+  border: 1px solid rgba(16,16,15,.42);
+  font-size: .52rem;
+  font-weight: 800;
+}
+.my-event-card-ref { display: none; }
+
+.my-event-card-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: max-content;
+}
+.my-event-card-actions button,
+.my-event-published-locked {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--brand-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--brand-ink);
+  font: 800 .58rem/1 var(--font-body);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.my-event-edit-btn { background: var(--brand-paper-soft) !important; }
+.my-event-delete-btn { color: var(--semantic-danger) !important; border-color: var(--semantic-danger) !important; }
+.my-event-published-locked {
+  display: inline-flex;
+  align-items: center;
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+}
+
+.my-events-loading,
+.my-events-empty,
+.my-events-error {
+  margin: 24px 0;
+  padding: 42px 24px;
+  border: 1px solid rgba(16,16,15,.25);
+  background: rgba(255,248,240,.42);
+  text-align: center;
+}
+.my-events-empty-cta,
+.my-events-retry-btn {
+  margin-top: 14px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--brand-ink);
+  border-radius: 0;
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  font-size: .65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  .my-event-card { grid-template-columns: 180px minmax(0,1fr); gap: 16px; }
+  .my-event-card-main { grid-template-columns: 1fr; grid-template-areas: 'header' 'meta' 'actions'; }
+  .my-event-card-actions { justify-content: flex-start; }
+}
+
+@media (max-width: 620px) {
+  .my-events-section { width: calc(100% - 28px); padding-top: 24px; }
+  .my-events-header { align-items: flex-start; flex-direction: column; }
+  .my-events-header h2 { font-size: 3.5rem; }
+  .my-events-new-btn { width: 100%; }
+  .my-event-card { grid-template-columns: 112px minmax(0,1fr); gap: 12px; min-height: 130px; }
+  .my-event-card-art { min-height: 104px; }
+  .my-event-card-title { font-size: 1.45rem; }
+  .my-event-card-meta { gap: 4px 9px; font-size: .57rem; }
+  .my-event-card-actions { flex-wrap: wrap; gap: 5px; }
+  .my-event-card-actions button,
+  .my-event-published-locked { min-height: 29px; padding: 0 8px; font-size: .52rem; }
+}

@@ -145,6 +145,7 @@ export function MyTicketsList({ onSelectTicket, onBrowseCatalog }: MyTicketsList
                 eventTitle={ev?.title}
                 eventDate={ev?.startsAt}
                 eventVenue={ev?.venueName}
+                eventImageUrl={ev?.imageUrl}
                 sectorName={sectorName}
                 onOpenDetail={() => onSelectTicket(ticket, { event: ev, sectorName })}
               />

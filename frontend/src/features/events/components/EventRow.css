@@ -1,216 +1,199 @@
-/* ==========================================================================
-   EventRow & EventCard Styles (Neo-Swiss Editorial)
-   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & REFERENCE_MANIFEST
-   ========================================================================== */
-
 .tc-event-row {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 58px minmax(0, 1.35fr) minmax(0, .92fr) auto;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4) 0;
-  border-bottom: 1px dashed var(--neutral-300);
-  transition: background-color var(--motion-fast) var(--ease-standard);
-  position: relative;
+  gap: 8px;
+  min-height: 36px;
+  padding: 3px 2px;
+  border-bottom: 1px dotted rgba(63, 61, 57, .34);
+  color: var(--brand-ink);
 }
 
-@media (min-width: 768px) {
-  .tc-event-row {
-    grid-template-columns: 90px 1fr 1fr auto;
-    gap: var(--space-6);
-    padding: var(--space-4) var(--space-2);
-  }
-
-  .tc-event-row:hover {
-    background-color: var(--brand-paper-soft);
-  }
+.tc-event-row:last-child {
+  border-bottom: 0;
 }
 
-/* Date block */
 .tc-event-row__date-block {
-  display: flex;
+  display: grid;
+  grid-template-columns: 29px 1fr;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: var(--space-3);
-}
-
-@media (min-width: 768px) {
-  .tc-event-row__date-block {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-  }
+  column-gap: 5px;
 }
 
 .tc-event-row__date-badge {
+  grid-row: 1 / 3;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 56px;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-control);
-  font-family: var(--font-display);
-  border: 1px solid var(--brand-ink);
+  min-width: 29px;
+  padding: 0;
+  border: 0;
+  background: transparent !important;
   color: var(--brand-ink);
-  line-height: 1;
+  font-family: var(--font-body);
+  line-height: .88;
 }
 
-.tc-event-row__date-badge--orange { background-color: var(--brand-orange); }
-.tc-event-row__date-badge--pink { background-color: var(--brand-pink); }
-.tc-event-row__date-badge--yellow { background-color: var(--brand-yellow); }
-.tc-event-row__date-badge--green { background-color: var(--brand-green); }
-
 .tc-event-row__date-day {
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
+  font-size: 1.03rem;
+  font-weight: 900;
 }
 
 .tc-event-row__date-month {
-  font-size: 0.75rem;
-  font-family: var(--font-body);
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  margin-top: 1px;
+  font-size: .46rem;
+  font-weight: 900;
+  letter-spacing: .04em;
 }
 
 .tc-event-row__weekday-time {
-  font-family: var(--font-body);
-  font-size: var(--type-label-size);
+  font-size: .46rem;
+  line-height: 1.04;
   font-weight: 700;
-  color: var(--neutral-700);
   text-transform: uppercase;
-  letter-spacing: var(--type-label-track);
+  color: var(--neutral-700);
 }
 
-/* Info block: Title & Category */
 .tc-event-row__info {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 1px;
 }
 
 .tc-event-row__title {
-  font-family: var(--font-display);
-  font-size: var(--type-heading-m-size);
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-  color: var(--brand-ink);
-  line-height: 1.15;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: .76rem;
+  line-height: 1.02;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .tc-event-row__tags {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  gap: 4px;
   flex-wrap: wrap;
 }
 
-.tc-event-row__category {
-  display: inline-block;
-  padding: 2px var(--space-2);
-  background-color: var(--brand-ink);
-  color: var(--brand-paper-soft);
-  font-family: var(--font-body);
-  font-size: var(--type-label-size);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: var(--type-label-track);
-  border-radius: var(--radius-control);
-}
-
+.tc-event-row__category,
 .tc-event-row__status-badge {
   display: inline-block;
-  padding: 2px var(--space-2);
-  background-color: var(--semantic-danger-bg);
-  color: var(--semantic-danger);
-  border: 1px solid var(--semantic-danger);
-  font-family: var(--font-body);
-  font-size: var(--type-label-size);
-  font-weight: 800;
+  width: fit-content;
+  padding: 1px 5px;
+  border: 0;
+  border-radius: 2px;
+  font-size: .45rem;
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: .02em;
   text-transform: uppercase;
-  letter-spacing: var(--type-label-track);
-  border-radius: var(--radius-control);
 }
 
-/* Venue block */
+.tc-event-row__category--orange { background: var(--brand-orange); }
+.tc-event-row__category--pink { background: var(--brand-pink); }
+.tc-event-row__category--yellow { background: var(--brand-yellow); }
+.tc-event-row__category--green { background: var(--brand-green); }
+
+.tc-event-row__status-badge {
+  background: var(--semantic-danger-bg);
+  color: var(--semantic-danger);
+  outline: 1px solid var(--semantic-danger);
+}
+
 .tc-event-row__venue {
-  font-family: var(--font-body);
-  font-size: var(--type-body-s-size);
+  min-width: 0;
+  font-size: .53rem;
+  line-height: 1.18;
+  text-transform: uppercase;
   color: var(--neutral-700);
-  line-height: 1.3;
 }
 
 .tc-event-row__venue-name {
-  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
   color: var(--brand-ink);
-  text-transform: uppercase;
 }
 
-/* Price & Action block */
 .tc-event-row__action-block {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  .tc-event-row__action-block {
-    justify-content: flex-end;
-    width: auto;
-  }
+  justify-content: flex-end;
+  gap: 7px;
 }
 
 .tc-event-row__price-box {
   display: flex;
   flex-direction: column;
   text-align: right;
+  white-space: nowrap;
 }
 
 .tc-event-row__price-label {
-  font-family: var(--font-body);
-  font-size: var(--type-label-size);
+  font-size: .42rem;
+  line-height: 1;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: var(--type-label-track);
   color: var(--neutral-500);
 }
 
 .tc-event-row__price-value {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  letter-spacing: -0.01em;
-  color: var(--brand-ink);
+  margin-top: 1px;
+  font-family: var(--font-body);
+  font-size: .78rem;
   line-height: 1;
+  font-weight: 900;
 }
 
 .tc-event-row__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  background-color: var(--brand-ink);
-  color: var(--brand-paper-soft);
+  width: 29px;
+  height: 29px;
+  flex: 0 0 29px;
+  border: 0;
   border-radius: 50%;
-  border: none;
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
   cursor: pointer;
-  transition: transform var(--motion-fast) var(--ease-standard),
-              background-color var(--motion-fast) var(--ease-standard);
-  flex-shrink: 0;
 }
 
 .tc-event-row__btn:hover {
-  background-color: #262422;
-  transform: scale(1.08);
+  transform: scale(1.05);
+  background: var(--brand-orange);
+  color: var(--brand-ink);
 }
 
-.tc-event-row__btn:active {
-  transform: scale(0.96);
-}
+@media (max-width: 767px) {
+  .tc-event-row {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 7px 1px;
+  }
 
-.tc-event-row__btn:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
+  .tc-event-row__venue {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+
+  .tc-event-row__title {
+    white-space: normal;
+  }
+
+  .tc-event-row__action-block {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .tc-event-row__price-box {
+    display: none;
+  }
 }

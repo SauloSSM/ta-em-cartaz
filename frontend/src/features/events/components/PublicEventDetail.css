@@ -1,0 +1,758 @@
+/* ========================================================================== 
+   Public Event Detail — SVG 2 foundation
+   Visual authority: Canva anchor 2 (Evento / Escolha de Setores)
+   Keeps all domain/auth/reservation behavior in React; this file is visual only.
+   ========================================================================== */
+
+.edt-event-detail {
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: 0 clamp(18px, 3.7vw, 60px) clamp(28px, 4vw, 56px);
+  color: var(--brand-ink);
+}
+
+.edt-event-detail__nav {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-ink) 18%, transparent);
+}
+
+.edt-back-link {
+  border: 0;
+  background: transparent;
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.edt-event-detail__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 45%) minmax(0, 55%);
+  grid-template-areas:
+    "copy art"
+    "meta meta";
+  column-gap: clamp(24px, 4vw, 64px);
+  align-items: stretch;
+  padding: clamp(22px, 3vw, 42px) 0 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-ink) 18%, transparent);
+}
+
+.edt-event-detail__hero-copy {
+  grid-area: copy;
+  min-height: clamp(260px, 28vw, 390px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px 0 clamp(64px, 7vw, 96px);
+}
+
+.edt-event-detail__hero-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  margin-bottom: 8px;
+}
+
+.edt-event-detail__category-sticker,
+.edt-event-detail__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 12px 3px;
+  border: 1.5px solid var(--brand-ink);
+  font-family: var(--font-display);
+  font-size: clamp(0.75rem, 1vw, 1rem);
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 var(--brand-ink);
+}
+
+.edt-event-detail__category-sticker {
+  background: var(--brand-pink);
+  transform: rotate(-2deg);
+}
+
+.edt-event-detail__badge--sales-closed {
+  background: var(--brand-yellow);
+}
+
+.edt-event-detail__title {
+  max-width: 660px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 7.5vw, 8.7rem);
+  line-height: 0.84;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.edt-event-detail__culture-sticker {
+  position: absolute;
+  left: min(48%, 320px);
+  bottom: 22px;
+  width: clamp(180px, 24vw, 330px);
+  height: auto;
+  transform: rotate(-4deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+.edt-event-detail__hero-art {
+  grid-area: art;
+  position: relative;
+  min-height: clamp(260px, 28vw, 390px);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.edt-event-detail__color-collage {
+  position: absolute;
+  inset: 1% 0 5% 4%;
+  width: 96%;
+  height: 94%;
+  object-fit: contain;
+  object-position: center;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.edt-event-detail__artist-image,
+.edt-event-detail__artist-fallback {
+  position: absolute;
+  z-index: 2;
+  right: 10%;
+  top: 2%;
+  width: 46%;
+  height: 73%;
+  clip-path: polygon(11% 3%, 89% 0, 100% 14%, 97% 90%, 82% 100%, 5% 92%, 0 19%);
+}
+
+.edt-event-detail__artist-image {
+  display: block;
+  object-fit: cover;
+  object-position: 50% 28%;
+  filter: grayscale(1) contrast(1.18) brightness(0.96);
+  mix-blend-mode: multiply;
+}
+
+.edt-event-detail__artist-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 20px;
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  text-align: center;
+}
+
+.edt-event-detail__artist-fallback span {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.edt-event-detail__artist-fallback strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 3vw, 2.8rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.edt-event-detail__crowd-strip {
+  position: absolute;
+  z-index: 3;
+  left: 1%;
+  right: 3%;
+  bottom: 0;
+  width: 96%;
+  height: 48%;
+  object-fit: fill;
+  object-position: center bottom;
+  pointer-events: none;
+}
+
+.edt-event-detail__viva-sticker {
+  position: absolute;
+  z-index: 4;
+  right: 4%;
+  top: 41%;
+  width: clamp(78px, 9vw, 126px);
+  height: auto;
+  transform: rotate(5deg);
+  filter: drop-shadow(3px 3px 0 var(--brand-ink));
+  pointer-events: none;
+}
+
+.edt-event-detail__metadata {
+  grid-area: meta;
+  min-height: 78px;
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid color-mix(in srgb, var(--brand-ink) 18%, transparent);
+}
+
+.edt-event-detail__meta-item {
+  min-width: 0;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px clamp(18px, 2.5vw, 38px) 14px 0;
+  margin-right: clamp(18px, 2vw, 32px);
+  border-right: 1px solid color-mix(in srgb, var(--brand-ink) 30%, transparent);
+}
+
+.edt-event-detail__meta-item:last-child {
+  border-right: 0;
+}
+
+.edt-event-detail__meta-icon {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+}
+
+.edt-event-detail__meta-item strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.edt-event-detail__meta-item p {
+  margin: 3px 0 0;
+  max-width: 520px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.edt-event-detail__description-section {
+  margin: 18px 0 12px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--brand-pink);
+  background: color-mix(in srgb, var(--brand-paper-soft) 58%, transparent);
+}
+
+.edt-event-detail__description-section .edt-section-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.edt-event-detail__description-text {
+  max-width: 1100px;
+  margin: 0;
+  color: var(--neutral-700);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.edt-alert {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border: 1.5px solid var(--brand-ink);
+  box-shadow: 3px 3px 0 var(--brand-ink);
+}
+
+.edt-alert--danger { background: var(--semantic-danger-bg); }
+.edt-alert--warning { background: var(--semantic-warning-bg); }
+.edt-alert--success { background: var(--semantic-success-bg); }
+
+.edt-alert__title {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  text-transform: uppercase;
+}
+
+.edt-alert__desc { margin: 0; font-size: 0.83rem; }
+
+.edt-event-detail__purchase-section {
+  margin-top: 10px;
+}
+
+.edt-event-detail__purchase-section > .edt-section-title {
+  margin: 0;
+  padding: 8px 0 7px;
+  border-bottom: 2px solid var(--brand-pink);
+  width: max-content;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.edt-event-detail__purchase-section > .edt-section-title::before {
+  content: 'ESCOLHA SEU ';
+}
+
+.edt-event-detail__purchase-section > .edt-section-title {
+  font-size: 0;
+}
+
+.edt-event-detail__purchase-section > .edt-section-title::before,
+.edt-event-detail__purchase-section > .edt-section-title::after {
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+}
+
+.edt-event-detail__purchase-section > .edt-section-title::after {
+  content: 'SETOR';
+}
+
+.edt-event-detail__sectors-grid {
+  margin-top: 10px;
+  border: 1px solid color-mix(in srgb, var(--brand-ink) 24%, transparent);
+  border-radius: 6px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--brand-paper-soft) 64%, transparent);
+}
+
+.edt-ticket-sector-card {
+  --sector-accent: var(--brand-orange);
+  min-height: 100px;
+  display: grid;
+  grid-template-columns: 138px minmax(240px, 1fr) minmax(170px, 200px) minmax(148px, 190px);
+  align-items: stretch;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-ink) 30%, transparent);
+  transition: background-color var(--motion-fast) var(--ease-standard), opacity var(--motion-fast) var(--ease-standard);
+}
+
+.edt-ticket-sector-card:last-child { border-bottom: 0; }
+.edt-ticket-sector-card--accent-2 { --sector-accent: var(--brand-pink); }
+.edt-ticket-sector-card--accent-3 { --sector-accent: var(--brand-yellow); }
+.edt-ticket-sector-card--accent-4 { --sector-accent: var(--brand-green); }
+.edt-ticket-sector-card--selected { background: color-mix(in srgb, var(--sector-accent) 8%, transparent); }
+.edt-ticket-sector-card--sold-out,
+.edt-ticket-sector-card--disabled { opacity: 0.56; }
+
+.edt-ticket-sector-card__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--sector-accent) 86%, transparent), color-mix(in srgb, var(--sector-accent) 86%, transparent)),
+    url('../../../assets/ta-em-cartaz/sector/sector-tab-texture-overlay.png') center / cover no-repeat;
+  border-right: 1px solid color-mix(in srgb, var(--brand-ink) 26%, transparent);
+  text-align: center;
+}
+
+.edt-ticket-sector-card__tab span {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.edt-ticket-sector-card__tab strong {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 4vw, 3.5rem);
+  line-height: 0.9;
+}
+
+.edt-ticket-sector-card__content {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 18px;
+}
+
+.edt-ticket-sector-card__selection {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.edt-ticket-sector-card__radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.edt-ticket-sector-card__name {
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 2.4vw, 2.15rem);
+  line-height: 0.96;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.edt-ticket-sector-card__desc {
+  margin: 5px 0 0;
+  max-width: 620px;
+  font-size: 0.78rem;
+  line-height: 1.22;
+  text-transform: uppercase;
+}
+
+.edt-ticket-sector-card__availability {
+  margin-top: 3px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.edt-ticket-sector-card__available-text { color: #2f9d50; }
+.edt-ticket-sector-card__sold-out-badge { color: var(--semantic-danger); }
+
+.edt-ticket-sector-card__price-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 20px;
+}
+
+.edt-ticket-sector-card__price-block span,
+.edt-ticket-sector-card__price-block small {
+  font-size: 0.66rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.edt-ticket-sector-card__price-block strong {
+  margin: 2px 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.65rem, 2.4vw, 2.2rem);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.edt-ticket-sector-card__control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+}
+
+.edt-ticket-sector-card__select-btn {
+  width: 54px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--brand-ink);
+  background: var(--brand-paper-soft);
+  color: var(--brand-ink);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+
+.edt-ticket-sector-card__select-btn--selected {
+  width: auto;
+  min-width: 104px;
+  padding: 0 12px;
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.edt-quantity-stepper-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.edt-quantity-stepper__label,
+.edt-quantity-stepper__hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.edt-quantity-stepper {
+  display: grid;
+  grid-template-columns: 46px 50px 46px;
+  height: 46px;
+  border: 1.5px solid var(--brand-ink);
+  background: var(--brand-paper-soft);
+}
+
+.edt-quantity-stepper__btn,
+.edt-quantity-stepper__value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+}
+
+.edt-quantity-stepper__btn {
+  background: transparent;
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.edt-quantity-stepper__btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.edt-quantity-stepper__value {
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.edt-event-detail__purchase-bar {
+  position: relative;
+  min-height: 84px;
+  display: grid;
+  grid-template-columns: 180px minmax(190px, 1fr) minmax(330px, 44%);
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+  padding: 12px 18px 12px 24px;
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  clip-path: polygon(0 7%, 0.7% 0, 1.4% 7%, 2.1% 0, 2.8% 7%, 97.2% 7%, 97.9% 0, 98.6% 7%, 99.3% 0, 100% 7%, 100% 93%, 99.3% 100%, 98.6% 93%, 97.9% 100%, 97.2% 93%, 2.8% 93%, 2.1% 100%, 1.4% 93%, 0.7% 100%, 0 93%);
+}
+
+.edt-event-detail__purchase-total-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.edt-event-detail__purchase-total-label span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.edt-event-detail__purchase-total-label strong {
+  margin-top: 3px;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+}
+
+.edt-event-detail__purchase-total-value {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1;
+}
+
+.edt-event-detail__reserve-btn {
+  min-height: 58px;
+  width: 100%;
+  border: 0;
+  background: #e9ef24;
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: clamp(0.95rem, 1.4vw, 1.25rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.edt-event-detail__reserve-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.edt-event-detail__reserve-btn:disabled { opacity: 0.58; cursor: wait; }
+
+.edt-event-detail__purchase-disclaimer,
+.edt-price-summary--sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.edt-sold-out-warning,
+.edt-empty-text {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1.5px dashed var(--neutral-300);
+  background: var(--brand-paper-soft);
+}
+
+.edt-event-detail--loading,
+.edt-event-detail--error {
+  min-height: 58vh;
+  padding-top: 40px;
+  text-align: center;
+}
+
+.edt-error-title,
+.edt-loading-text {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+
+.edt-error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.edt-skeleton {
+  margin: 12px auto;
+  background: color-mix(in srgb, var(--brand-paper-deep) 65%, transparent);
+}
+
+.edt-skeleton--hero { width: min(100%, 1100px); height: 260px; }
+.edt-skeleton--text { width: min(70%, 720px); height: 28px; }
+.edt-skeleton--card { width: min(100%, 1000px); height: 110px; }
+
+@media (max-width: 980px) {
+  .edt-event-detail__hero {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 22px;
+  }
+
+  .edt-event-detail__title { font-size: clamp(3.4rem, 8vw, 6rem); }
+  .edt-event-detail__culture-sticker { left: 28%; width: clamp(150px, 26vw, 240px); }
+
+  .edt-ticket-sector-card {
+    grid-template-columns: 112px minmax(180px, 1fr) 150px 154px;
+  }
+
+  .edt-ticket-sector-card__content { padding: 12px; }
+  .edt-ticket-sector-card__price-block { padding-inline: 12px; }
+
+  .edt-event-detail__purchase-bar {
+    grid-template-columns: 145px 1fr minmax(260px, 38%);
+  }
+}
+
+@media (max-width: 760px) {
+  .edt-event-detail {
+    padding-inline: 14px;
+  }
+
+  .edt-event-detail__nav { min-height: 40px; }
+
+  .edt-event-detail__hero {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "art"
+      "meta";
+    padding-top: 14px;
+  }
+
+  .edt-event-detail__hero-copy {
+    min-height: 215px;
+    padding-bottom: 56px;
+  }
+
+  .edt-event-detail__title {
+    max-width: 94%;
+    font-size: clamp(3.7rem, 18vw, 5.8rem);
+  }
+
+  .edt-event-detail__culture-sticker {
+    left: 38%;
+    bottom: 2px;
+    width: min(52vw, 210px);
+  }
+
+  .edt-event-detail__hero-art {
+    min-height: 245px;
+    margin-top: -6px;
+  }
+
+  .edt-event-detail__artist-image,
+  .edt-event-detail__artist-fallback {
+    right: 8%;
+    width: 49%;
+  }
+
+  .edt-event-detail__crowd-strip { height: 51%; }
+  .edt-event-detail__viva-sticker { width: 74px; right: 5%; top: 45%; }
+
+  .edt-event-detail__metadata {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .edt-event-detail__meta-item {
+    margin-right: 0;
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-ink) 18%, transparent);
+  }
+
+  .edt-ticket-sector-card {
+    min-height: 128px;
+    grid-template-columns: 86px minmax(0, 1fr) 112px;
+    grid-template-areas:
+      "tab content price"
+      "tab control control";
+  }
+
+  .edt-ticket-sector-card__tab { grid-area: tab; }
+  .edt-ticket-sector-card__content { grid-area: content; padding: 10px; }
+  .edt-ticket-sector-card__price-block { grid-area: price; padding: 10px 8px; }
+  .edt-ticket-sector-card__control { grid-area: control; justify-content: flex-end; padding: 4px 10px 10px; }
+
+  .edt-ticket-sector-card__name { font-size: 1.35rem; }
+  .edt-ticket-sector-card__desc { font-size: 0.68rem; }
+  .edt-ticket-sector-card__price-block strong { font-size: 1.4rem; }
+
+  .edt-quantity-stepper { grid-template-columns: 40px 44px 40px; height: 40px; }
+
+  .edt-event-detail__purchase-bar {
+    grid-template-columns: 1fr auto;
+    gap: 8px 14px;
+    padding: 14px 16px;
+    clip-path: none;
+    border-radius: 4px;
+  }
+
+  .edt-event-detail__purchase-total-value {
+    justify-self: end;
+    font-size: 2rem;
+  }
+
+  .edt-event-detail__reserve-btn {
+    grid-column: 1 / -1;
+    min-height: 54px;
+  }
+}
+
+@media (max-width: 430px) {
+  .edt-event-detail__title { font-size: clamp(3.2rem, 17vw, 4.5rem); }
+  .edt-event-detail__hero-art { min-height: 220px; }
+
+  .edt-ticket-sector-card {
+    grid-template-columns: 72px minmax(0, 1fr) 98px;
+  }
+
+  .edt-ticket-sector-card__tab strong { font-size: 2.2rem; }
+  .edt-ticket-sector-card__name { font-size: 1.15rem; }
+  .edt-ticket-sector-card__desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .edt-ticket-sector-card__price-block strong { font-size: 1.18rem; }
+  .edt-ticket-sector-card__price-block span,
+  .edt-ticket-sector-card__price-block small { font-size: 0.56rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edt-ticket-sector-card,
+  .edt-event-detail__reserve-btn { transition: none; }
+}

@@ -1,11 +1,13 @@
 import type { MyTicketResponse } from '../api/ticketsApi';
 import { formatManualCode } from '../lib/qrCode';
+import { EventArtwork } from '../../../shared/components/EventArtwork/EventArtwork';
 
 export type TicketCardProps = {
   ticket: MyTicketResponse;
   eventTitle?: string;
   eventDate?: string;
   eventVenue?: string;
+  eventImageUrl?: string;
   sectorName?: string;
   onOpenDetail: (ticket: MyTicketResponse) => void;
 };
@@ -15,6 +17,7 @@ export function TicketCard({
   eventTitle,
   eventDate,
   eventVenue,
+  eventImageUrl,
   sectorName,
   onOpenDetail,
 }: TicketCardProps) {
@@ -28,26 +31,38 @@ export function TicketCard({
       data-testid={`ticket-card-${ticket.id}`}
       aria-labelledby={`ticket-title-${ticket.id}`}
     >
-      <div className="edt-ticket-card__header">
-        <div className="edt-ticket-card__title-group">
-          <span className="edt-ticket-card__unit">Ingresso #{ticket.ordinal}</span>
-          <h3 id={`ticket-title-${ticket.id}`} className="edt-ticket-card__title">
-            {eventTitle || 'Show / Evento'}
-          </h3>
+      <div className="edt-ticket-card__main">
+        <div className="edt-ticket-card__header">
+          <div className="edt-ticket-card__title-group">
+            <span className="edt-ticket-card__brand">TC · TÁ EM CARTAZ</span>
+            <span className="edt-ticket-card__unit">Ingresso #{ticket.ordinal}</span>
+            <h3 id={`ticket-title-${ticket.id}`} className="edt-ticket-card__title">
+              {eventTitle || 'Show / Evento'}
+            </h3>
+          </div>
+          <div className="edt-ticket-card__badge-wrapper">
+            <span
+              className={`edt-status-badge ${
+                isUsed ? 'edt-status-badge--used' : 'edt-status-badge--valid'
+              }`}
+              data-testid={`ticket-status-${ticket.id}`}
+            >
+              {statusLabel}
+            </span>
+          </div>
         </div>
-        <div className="edt-ticket-card__badge-wrapper">
-          <span
-            className={`edt-status-badge ${
-              isUsed ? 'edt-status-badge--used' : 'edt-status-badge--valid'
-            }`}
-            data-testid={`ticket-status-${ticket.id}`}
-          >
-            {statusLabel}
-          </span>
-        </div>
-      </div>
 
-      <div className="edt-ticket-card__details">
+        <div className="edt-ticket-card__art" aria-hidden="true">
+          <EventArtwork
+            eventId={ticket.eventId}
+            eventTitle=""
+            imageUrl={eventImageUrl}
+            aspectRatio="4/3"
+            className="edt-ticket-card__artwork"
+          />
+        </div>
+
+        <div className="edt-ticket-card__details">
         {sectorName && (
           <div className="edt-ticket-card__meta-item">
             <span className="edt-ticket-card__meta-label">Setor:</span>
@@ -78,6 +93,13 @@ export function TicketCard({
           <span className="edt-ticket-card__meta-label">Código:</span>
           <code className="edt-ticket-card__code-preview">{formattedCode}</code>
         </div>
+        </div>
+      </div>
+
+      <div className="edt-ticket-card__stub" aria-hidden="true">
+        <span>SEU INGRESSO</span>
+        <strong>#{String(ticket.ordinal).padStart(3, '0')}</strong>
+        <small>{formattedCode}</small>
       </div>
 
       <div className="edt-ticket-card__actions">

@@ -1,0 +1,24 @@
+/* Tá em Cartaz — implementation helper snippets.
+   These are helpers, not a replacement for app tokens. */
+
+/* Recolorable sector tab using extracted silhouette */
+.sector-tab {
+  color: var(--sector-color);
+  background: currentColor;
+  -webkit-mask: url("./sector/sector-tab-shape.svg") center / 100% 100% no-repeat;
+  mask: url("./sector/sector-tab-shape.svg") center / 100% 100% no-repeat;
+}
+
+.ticket-main {
+  color: var(--ticket-color);
+  background: currentColor;
+  -webkit-mask: url("./ticket/ticket-main-shape.svg") center / 100% 100% no-repeat;
+  mask: url("./ticket/ticket-main-shape.svg") center / 100% 100% no-repeat;
+}
+
+.organizer-thumb-frame {
+  color: var(--event-accent);
+  background: currentColor;
+  -webkit-mask: url("./organizer/organizer-thumb-shape.svg") center / 100% 100% no-repeat;
+  mask: url("./organizer/organizer-thumb-shape.svg") center / 100% 100% no-repeat;
+}

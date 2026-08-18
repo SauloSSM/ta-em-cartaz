@@ -35,7 +35,7 @@ describe('TicketCard', () => {
     expect(screen.getByText('Ingresso #1')).toBeDefined();
     expect(screen.getByText('Pista Premium')).toBeDefined();
     expect(screen.getByText('Allianz Parque')).toBeDefined();
-    expect(screen.getByText('AB7K-92QX-4M')).toBeDefined();
+    expect(screen.getAllByText('AB7K-92QX-4M').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Válido')).toBeDefined();
   });
 

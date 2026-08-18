@@ -1,252 +1,262 @@
-/* ==========================================================================
-   PublicEventCatalog Styles (Home / Discovery)
-   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md & REFERENCE_MANIFEST
+/* ==========================================================================\
+   Home discovery — Canva-like cultural program with dynamic event data.
    ========================================================================== */
 
 .tc-home-catalog {
-  display: flex;
-  flex-direction: column;
   width: 100%;
 }
 
-/* Section "EM CARTAZ" */
+/* --------------------------------------------------------------------------
+   Search: mounted inside Navbar via portal when the full App is rendered.
+   -------------------------------------------------------------------------- */
+.tc-home-search {
+  width: 100%;
+}
+
+.tc-home-search__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.tc-home-search .tc-search__wrapper {
+  height: 32px;
+  border-color: rgba(16, 16, 15, .62);
+  border-radius: 7px;
+  background: rgba(255, 248, 240, .72);
+}
+
+.tc-home-search .tc-search__input {
+  height: 30px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 34px;
+  font-size: .74rem;
+}
+
+.tc-home-search .tc-search__icon {
+  left: 10px;
+  width: 16px;
+  height: 16px;
+}
+
+.tc-home-search .tc-search__clear {
+  right: 5px;
+  width: 23px;
+  height: 23px;
+  font-size: 11px;
+}
+
+.tc-home-search__submit {
+  width: 38px;
+  min-width: 38px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 0;
+}
+
+.tc-home-search__submit > span::after {
+  content: '→';
+  font-size: .9rem;
+  line-height: 1;
+}
+
+.tc-home-search-fallback {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Programming section — left identity / real event list / culture panel.
+   -------------------------------------------------------------------------- */
 .tc-cartaz-section {
-  padding: var(--space-8) 0 var(--space-12);
-  width: 100%;
+  padding: 2px 0 8px;
+  background: transparent;
 }
 
-.tc-cartaz-section__header {
+.tc-cartaz-layout {
+  display: grid;
+  grid-template-columns: minmax(205px, 21%) minmax(0, 1fr) minmax(205px, 21%);
+  align-items: start;
+  gap: clamp(10px, 1.1vw, 16px);
+}
+
+.tc-cartaz-layout__editorial,
+.tc-cartaz-layout__culture {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tc-cartaz-layout__editorial-art,
+.tc-cartaz-layout__culture-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tc-cartaz-layout__editorial-art {
+  margin-top: 4px;
+  transform: scale(1.03);
+  transform-origin: top left;
+}
+
+.tc-cartaz-layout__culture-art {
+  margin-top: 4px;
+}
+
+.tc-cartaz-layout__programming {
+  min-width: 0;
+}
+
+.tc-cartaz-programming-card {
+  min-height: 154px;
+  border: 1px solid rgba(63, 61, 57, .18);
+  border-radius: 4px;
+  background: rgba(255, 248, 240, .38);
+  overflow: hidden;
+  padding: 7px 10px;
+}
+
+.tc-cartaz-events {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
 }
 
-@media (min-width: 768px) {
-  .tc-cartaz-section__header {
-    flex-direction: row;
-    align-items: flex-end;
-    justify-content: space-between;
-  }
-}
-
-.tc-cartaz-section__title-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.tc-cartaz-section__title {
-  font-family: var(--font-display);
-  font-size: var(--type-display-l-size);
-  letter-spacing: var(--type-display-l-track);
-  line-height: var(--type-display-l-line);
-  text-transform: uppercase;
-  color: var(--brand-ink);
-  margin: 0;
-}
-
-.tc-cartaz-section__underline {
-  width: 120px;
-  height: 4px;
-  background-color: var(--brand-pink);
-  border-radius: var(--radius-pill);
-}
-
-.tc-cartaz-section__search {
-  width: 100%;
-  max-width: 480px;
-}
-
-.tc-cartaz-section__search-form {
-  display: flex;
-  gap: var(--space-2);
-  width: 100%;
-}
-
-.tc-cartaz-section__search-btn {
-  min-height: 48px;
-  padding: var(--space-3) var(--space-4);
-  flex-shrink: 0;
-}
-
-@media (min-width: 768px) {
-  .tc-cartaz-section__search-btn {
-    padding: var(--space-3) var(--space-6);
-  }
-}
-
-/* Filter active bar */
-.tc-cartaz-section__filter-bar {
+.tc-cartaz-filter {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background-color: var(--brand-paper-soft);
-  border: 1px solid var(--neutral-300);
-  border-radius: var(--radius-control);
-  margin-bottom: var(--space-4);
-  font-size: var(--type-body-s-size);
-  font-weight: 600;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 3px 6px;
+  border: 1px solid rgba(16,16,15,.5);
+  background: var(--brand-yellow);
+  font-size: 0.62rem;
+  font-weight: 700;
 }
 
-.tc-cartaz-section__filter-clear {
-  background: none;
-  border: none;
-  color: var(--brand-ink);
-  font-weight: 700;
+.tc-cartaz-filter__clear {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
   text-decoration: underline;
   cursor: pointer;
-  padding: 0;
 }
 
-.tc-cartaz-section__filter-clear:hover {
-  color: var(--brand-orange);
-}
-
-/* Discovery Layout: Grid of Rows + Editorial Stamp */
-.tc-cartaz-section__layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-8);
-}
-
-@media (min-width: 1200px) {
-  .tc-cartaz-section__layout {
-    grid-template-columns: 240px 1fr;
-    align-items: flex-start;
-  }
-}
-
-/* Left Editorial Stamp Sidebar */
-.tc-cartaz-sidebar {
-  display: none;
-}
-
-@media (min-width: 1200px) {
-  .tc-cartaz-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    position: sticky;
-    top: 96px;
-  }
-
-  .tc-cartaz-sidebar__card {
-    border: 2px solid var(--brand-ink);
-    padding: var(--space-6);
-    background-color: var(--brand-paper-soft);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: var(--space-4);
-    box-shadow: 4px 4px 0px var(--brand-ink);
-  }
-
-  .tc-cartaz-sidebar__text {
-    font-family: var(--font-display);
-    font-size: 1.25rem;
-    letter-spacing: -0.01em;
-    text-transform: uppercase;
-    color: var(--brand-ink);
-    line-height: 1.2;
-  }
-
-  .tc-cartaz-sidebar__note {
-    font-family: var(--font-body);
-    font-size: var(--type-label-size);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: var(--type-label-track);
-    color: var(--neutral-700);
-  }
-}
-
-/* Event List Container */
-.tc-cartaz-list {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-/* Loading Skeletons */
 .tc-cartaz-skeleton-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  width: 100%;
 }
 
 .tc-cartaz-skeleton-row {
-  height: 84px;
-  background: linear-gradient(90deg, var(--neutral-200) 25%, var(--neutral-100) 50%, var(--neutral-200) 75%);
+  height: 34px;
+  border-bottom: 1px dashed var(--neutral-300);
+  background: linear-gradient(90deg, rgba(214,200,183,.34), rgba(255,248,240,.72), rgba(214,200,183,.34));
   background-size: 200% 100%;
-  animation: tc-shimmer 1.5s infinite;
-  border-radius: var(--radius-control);
-  border: 1px dashed var(--neutral-300);
+  animation: tc-home-shimmer 1.4s linear infinite;
 }
 
-@keyframes tc-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+@keyframes tc-home-shimmer {
+  to { background-position: -200% 0; }
 }
 
-/* Empty & Error States */
-.tc-cartaz-empty,
-.tc-cartaz-error {
+.tc-cartaz-state {
+  min-height: 138px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 5px;
+  padding: 12px 18px;
   text-align: center;
-  padding: var(--space-12) var(--space-4);
-  background-color: var(--brand-paper-soft);
-  border: 2px dashed var(--neutral-300);
-  border-radius: var(--radius-container);
-  gap: var(--space-3);
-  margin: var(--space-4) 0;
 }
 
-.tc-cartaz-empty__icon,
-.tc-cartaz-error__icon {
-  width: 48px;
-  height: 48px;
-  color: var(--neutral-700);
-}
-
-.tc-cartaz-error__icon {
+.tc-cartaz-state__icon {
+  width: 23px;
+  height: 23px;
   color: var(--semantic-danger);
 }
 
-.tc-cartaz-empty__title,
-.tc-cartaz-error__title {
-  font-family: var(--font-display);
-  font-size: var(--type-heading-m-size);
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  color: var(--brand-ink);
+.tc-cartaz-state__title {
   margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
-.tc-cartaz-empty__message,
-.tc-cartaz-error__message {
-  font-family: var(--font-body);
-  font-size: var(--type-body-m-size);
+.tc-cartaz-state__message {
+  max-width: 360px;
+  margin: 0;
   color: var(--neutral-700);
-  max-width: 480px;
+  font-size: 0.72rem;
+  line-height: 1.32;
 }
 
-.tc-cartaz-empty__btn,
-.tc-cartaz-error__btn {
-  margin-top: var(--space-2);
+.tc-cartaz-state__button {
+  min-height: 34px;
+  margin-top: 4px;
+  padding: 5px 14px;
+  font-size: .62rem;
 }
 
-/* Backward compatibility classes */
-.edt-catalog {
-  width: 100%;
-}
+/* Keep old hooks/classes harmless for tests and compatibility. */
+.edt-catalog,
 .edt-catalog__header,
 .edt-catalog__content {
   width: 100%;
+}
+
+@media (max-width: 1020px) {
+  .tc-cartaz-layout {
+    grid-template-columns: minmax(170px, 26%) minmax(0, 1fr);
+    grid-template-areas:
+      'editorial programming'
+      'culture programming';
+  }
+
+  .tc-cartaz-layout__editorial { grid-area: editorial; }
+  .tc-cartaz-layout__programming { grid-area: programming; }
+  .tc-cartaz-layout__culture { grid-area: culture; }
+}
+
+@media (max-width: 767px) {
+  .tc-cartaz-section {
+    padding: 10px 0 18px;
+  }
+
+  .tc-cartaz-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tc-cartaz-layout__editorial {
+    width: min(68%, 250px);
+  }
+
+  .tc-cartaz-layout__programming {
+    width: 100%;
+  }
+
+  .tc-cartaz-layout__culture {
+    width: min(75%, 280px);
+    margin-left: auto;
+  }
+
+  .tc-cartaz-programming-card {
+    min-height: 158px;
+    padding: 7px 9px;
+  }
+
+  .tc-home-search-fallback {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
 }

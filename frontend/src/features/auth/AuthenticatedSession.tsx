@@ -29,6 +29,7 @@ import {
   type MyTicketResponse,
 } from '../tickets';
 import { GateView } from '../gate';
+import './AuthenticatedSession.css';
 
 type AuthenticatedSessionProps = {
   user: SessionUser;
@@ -221,10 +222,10 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
   }, [activeReservation, user.role, selectedPublicEvent, activeHoldMeta]);
 
   return (
-    <div className="session-view">
-      <section aria-labelledby="session-title" aria-busy={busy}>
-        <h2 id="session-title">Sessão atual</h2>
-        <dl>
+    <div className={`session-view session-view--${user.role.toLowerCase()}`}>
+      <section className="session-view__account-strip" aria-labelledby="session-title" aria-busy={busy}>
+        <h2 id="session-title" className="session-view__account-title">Sessão atual</h2>
+        <dl className="session-view__account-meta">
           <div>
             <dt>E-mail</dt>
             <dd>{user.email}</dd>
@@ -235,7 +236,7 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
           </div>
         </dl>
         {error === undefined ? null : <p role="alert">{error}</p>}
-        <button type="button" disabled={busy} onClick={() => void handleLogout()}>
+        <button className="session-view__logout" type="button" disabled={busy} onClick={() => void handleLogout()}>
           {busy ? 'Saindo…' : 'Sair e trocar de conta'}
         </button>
       </section>
@@ -255,7 +256,7 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
       {user.role === 'CUSTOMER' ? (
         <>
           {/* Navegação do cliente: Catálogo e Meus Ingressos */}
-          <nav aria-label="Navegação do cliente" className="customer-nav" style={{ margin: '1rem 0', display: 'flex', gap: '0.75rem' }}>
+          <nav aria-label="Navegação do cliente" className="customer-nav">
             <button
               type="button"
               className={`edt-button ${customerView === 'catalog' || customerView === 'detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
@@ -303,6 +304,7 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
               eventDate={selectedTicketMeta?.event?.startsAt}
               eventVenue={selectedTicketMeta?.event?.venueName}
               eventAddress={selectedTicketMeta?.event?.venueAddress}
+              eventImageUrl={selectedTicketMeta?.event?.imageUrl}
               sectorName={selectedTicketMeta?.sectorName}
               onBackToList={() => {
                 setSelectedTicket(null);

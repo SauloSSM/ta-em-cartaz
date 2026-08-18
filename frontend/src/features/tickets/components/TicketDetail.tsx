@@ -1,6 +1,7 @@
 import { useState, useId } from 'react';
 import type { MyTicketResponse } from '../api/ticketsApi';
 import { QRCodePanel } from './QRCodePanel';
+import { EventArtwork } from '../../../shared/components/EventArtwork/EventArtwork';
 
 export type TicketDetailProps = {
   ticket: MyTicketResponse;
@@ -8,6 +9,7 @@ export type TicketDetailProps = {
   eventDate?: string;
   eventVenue?: string;
   eventAddress?: string;
+  eventImageUrl?: string;
   sectorName?: string;
   onBackToList: () => void;
 };
@@ -18,6 +20,7 @@ export function TicketDetail({
   eventDate,
   eventVenue,
   eventAddress,
+  eventImageUrl,
   sectorName,
   onBackToList,
 }: TicketDetailProps) {
@@ -70,6 +73,21 @@ export function TicketDetail({
         </button>
       </div>
 
+      {/* AC: Estado textual precede a credencial quando usado */}
+      {isUsed && (
+        <div
+          className="edt-alert edt-alert--warning edt-ticket-detail__used-notice"
+          role="status"
+          data-testid="ticket-used-notice"
+        >
+          <h3 className="edt-alert__title">Ingresso Utilizado</h3>
+          <p className="edt-alert__desc">
+            Este ingresso já foi validado na portaria e <strong>não autoriza nova entrada</strong>. Suas credenciais permanecem visíveis para conferência histórica.
+          </p>
+        </div>
+      )}
+
+      <div className="edt-ticket-detail__shell">
       <header className="edt-ticket-detail__header">
         <div className="edt-ticket-detail__meta-top">
           <span className="edt-ticket-detail__unit-tag">Ingresso #{ticket.ordinal}</span>
@@ -82,9 +100,19 @@ export function TicketDetail({
             {statusLabel}
           </span>
         </div>
+        <div className="edt-ticket-detail__brandline">TC · TÁ EM CARTAZ</div>
         <h2 className="edt-ticket-detail__title" data-testid="ticket-detail-title">
           {eventTitle || 'Show / Evento'}
         </h2>
+        <div className="edt-ticket-detail__art" aria-hidden="true">
+          <EventArtwork
+            eventId={ticket.eventId}
+            eventTitle=""
+            imageUrl={eventImageUrl}
+            aspectRatio="4/3"
+            className="edt-ticket-detail__artwork"
+          />
+        </div>
         <div className="edt-ticket-detail__event-info">
           {sectorName && (
             <p className="edt-ticket-detail__info-line">
@@ -112,26 +140,13 @@ export function TicketDetail({
         </div>
       </header>
 
-      {/* AC: Estado textual precede a credencial quando usado */}
-      {isUsed && (
-        <div
-          className="edt-alert edt-alert--warning edt-ticket-detail__used-notice"
-          role="status"
-          data-testid="ticket-used-notice"
-        >
-          <h3 className="edt-alert__title">Ingresso Utilizado</h3>
-          <p className="edt-alert__desc">
-            Este ingresso já foi validado na portaria e <strong>não autoriza nova entrada</strong>. Suas credenciais permanecem visíveis para conferência histórica.
-          </p>
-        </div>
-      )}
-
       <section className="edt-ticket-detail__credentials-section" aria-label="Credenciais de Acesso">
         <QRCodePanel
           validationToken={ticket.validationToken}
           manualCode={ticket.manualCode}
         />
       </section>
+      </div>
 
       <section className="edt-ticket-detail__share-section" aria-label="Compartilhamento">
         <h3 className="edt-ticket-detail__section-title">Compartilhar com outra pessoa</h3>

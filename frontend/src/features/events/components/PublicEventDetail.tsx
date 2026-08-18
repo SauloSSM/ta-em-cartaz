@@ -22,6 +22,23 @@ import {
 } from '../../reservations';
 import { QuantityStepper } from './QuantityStepper';
 import { TicketSectorCard } from './TicketSectorCard';
+import './PublicEventDetail.css';
+const cultureSticker = new URL(
+  '../../../assets/ta-em-cartaz/decorative/sticker-cultura-move-green.png',
+  import.meta.url,
+).href;
+const eventColorCollage = new URL(
+  '../../../assets/ta-em-cartaz/decorative/event-hero-color-collage-reference.png',
+  import.meta.url,
+).href;
+const eventCrowdStrip = new URL(
+  '../../../assets/ta-em-cartaz/decorative/event-crowd-strip.png',
+  import.meta.url,
+).href;
+const vivaAgoraSticker = new URL(
+  '../../../assets/ta-em-cartaz/decorative/sticker-viva-agora-pink-round.png',
+  import.meta.url,
+).href;
 
 export type PublicEventDetailProps = {
   eventId: string;
@@ -236,7 +253,6 @@ export function PublicEventDetail({
   const { event, sectors, salesClosed } = state;
   const selectedSector = sectors.find((s) => s.id === selectedSectorId) ?? null;
   const isSectorAvailable = selectedSector !== null && selectedSector.availableQuantity > 0;
-  const maxSelectable = selectedSector ? Math.min(6, selectedSector.availableQuantity) : 6;
 
   const formattedDate = event.startsAt
     ? formatEventDate(event.startsAt)
@@ -345,41 +361,12 @@ export function PublicEventDetail({
         </button>
       </nav>
 
-      {/* Hero do Evento */}
+      {/* Hero editorial do evento */}
       <header className="edt-event-detail__hero">
-        <div className="edt-event-detail__banner-container">
-          {hasImage ? (
-            <img
-              src={event.imageUrl}
-              alt={`Banner do evento ${event.title}`}
-              className="edt-event-detail__banner"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="edt-event-detail__banner-fallback" role="img" aria-label="Imagem padrão do evento">
-              <svg
-                className="edt-event-detail__fallback-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="3" y="4" width="18" height="16" rx="2" />
-                <path d="M7 8h10M7 12h10M7 16h6" />
-                <circle cx="16.5" cy="16.5" r="1.5" />
-              </svg>
-              <span>EliteDevTicket</span>
-            </div>
-          )}
-
-          <div className="edt-event-detail__hero-badges">
+        <div className="edt-event-detail__hero-copy">
+          <div className="edt-event-detail__hero-kicker">
             {event.category ? (
-              <span className="edt-event-detail__badge edt-event-detail__badge--category">
-                {event.category}
-              </span>
+              <span className="edt-event-detail__category-sticker">{event.category}</span>
             ) : null}
             {salesClosed ? (
               <span className="edt-event-detail__badge edt-event-detail__badge--sales-closed" role="status">
@@ -387,62 +374,85 @@ export function PublicEventDetail({
               </span>
             ) : null}
           </div>
-        </div>
 
-        <div className="edt-event-detail__header-content">
           <h1 id="event-detail-title" className="edt-event-detail__title">
             {event.title}
           </h1>
 
-          <div className="edt-event-detail__metadata" aria-label="Informações sobre data e local">
+          <img
+            src={cultureSticker}
+            className="edt-event-detail__culture-sticker"
+            alt=""
+            aria-hidden="true"
+          />
+        </div>
+
+        <div className="edt-event-detail__hero-art" aria-label={`Arte do evento ${event.title}`}>
+          <img
+            src={eventColorCollage}
+            className="edt-event-detail__color-collage"
+            alt=""
+            aria-hidden="true"
+          />
+
+          {hasImage ? (
+            <img
+              src={event.imageUrl}
+              alt={`Banner do evento ${event.title}`}
+              className="edt-event-detail__artist-image"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="edt-event-detail__artist-fallback" role="img" aria-label={`Arte padrão para ${event.title}`}>
+              <span>TA EM CARTAZ</span>
+              <strong>{event.title}</strong>
+            </div>
+          )}
+
+          <img
+            src={eventCrowdStrip}
+            className="edt-event-detail__crowd-strip"
+            alt=""
+            aria-hidden="true"
+          />
+          <img
+            src={vivaAgoraSticker}
+            className="edt-event-detail__viva-sticker"
+            alt=""
+            aria-hidden="true"
+          />
+        </div>
+
+        <div className="edt-event-detail__metadata" aria-label="Informações sobre data e local">
+          <div className="edt-event-detail__meta-item">
+            <svg className="edt-event-detail__meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <div>
+              <strong>Data e Horário</strong>
+              <p>{formattedDate}</p>
+            </div>
+          </div>
+
+          {(event.venueName || event.venueAddress) && (
             <div className="edt-event-detail__meta-item">
-              <svg
-                className="edt-event-detail__meta-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
+              <svg className="edt-event-detail__meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
               </svg>
               <div>
-                <strong>Data e Horário</strong>
-                <p>{formattedDate}</p>
+                <strong>Local</strong>
+                <p>
+                  {event.venueName}
+                  {event.venueName && event.venueAddress ? ' — ' : ''}
+                  {event.venueAddress}
+                </p>
               </div>
             </div>
-
-            {(event.venueName || event.venueAddress) && (
-              <div className="edt-event-detail__meta-item">
-                <svg
-                  className="edt-event-detail__meta-icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                <div>
-                  <strong>Local</strong>
-                  <p>
-                    {event.venueName}
-                    {event.venueName && event.venueAddress ? ' — ' : ''}
-                    {event.venueAddress}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
@@ -513,84 +523,83 @@ export function PublicEventDetail({
           <p className="edt-empty-text">Nenhum setor de ingressos disponível para este evento.</p>
         ) : (
           <div className="edt-event-detail__sectors-grid" role="radiogroup" aria-labelledby="sectors-heading">
-            {sectors.map((sector) => (
-              <TicketSectorCard
-                key={sector.id}
-                sector={sector}
-                selected={selectedSectorId === sector.id}
-                disabled={salesClosed}
-                onSelect={(sec) => {
-                  setSelectedSectorId(sec.id);
-                  setQuantity(1);
-                  setIntentionFeedback(null);
-                  setRoleErrorMessage(null);
-                  setReservationError(null);
-                  activeAttemptKeyRef.current = null;
-                }}
-              />
-            ))}
-          </div>
-        )}
+            {sectors.map((sector, index) => {
+              const isSelected = selectedSectorId === sector.id;
+              const sectorMaxSelectable = Math.min(6, sector.availableQuantity);
 
-        {/* Seleção de Quantidade e Resumo de Preço */}
-        {selectedSector && !salesClosed && (
-          <div className="edt-event-detail__checkout-box" data-testid="purchase-intention-box">
-            <h3 className="edt-checkout-box__title">Escolha a quantidade</h3>
-
-            {isSectorAvailable ? (
-              <>
-                <QuantityStepper
-                  value={quantity}
-                  min={1}
-                  max={maxSelectable}
-                  onChange={(val) => {
-                    setQuantity(val);
+              return (
+                <TicketSectorCard
+                  key={sector.id}
+                  sector={sector}
+                  index={index + 1}
+                  selected={isSelected}
+                  disabled={salesClosed}
+                  control={
+                    isSelected && sector.availableQuantity > 0 && !salesClosed ? (
+                      <QuantityStepper
+                        value={quantity}
+                        min={1}
+                        max={sectorMaxSelectable}
+                        label={`Quantidade para ${sector.name}`}
+                        id={`quantity-stepper-${sector.id}`}
+                        onChange={(val) => {
+                          setQuantity(val);
+                          setIntentionFeedback(null);
+                          setRoleErrorMessage(null);
+                          setReservationError(null);
+                          activeAttemptKeyRef.current = null;
+                        }}
+                      />
+                    ) : undefined
+                  }
+                  onSelect={(sec) => {
+                    setSelectedSectorId(sec.id);
+                    setQuantity(1);
                     setIntentionFeedback(null);
                     setRoleErrorMessage(null);
                     setReservationError(null);
                     activeAttemptKeyRef.current = null;
                   }}
                 />
+              );
+            })}
+          </div>
+        )}
 
-                <div className="edt-price-summary" aria-label="Resumo estimado de compra">
-                  <div className="edt-price-summary__row">
-                    <span>Setor selecionado:</span>
-                    <strong>{selectedSector.name}</strong>
-                  </div>
-                  <div className="edt-price-summary__row">
-                    <span>Preço unitário:</span>
-                    <span>{formatCurrency(selectedSector.price)}</span>
-                  </div>
-                  <div className="edt-price-summary__row">
-                    <span>Quantidade:</span>
-                    <span>{quantity}</span>
-                  </div>
-                  <div className="edt-price-summary__total">
-                    <span>Valor estimado total:</span>
-                    <strong className="edt-price-summary__total-value">
-                      {formatCurrency(selectedSector.price * quantity)}
-                    </strong>
-                  </div>
-                  <p className="edt-price-summary__disclaimer">
-                    Estimativa calculada localmente. O valor final e a disponibilidade serão confirmados pelo servidor ao iniciar a reserva.
-                  </p>
+        {/* Resumo e CTA editorial */}
+        {selectedSector && !salesClosed && (
+          <div className="edt-event-detail__purchase-bar" data-testid="purchase-intention-box">
+            {isSectorAvailable ? (
+              <>
+                <div className="edt-event-detail__purchase-total-label">
+                  <span>TOTAL</span>
+                  <strong>{quantity} {quantity === 1 ? 'INGRESSO' : 'INGRESSOS'}</strong>
                 </div>
 
-                <div className="edt-event-detail__cta-container">
-                  <button
-                    type="button"
-                    className="edt-button edt-button--primary edt-button--large edt-event-detail__reserve-btn"
-                    onClick={handleReserveClick}
-                    disabled={isReserving}
-                    aria-busy={isReserving}
-                    aria-label={`Reservar ${quantity} ${quantity === 1 ? 'ingresso' : 'ingressos'} no setor ${selectedSector.name}`}
-                  >
-                    {isReserving ? 'Garantindo ingressos…' : 'Reservar Ingressos →'}
-                  </button>
-                  <p className="edt-event-detail__cta-hint">
-                    A escolha do setor e quantidade forma uma intenção de compra. A reserva com garantia de tempo será criada após a validação.
-                  </p>
+                <div className="edt-event-detail__purchase-total-value">
+                  {formatCurrency(selectedSector.price * quantity)}
                 </div>
+
+                <div className="edt-price-summary edt-price-summary--sr" aria-label="Resumo estimado de compra">
+                  <span>Setor selecionado: <strong>{selectedSector.name}</strong></span>
+                  <span>Preço unitário: {formatCurrency(selectedSector.price)}</span>
+                  <span>Quantidade: {quantity}</span>
+                </div>
+
+                <button
+                  type="button"
+                  className="edt-event-detail__reserve-btn"
+                  onClick={handleReserveClick}
+                  disabled={isReserving}
+                  aria-busy={isReserving}
+                  aria-label={`Reservar ${quantity} ${quantity === 1 ? 'ingresso' : 'ingressos'} no setor ${selectedSector.name}`}
+                >
+                  {isReserving ? 'GARANTINDO INGRESSOS…' : 'GARANTIR INGRESSOS →'}
+                </button>
+
+                <p className="edt-event-detail__purchase-disclaimer">
+                  O valor final e a disponibilidade serão confirmados pelo servidor ao iniciar a reserva.
+                </p>
               </>
             ) : (
               <p className="edt-sold-out-warning" role="alert">

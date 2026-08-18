@@ -1,6 +1,8 @@
 import { useState, useEffect, useTransition } from 'react';
 import { listMyEvents, deleteDraftEvent, type EventResponse } from '../api/eventsApi';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { EventArtwork } from '../../../shared/components/EventArtwork/EventArtwork';
+import './MyEventsList.css';
 
 type MyEventsListProps = {
   onSelectEvent: (event: EventResponse) => void;
@@ -133,6 +135,16 @@ export function MyEventsList({ onSelectEvent, onNewEvent }: MyEventsListProps) {
               return (
                 <li key={item.id} className="my-events-item">
                   <article className="my-event-card">
+                    <div className="my-event-card-art" aria-hidden="true">
+                      <EventArtwork
+                        eventId={item.id}
+                        eventTitle=""
+                        imageUrl={item.imageUrl}
+                        aspectRatio="16/9"
+                        className="my-event-card-artwork"
+                      />
+                    </div>
+                    <div className="my-event-card-main">
                     <div className="my-event-card-header">
                       <div className="my-event-card-title-group">
                         <h3 className="my-event-card-title">{item.title}</h3>
@@ -186,6 +198,7 @@ export function MyEventsList({ onSelectEvent, onNewEvent }: MyEventsListProps) {
                           Publicado
                         </span>
                       )}
+                    </div>
                     </div>
                   </article>
                 </li>

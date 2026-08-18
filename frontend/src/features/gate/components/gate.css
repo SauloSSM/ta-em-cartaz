@@ -721,3 +721,324 @@
     max-height: 55vh;
   }
 }
+
+/* ======================================================================
+   Tá em Cartaz — Gate visual foundation override
+   Keeps the existing scanner/manual/result state machine intact.
+   ====================================================================== */
+.edt-gate-root {
+  position: relative;
+  width: min(520px, calc(100% - 28px));
+  max-width: 520px;
+  margin: 34px auto 72px;
+  padding: 18px 18px 24px;
+  border: 1px solid #2b2927;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 50% 52%, rgba(255,255,255,.035) 0 1px, transparent 1.5px) 0 0/9px 9px,
+    #0b0b0b;
+  color: #fff8f0;
+  box-shadow: 0 18px 50px rgba(0,0,0,.25);
+  overflow: hidden;
+}
+
+.edt-gate-root::before {
+  content: 'TC';
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 2px;
+  background: #fff8f0;
+  color: #10100f;
+  font: 900 .58rem/1 var(--font-body);
+}
+
+.edt-gate-header {
+  padding: 4px 0 16px 38px;
+  border-bottom: 1px solid rgba(255,248,240,.18);
+  background: transparent;
+}
+.edt-gate-header__badge-row { justify-content: flex-end; gap: 8px; min-height: 22px; }
+.edt-gate-badge {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255,248,240,.72);
+  font-size: .55rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.edt-gate-badge > span { display: none; }
+.edt-gate-operator {
+  max-width: 170px;
+  color: rgba(255,248,240,.55);
+  font-size: .5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.edt-gate-header__title {
+  margin: 10px 0 3px;
+  color: #fff8f0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3.1rem);
+  line-height: .92;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+.edt-gate-header__subtitle {
+  max-width: 360px;
+  color: rgba(255,248,240,.62);
+  font-size: .62rem;
+  line-height: 1.35;
+}
+
+.edt-gate-selected-banner {
+  margin: 16px 0 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(255,248,240,.2);
+  border-radius: 3px;
+  background: rgba(255,255,255,.025);
+}
+.edt-gate-selected-banner__label {
+  color: var(--brand-pink);
+  font-size: .52rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.edt-gate-selected-banner__title {
+  margin: 4px 0 8px;
+  color: #fff8f0;
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  line-height: .95;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+.edt-gate-selected-banner__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: rgba(255,248,240,.64);
+  font-size: .55rem;
+  line-height: 1.3;
+}
+.edt-gate-selected-banner__actions { margin-top: 8px; }
+
+.edt-gate-btn {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 2px;
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: .025em;
+  text-transform: uppercase;
+}
+.edt-gate-btn--primary {
+  border-color: #fff8f0;
+  background: #fff8f0;
+  color: #10100f;
+}
+.edt-gate-btn--secondary {
+  border-color: rgba(255,248,240,.45);
+  background: transparent;
+  color: #fff8f0;
+}
+
+.edt-gate-operational-container,
+.edt-gate-validation-area { margin: 0; padding: 0; background: transparent; }
+
+.edt-gate-scanner {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.edt-gate-scanner__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.edt-gate-scanner__title {
+  color: #fff8f0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.edt-gate-scanner__viewfinder {
+  position: relative;
+  width: min(100%, 360px);
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 0;
+  background: #151515;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.edt-gate-scanner__viewfinder::before {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  z-index: 4;
+  pointer-events: none;
+  background: url('../../../assets/ta-em-cartaz/gate/gate-scanner-corners.svg') center/100% 100% no-repeat;
+}
+.edt-gate-scanner__viewfinder::after {
+  content: 'APONTE O QR CODE';
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  z-index: 4;
+  transform: translateX(-50%);
+  color: rgba(255,248,240,.72);
+  font: 800 .55rem/1 var(--font-body);
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.edt-gate-scanner__video { width: 100%; height: 100%; object-fit: cover; filter: contrast(1.08) saturate(.8); }
+.edt-gate-scanner__overlay { background: rgba(11,11,11,.72); color: #fff8f0; font-size: .7rem; text-transform: uppercase; }
+.edt-gate-scanner__camera-selector { margin-top: 10px; }
+.edt-gate-scanner__camera-select,
+.edt-gate-code-input {
+  border-color: rgba(255,248,240,.35);
+  border-radius: 2px;
+  background: #151515;
+  color: #fff8f0;
+}
+.edt-gate-scanner__hint {
+  margin: 12px 0 0;
+  color: rgba(255,248,240,.52);
+  font-size: .55rem;
+  text-align: center;
+}
+.edt-gate-scanner__hint-link { color: #fff8f0; font-size: inherit; text-decoration: underline; }
+
+.edt-gate-manual-section {
+  padding: 20px 0 0;
+  border: 0;
+  background: transparent;
+}
+.edt-gate-manual-section__title {
+  color: #fff8f0;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+.edt-gate-manual-section__subtitle,
+.edt-gate-form-label { color: rgba(255,248,240,.66); }
+.edt-gate-code-input {
+  min-height: 54px;
+  font-family: ui-monospace, monospace;
+  font-size: 1.12rem;
+  letter-spacing: .12em;
+}
+
+/* Reference-inspired result treatment: giant icon + colour, not a SaaS alert. */
+.edt-gate-result-card {
+  position: relative;
+  min-height: 430px;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 38px 26px 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+  overflow: hidden;
+}
+.edt-gate-result-card::before {
+  content: '';
+  position: absolute;
+  inset: 44px 38px 110px;
+  z-index: 0;
+  opacity: .11;
+  background-image: radial-gradient(circle, currentColor 1px, transparent 1.5px);
+  background-size: 8px 8px;
+}
+.edt-gate-result-card > * { position: relative; z-index: 1; }
+.edt-gate-result-card__header { display: block; }
+.edt-gate-result-card__icon {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  margin: 0 auto 6px;
+  border: 5px solid currentColor;
+  border-radius: 50%;
+  font-size: 4.2rem;
+  font-weight: 500;
+  line-height: 1;
+}
+.edt-gate-result-card__badge { display: none; }
+.edt-gate-result-card__title {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 8vw, 4rem);
+  line-height: .9;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+.edt-gate-result-card__instruction {
+  max-width: 330px;
+  margin: 0 auto;
+  color: rgba(255,248,240,.72) !important;
+  font-size: .66rem;
+  line-height: 1.45;
+}
+.edt-gate-result-card__meta {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  color: rgba(255,248,240,.48);
+  font-size: .54rem;
+}
+.edt-gate-result-card__actions { width: 100%; margin-top: 10px; }
+.edt-gate-result-card__actions .edt-gate-btn { width: 100%; min-height: 42px; }
+
+.edt-gate-result-card--valid { color: #59dc66; background: transparent; border-color: transparent; }
+.edt-gate-result-card--invalid { color: #ff3d38; background: transparent; border-color: transparent; }
+.edt-gate-result-card--already_used,
+.edt-gate-result-card--already-used { color: #f2c332; background: transparent; border-color: transparent; }
+.edt-gate-result-card--wrong_event,
+.edt-gate-result-card--wrong-event { color: #ff6a1a; background: transparent; border-color: transparent; }
+.edt-gate-result-card--valid .edt-gate-result-card__title,
+.edt-gate-result-card--invalid .edt-gate-result-card__title,
+.edt-gate-result-card--already_used .edt-gate-result-card__title,
+.edt-gate-result-card--already-used .edt-gate-result-card__title,
+.edt-gate-result-card--wrong_event .edt-gate-result-card__title,
+.edt-gate-result-card--wrong-event .edt-gate-result-card__title { color: currentColor; }
+
+.edt-gate-selector {
+  padding: 18px 0 0;
+  background: transparent;
+}
+.edt-gate-search-input { border-color: rgba(255,248,240,.32); background: #151515; color: #fff8f0; }
+.edt-gate-event-list { gap: 8px; }
+.edt-gate-event-item { border-color: rgba(255,248,240,.2); border-radius: 2px; background: #121212; }
+.edt-gate-event-item__title { color: #fff8f0; }
+.edt-gate-event-item__meta { color: rgba(255,248,240,.56); }
+
+@media (max-width: 560px) {
+  .edt-gate-root { width: calc(100% - 16px); margin: 12px auto 40px; padding: 14px; border-radius: 24px; }
+  .edt-gate-header { padding-left: 34px; }
+  .edt-gate-header__title { font-size: 2.35rem; }
+  .edt-gate-operator { display: none; }
+  .edt-gate-selected-banner__meta { display: grid; }
+  .edt-gate-scanner__viewfinder { width: 100%; }
+  .edt-gate-result-card { min-height: 390px; padding-inline: 10px; }
+}

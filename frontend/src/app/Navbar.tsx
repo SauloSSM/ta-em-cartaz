@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { BrandSeal } from '../shared/components/Brand/BrandSeal';
 import { Button } from '../shared/components/Button/Button';
 import type { SessionUser } from './session/useSession';
 import './Navbar.css';
+
+const tcSealBlackPng = new URL('../assets/ta-em-cartaz/brand/tc-seal-black.png', import.meta.url).href;
+const wordmarkBlackPng = new URL('../assets/ta-em-cartaz/brand/ta-em-cartaz-wordmark-black.png', import.meta.url).href;
 
 export type NavbarProps = {
   user: SessionUser | null;
@@ -62,8 +64,19 @@ export function Navbar({
           onClick={handleCatalogClick}
           aria-label="Tá em Cartaz — Página inicial de eventos"
         >
-          <BrandSeal variant="primary" size={38} />
-          <span className="tc-header__logo-text">TÁ EM CARTAZ</span>
+          <img
+            src={tcSealBlackPng}
+            alt=""
+            aria-hidden="true"
+            className="tc-header__seal-img"
+          />
+          <img
+            src={wordmarkBlackPng}
+            alt=""
+            aria-hidden="true"
+            className="tc-header__wordmark-img"
+          />
+          <span className="tc-visually-hidden">TÁ EM CARTAZ</span>
         </button>
 
         {/* Desktop Navigation */}
@@ -85,7 +98,12 @@ export function Navbar({
           >
             Eventos
           </button>
+          <span className="tc-header__nav-label" aria-hidden="true">Cultura</span>
+          <span className="tc-header__nav-label" aria-hidden="true">Perto de você</span>
         </nav>
+
+        {/* The public catalog mounts its real search form here via a React portal. */}
+        <div id="tc-header-search-slot" className="tc-header__search-slot" />
 
         {/* Actions / Auth */}
         <div className="tc-header__actions">

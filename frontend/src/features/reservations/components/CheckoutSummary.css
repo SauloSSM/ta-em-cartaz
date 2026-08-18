@@ -1,110 +1,127 @@
-/* ==========================================================================
-   CheckoutSummary Component Styles
-   Authority: docs/design/final/01_VISUAL_UX_SPEC_FINAL.md
-   ========================================================================== */
-
-.edt-checkout-summary {
-  margin: var(--space-4) 0;
-}
+/* Tá em Cartaz — checkout order-summary foundation */
+.edt-checkout-summary { margin: 0; }
 
 .edt-checkout-summary__title {
-  font-size: var(--type-heading-m-size);
-  margin-bottom: var(--space-3);
-  font-weight: 700;
-  color: var(--brand-ink);
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1;
+  font-weight: 400;
+  text-transform: uppercase;
 }
 
+.edt-checkout-summary__title { font-size: 0; }
+.edt-checkout-summary__title::after { content: 'RESUMO DO PEDIDO'; font-size: 1.45rem; }
+
 .edt-checkout-summary__card {
-  padding: var(--space-6);
-  border-radius: var(--radius-container);
-  background-color: #FFFFFF;
-  border: 1px solid var(--neutral-300);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .edt-checkout-summary__event-info {
-  border-bottom: 1px solid var(--neutral-200);
-  padding-bottom: var(--space-3);
+  position: relative;
+  min-height: 118px;
+  padding: 18px 16px 14px 128px;
+  border: 1px solid rgba(16, 16, 15, .18);
+  background: rgba(255, 248, 240, .46);
+  overflow: hidden;
+}
+
+.edt-checkout-summary__event-info::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 112px;
+  background:
+    linear-gradient(135deg, rgba(16,16,15,.14), transparent 50%),
+    url('../../../assets/ta-em-cartaz/decorative/event-hero-color-collage-reference.png') center/cover no-repeat;
+  filter: saturate(.95) contrast(1.04);
 }
 
 .edt-checkout-summary__event-title {
-  font-size: var(--type-body-l-size);
-  font-weight: 700;
-  color: var(--brand-ink);
-  margin-bottom: var(--space-1);
+  margin: 0 0 9px;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.3vw, 2rem);
+  line-height: .98;
+  font-weight: 400;
+  text-transform: uppercase;
 }
 
 .edt-checkout-summary__event-meta {
-  font-size: var(--type-body-s-size);
-  color: var(--neutral-700);
+  margin: 2px 0;
+  color: var(--brand-ink);
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.edt-checkout-summary__list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
-}
+.edt-checkout-summary__list { display: block; }
 
 .edt-checkout-summary__row {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  align-items: center;
-  font-size: var(--type-body-m-size);
-  padding: var(--space-1) 0;
-  border-bottom: 1px dashed var(--neutral-200);
+  gap: 18px;
+  min-height: 32px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(16, 16, 15, .16);
+  font-size: .72rem;
 }
 
 .edt-checkout-summary__row dt {
   color: var(--neutral-700);
+  font-size: .6rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
-.edt-checkout-summary__row dd {
-  color: var(--brand-ink);
-  text-align: right;
-}
+.edt-checkout-summary__row dd { text-align: right; color: var(--brand-ink); }
+
+.edt-checkout-summary__row--status { display: none; }
 
 .edt-checkout-summary__row--total {
-  border-bottom: none;
-  border-top: 2px solid var(--brand-ink);
-  padding-top: var(--space-3);
-  margin-top: var(--space-2);
-  font-size: var(--type-body-l-size);
+  min-height: 52px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1.5px solid var(--brand-ink);
+  border-bottom: 0;
 }
 
 .edt-checkout-summary__row--total dt {
-  font-weight: 700;
   color: var(--brand-ink);
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 400;
 }
 
 .edt-checkout-summary__total-value {
-  font-family: var(--font-display, inherit);
-  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
-  font-weight: 700;
-  color: var(--brand-orange, #F25709);
+  color: var(--brand-ink);
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 400;
 }
 
 .edt-checkout-summary__disclaimer {
-  font-size: var(--type-label-size);
+  font-size: .56rem;
+  line-height: 1.35;
   color: var(--neutral-500);
-  line-height: var(--type-label-line);
 }
 
-.edt-badge--holding {
-  background-color: var(--semantic-info-bg);
-  color: var(--semantic-info);
-  border: 1px solid var(--semantic-info);
+/* Keep status text in the accessibility tree without making the reference visually noisy. */
+.edt-checkout-summary__row--status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
-.edt-badge--confirmed {
-  background-color: var(--semantic-success-bg);
-  color: var(--semantic-success);
-  border: 1px solid var(--semantic-success);
-}
-
-.edt-badge--expired {
-  background-color: var(--neutral-100);
-  color: var(--neutral-700);
-  border: 1px solid var(--neutral-300);
+@media (max-width: 560px) {
+  .edt-checkout-summary__event-info { padding-left: 100px; min-height: 104px; }
+  .edt-checkout-summary__event-info::before { width: 88px; }
 }
