@@ -106,4 +106,42 @@ describe('TicketDetail', () => {
 
     expect(onBackToList).toHaveBeenCalledTimes(1);
   });
+
+  it('cycles paper color palette based on ordinal (#001 orange, #002 pink, #003 yellow)', () => {
+    const { rerender } = render(
+      <TicketDetail
+        ticket={{ ...sampleTicket, ordinal: 1 }}
+        eventTitle="Super Show 2026"
+        onBackToList={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('ticket-detail-view').className).toContain('edt-ticket-detail--orange');
+
+    rerender(
+      <TicketDetail
+        ticket={{ ...sampleTicket, ordinal: 2 }}
+        eventTitle="Super Show 2026"
+        onBackToList={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('ticket-detail-view').className).toContain('edt-ticket-detail--pink');
+
+    rerender(
+      <TicketDetail
+        ticket={{ ...sampleTicket, ordinal: 3 }}
+        eventTitle="Super Show 2026"
+        onBackToList={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('ticket-detail-view').className).toContain('edt-ticket-detail--yellow');
+
+    rerender(
+      <TicketDetail
+        ticket={{ ...sampleTicket, ordinal: 4 }}
+        eventTitle="Super Show 2026"
+        onBackToList={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('ticket-detail-view').className).toContain('edt-ticket-detail--orange');
+  });
 });

@@ -29,6 +29,8 @@ export function TicketDetail({
 
   const isUsed = ticket.status === 'USED';
   const statusLabel = isUsed ? 'Utilizado' : 'Válido';
+  const paletteVariants = ['orange', 'pink', 'yellow'] as const;
+  const paletteVariant = paletteVariants[(Math.max(ticket.ordinal, 1) - 1) % paletteVariants.length];
 
   const handleShare = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -61,7 +63,7 @@ export function TicketDetail({
   };
 
   return (
-    <article className="edt-ticket-detail" data-testid="ticket-detail-view">
+    <article className={`edt-ticket-detail edt-ticket-detail--${paletteVariant}`} data-testid="ticket-detail-view">
       <div className="edt-ticket-detail__navigation">
         <button
           type="button"
@@ -109,7 +111,7 @@ export function TicketDetail({
             eventId={ticket.eventId}
             eventTitle=""
             imageUrl={eventImageUrl}
-            aspectRatio="4/3"
+            aspectRatio="auto"
             className="edt-ticket-detail__artwork"
           />
         </div>
