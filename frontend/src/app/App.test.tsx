@@ -393,8 +393,8 @@ describe('App session flow', () => {
 
     void user.click(await screen.findByRole('button', { name: 'Sair' }));
     const busyButton = await screen.findByRole('button', { name: 'Saindo…' });
-    expect(busyButton.hasAttribute('disabled')).toBe(true);
-    expect(screen.getByRole('heading', { level: 2, name: 'Sessão atual' }).closest('section')?.getAttribute('aria-busy')).toBe('true');
+    expect(busyButton.getAttribute('aria-busy')).toBe('true');
+    expect((busyButton as HTMLButtonElement).disabled).toBe(true);
     completeLogout(jsonResponse({ code: 'AUTH_UNAVAILABLE' }, 503));
 
     expect((await screen.findByRole('alert')).textContent).toBe(
@@ -404,7 +404,7 @@ describe('App session flow', () => {
     expect(sessionStorage.getItem('edt.purchase-intent.v1')).toBe('{"eventId":"future"}');
     const retry = screen.getByRole('button', { name: 'Sair' }) as HTMLButtonElement;
     expect(retry.disabled).toBe(false);
-    expect(screen.getByRole('heading', { level: 2, name: 'Sessão atual' }).closest('section')?.getAttribute('aria-busy')).toBe('false');
+    expect(retry.getAttribute('aria-busy')).toBeNull();
 
     await user.click(retry);
     await screen.findByRole('heading', { level: 2, name: 'Entrar com conta provisionada' });
@@ -653,7 +653,7 @@ describe('App session flow', () => {
     expect(screen.getByLabelText('Senha')).toBeDefined();
 
     // Switch back to catalog
-    const catalogNavBtn = screen.getByRole('button', { name: 'Catálogo de Eventos' });
+    const catalogNavBtn = screen.getByRole('button', { name: 'Tá em Cartaz — Página inicial de eventos' });
     await user.click(catalogNavBtn);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Catálogo de Eventos' })).toBeDefined();

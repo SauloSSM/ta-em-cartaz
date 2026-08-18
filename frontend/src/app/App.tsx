@@ -111,7 +111,6 @@ export function App({ initialAnonymousView, initialShareToken }: AppProps) {
           onSelectLogin={handleSelectLogin}
           onEmailChange={setEmail}
           onLogin={authenticate}
-          onLogout={endSession}
           onRetryBootstrap={retryBootstrap}
         />
       </main>
@@ -137,7 +136,6 @@ type SessionContentProps = {
   onSelectLogin: () => void;
   onEmailChange: (email: string) => void;
   onLogin: (password: string) => Promise<void>;
-  onLogout: () => Promise<void>;
   onRetryBootstrap: () => Promise<void>;
 };
 
@@ -154,7 +152,6 @@ function SessionContent({
   onSelectLogin,
   onEmailChange,
   onLogin,
-  onLogout,
   onRetryBootstrap,
 }: SessionContentProps) {
   if (
@@ -253,16 +250,15 @@ function SessionContent({
         />
       );
     case 'authenticated':
-      return <AuthenticatedSession user={state.user} busy={false} onLogout={onLogout} />;
+      return <AuthenticatedSession user={state.user} busy={false} />;
     case 'logging-out':
-      return <AuthenticatedSession user={state.user} busy onLogout={onLogout} />;
+      return <AuthenticatedSession user={state.user} busy />;
     case 'logout-error':
       return (
         <AuthenticatedSession
           user={state.user}
           busy={false}
           error={state.message}
-          onLogout={onLogout}
         />
       );
   }

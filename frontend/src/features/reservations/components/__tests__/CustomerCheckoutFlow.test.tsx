@@ -117,7 +117,6 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
       <AuthenticatedSession
         user={customerUser}
         busy={false}
-        onLogout={vi.fn()}
       />,
     );
 
@@ -165,7 +164,6 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
       <AuthenticatedSession
         user={customerUser}
         busy={false}
-        onLogout={vi.fn()}
       />,
     );
 
@@ -212,7 +210,6 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
       <AuthenticatedSession
         user={customerUser}
         busy={false}
-        onLogout={vi.fn()}
       />,
     );
 
@@ -267,7 +264,6 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
       <AuthenticatedSession
         user={customerUser}
         busy={false}
-        onLogout={vi.fn()}
       />,
     );
 
@@ -303,7 +299,6 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
       <AuthenticatedSession
         user={customerUser}
         busy={false}
-        onLogout={vi.fn()}
       />,
     );
 
@@ -379,7 +374,6 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
       <AuthenticatedSession
         user={customerUser}
         busy={false}
-        onLogout={vi.fn()}
       />,
     );
 
@@ -453,7 +447,6 @@ describe('Story 4.5 — Customer Checkout and Authoritative Hold Flow', () => {
       <AuthenticatedSession
         user={customerUser}
         busy={false}
-        onLogout={vi.fn()}
       />,
     );
 

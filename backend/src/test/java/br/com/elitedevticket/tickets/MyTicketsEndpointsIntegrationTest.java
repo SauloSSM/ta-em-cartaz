@@ -71,6 +71,7 @@ class MyTicketsEndpointsIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM validation_attempts");
         jdbcTemplate.update("DELETE FROM tickets");
         jdbcTemplate.update("DELETE FROM payments");
         jdbcTemplate.update("DELETE FROM reservations");

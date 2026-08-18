@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import type { SessionUser } from '../../app/api/authApi';
 import { TicketmasterSearch } from '../catalog';
 import {
@@ -36,7 +35,6 @@ type AuthenticatedSessionProps = {
   user: SessionUser;
   busy: boolean;
   error?: string;
-  onLogout?: () => Promise<void>;
 };
 
 type OrganizerView = 'my-events' | 'catalog' | 'editor' | 'public-catalog' | 'public-detail';
@@ -216,56 +214,10 @@ export function AuthenticatedSession({ user, busy, error }: AuthenticatedSession
     }
   }, [activeReservation, user.role, selectedPublicEvent, activeHoldMeta]);
 
-  const [customerNavSlot, setCustomerNavSlot] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setCustomerNavSlot(document.getElementById('tc-header-customer-nav-slot'));
-  }, []);
-
-  const customerNavMarkup = (
-    <nav aria-label="Navegação do cliente" className="customer-nav customer-nav--header tc-header__customer-nav">
-      <button
-        type="button"
-        className={`edt-button ${customerView === 'catalog' || customerView === 'detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
-        onClick={() => {
-          setSelectedPublicEvent(null);
-          setRestoredEventId(null);
-          setRestorationError(null);
-          setCustomerView('catalog');
-        }}
-        data-testid="customer-nav-catalog-btn"
-      >
-        Eventos em Cartaz
-      </button>
-      <button
-        type="button"
-        className={`edt-button ${customerView === 'my-tickets' || customerView === 'ticket-detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
-        onClick={() => {
-          setSelectedTicket(null);
-          setCustomerView('my-tickets');
-        }}
-        data-testid="customer-nav-my-tickets-btn"
-      >
-        Meus Ingressos
-      </button>
-    </nav>
-  );
-
   return (
-    <div className={`session-view session-view--${user.role.toLowerCase()}`}>
-      <section className="session-view__account-strip" aria-labelledby="session-title" aria-busy={busy}>
+    <div className={`session-view session-view--${user.role.toLowerCase()}`} aria-busy={busy}>
+      <section className="session-view__account-strip tc-visually-hidden" aria-labelledby="session-title" aria-busy={busy}>
         <h2 id="session-title" className="session-view__account-title">Sessão atual</h2>
-
-        {user.role === 'CUSTOMER' ? (
-          customerNavSlot ? (
-            createPortal(customerNavMarkup, customerNavSlot)
-          ) : (
-            customerNavMarkup
-          )
-        ) : (
-          <div />
-        )}
-
         <dl className="session-view__account-meta">
           <div>
             <dt>E-mail</dt>
@@ -275,9 +227,45 @@ export function AuthenticatedSession({ user, busy, error }: AuthenticatedSession
             <dt>Papel</dt>
             <dd>{roleLabels[user.role]}</dd>
           </div>
-          {error === undefined ? null : <div className="session-view__account-error" role="alert">{error}</div>}
         </dl>
       </section>
+
+      {error !== undefined ? (
+        <div className="session-view__account-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      {user.role === 'CUSTOMER' ? (
+        <section className="session-view__customer-strip" aria-label="Navegação do cliente">
+          <nav aria-label="Navegação do cliente" className="customer-nav customer-nav--header">
+            <button
+              type="button"
+              className={`edt-button ${customerView === 'catalog' || customerView === 'detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
+              onClick={() => {
+                setSelectedPublicEvent(null);
+                setRestoredEventId(null);
+                setRestorationError(null);
+                setCustomerView('catalog');
+              }}
+              data-testid="customer-nav-catalog-btn"
+            >
+              Eventos em Cartaz
+            </button>
+            <button
+              type="button"
+              className={`edt-button ${customerView === 'my-tickets' || customerView === 'ticket-detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
+              onClick={() => {
+                setSelectedTicket(null);
+                setCustomerView('my-tickets');
+              }}
+              data-testid="customer-nav-my-tickets-btn"
+            >
+              Meus Ingressos
+            </button>
+          </nav>
+        </section>
+      ) : null}
 
       {isRestoringIntention && (
         <div

@@ -17,7 +17,7 @@ export type NavbarProps = {
 
 export function Navbar({
   user,
-  activeView,
+  activeView: _activeView,
   onNavigateCatalog,
   onNavigateLogin,
   onLogout,
@@ -81,32 +81,8 @@ export function Navbar({
           <span className="tc-visually-hidden">TÁ EM CARTAZ</span>
         </button>
 
-        {/* Desktop Navigation */}
-        <nav aria-label="Navegação principal" className="tc-header__nav-desktop edt-top-nav">
-          <button
-            type="button"
-            className={`tc-header__nav-link edt-nav-link ${
-              activeView === 'catalog' || activeView === 'detail'
-                ? 'tc-header__nav-link--active edt-nav-link--active'
-                : ''
-            }`}
-            onClick={handleCatalogClick}
-            aria-label="Catálogo de Eventos"
-            aria-current={
-              activeView === 'catalog' || activeView === 'detail'
-                ? 'page'
-                : undefined
-            }
-          >
-            Eventos
-          </button>
-        </nav>
-
-        {/* Center Area: Customer Navigation (when authenticated) + Search Slot */}
-        <div className="tc-header__center-area">
-          <div id="tc-header-customer-nav-slot" className="tc-header__customer-nav-slot" />
-          <div id="tc-header-search-slot" className="tc-header__search-slot" />
-        </div>
+        {/* The public catalog mounts its real search form here via a React portal. */}
+        <div id="tc-header-search-slot" className="tc-header__search-slot" />
 
         {/* Actions / Auth */}
         <div className="tc-header__actions">
@@ -116,9 +92,10 @@ export function Navbar({
                 variant="secondary"
                 className="tc-header__btn-login tc-header__btn-login--logout"
                 onClick={handleLogoutClick}
-                disabled={isLoggingOut}
+                loading={isLoggingOut}
+                loadingText="Saindo…"
               >
-                {isLoggingOut ? 'Saindo…' : 'Sair'}
+                Sair
               </Button>
             ) : null
           ) : (
@@ -181,13 +158,6 @@ export function Navbar({
           aria-modal="true"
         >
           <nav className="tc-mobile-menu__nav">
-            <button
-              type="button"
-              className="tc-mobile-menu__link"
-              onClick={handleCatalogClick}
-            >
-              Eventos
-            </button>
             {!user ? (
               <button
                 type="button"
@@ -202,6 +172,7 @@ export function Navbar({
                 className="tc-mobile-menu__link"
                 onClick={handleLogoutClick}
                 disabled={isLoggingOut}
+                aria-busy={isLoggingOut ? 'true' : undefined}
               >
                 {isLoggingOut ? 'Saindo…' : `Sair (${user.email})`}
               </button>

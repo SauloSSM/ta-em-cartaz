@@ -1,42 +1,17 @@
 /* Authenticated visual shell — keeps account controls compact so product surfaces stay dominant. */
 .session-view { min-height: 70vh; }
 
-.session-view__account-strip {
-  display: grid;
-  grid-template-columns: auto 1fr;
+.session-view__customer-strip {
+  display: flex;
   align-items: center;
-  justify-content: space-between;
-  column-gap: 18px;
-  row-gap: 10px;
+  justify-content: flex-start;
   width: min(1366px, 100%);
   min-height: 52px;
   margin: 0 auto;
-  padding: 5px clamp(20px, 3.4vw, 48px);
+  padding: 8px clamp(20px, 3.4vw, 48px);
   border-bottom: 1px solid rgba(16,16,15,.12);
-  color: var(--brand-ink);
-  font-size: .62rem;
 }
 
-.session-view__account-title {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
-  clip: rect(0 0 0 0) !important;
-  white-space: nowrap !important;
-}
-
-.session-view__account-meta {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 0;
-}
-.session-view__account-meta > div { display: flex; align-items: center; gap: 4px; }
-.session-view__account-meta dt { color: var(--neutral-500); font-size: .48rem; font-weight: 800; text-transform: uppercase; }
-.session-view__account-meta dd { margin: 0; font-weight: 700; }
 .customer-nav {
   display: flex;
   align-items: center;
@@ -59,32 +34,21 @@
 }
 
 .session-view__account-error {
+  width: min(1366px, 100%);
+  margin: 12px auto;
+  padding: 10px clamp(20px, 3.4vw, 48px);
   color: var(--semantic-danger);
   font-weight: 700;
-}
-
-.session-view--gate .session-view__account-strip {
-  border-bottom-color: rgba(16,16,15,.18);
+  font-size: 0.85rem;
 }
 
 @media (max-width: 920px) {
-  .session-view__account-strip {
-    grid-template-columns: 1fr;
+  .session-view__customer-strip {
     padding-inline: 14px;
-  }
-
-  .customer-nav--header,
-  .session-view__account-meta {
-    justify-self: stretch;
-  }
-
-  .session-view__account-meta {
-    justify-content: space-between;
   }
 }
 
 @media (max-width: 620px) {
-  .session-view__account-meta > div:first-child { display: none; }
   .customer-nav {
     width: 100%;
     display: grid;
@@ -96,3 +60,4 @@
     padding-inline: 8px;
   }
 }
+

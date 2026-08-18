@@ -143,8 +143,6 @@
   display: block;
   object-fit: cover;
   object-position: 50% 28%;
-  filter: grayscale(1) contrast(1.18) brightness(0.96);
-  mix-blend-mode: multiply;
 }
 
 .edt-event-detail__artist-fallback {

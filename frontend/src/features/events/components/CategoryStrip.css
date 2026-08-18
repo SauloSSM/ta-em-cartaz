@@ -17,7 +17,7 @@
 .tc-category-card {
   position: relative;
   min-width: 0;
-  height: clamp(96px, 8.8vw, 122px);
+  height: clamp(92px, 8.4vw, 116px);
   overflow: hidden;
   color: var(--brand-ink);
 }
@@ -36,25 +36,24 @@
 .tc-category-card__header {
   position: relative;
   z-index: 1;
-  width: 58%;
-  padding: clamp(10px, 1.1vw, 16px) clamp(10px, 1.1vw, 15px);
+  width: 56%;
+  padding: clamp(11px, 1vw, 15px) 14px;
 }
 
 .tc-category-card__title {
-  margin: 0 0 3px;
+  margin: 0 0 2px;
   font-family: var(--font-display);
-  font-size: clamp(1.22rem, 1.48vw, 1.64rem);
-  line-height: .92;
-  letter-spacing: -0.01em;
+  font-size: clamp(.98rem, 1.18vw, 1.28rem);
+  line-height: .96;
   text-transform: uppercase;
 }
 
 .tc-category-card__subtitle {
   margin: 0;
-  max-width: 17ch;
-  font-size: clamp(.62rem, .74vw, .82rem);
-  line-height: 1.12;
-  font-weight: 800;
+  max-width: 18ch;
+  font-size: clamp(.56rem, .68vw, .72rem);
+  line-height: 1.14;
+  font-weight: 700;
   letter-spacing: .01em;
   text-transform: uppercase;
 }
@@ -66,24 +65,24 @@
 
   .tc-category-strip__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 7px;
   }
 
   .tc-category-card {
-    height: 112px;
+    height: 108px;
   }
 
   .tc-category-card__header {
-    width: 66%;
-    padding: 12px 10px;
+    width: 67%;
+    padding: 11px 9px;
   }
 
   .tc-category-card__title {
-    font-size: 1.25rem;
+    font-size: .98rem;
   }
 
   .tc-category-card__subtitle {
-    font-size: .64rem;
-    line-height: 1.12;
+    font-size: .56rem;
+    line-height: 1.13;
   }
 }
