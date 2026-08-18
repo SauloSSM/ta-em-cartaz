@@ -1,6 +1,7 @@
 import { type FormEvent } from 'react';
 import type { EventResponse, TicketSectorResponse } from '../api/eventsApi';
 
+import './OrganizerWorkspace.css';
 export type PublicationChecklistProps = {
   event: EventResponse;
   sectors: TicketSectorResponse[];

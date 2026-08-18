@@ -6,6 +6,7 @@ import {
 } from '../api/eventsApi';
 import { SectorEditor } from './SectorEditor';
 
+import './OrganizerWorkspace.css';
 type SectorManagerProps = {
   eventId: string;
   isDraft?: boolean;

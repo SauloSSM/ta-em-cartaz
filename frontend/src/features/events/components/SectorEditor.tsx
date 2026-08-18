@@ -7,6 +7,7 @@ import {
   type UpdateTicketSectorRequest,
 } from '../api/eventsApi';
 
+import './OrganizerWorkspace.css';
 type SectorEditorProps = {
   eventId: string;
   sector?: TicketSectorResponse | null;

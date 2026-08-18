@@ -3,6 +3,7 @@ import { searchCatalogEvents, type CatalogEventReference } from '../api/catalogA
 import { createDraftEvent, type EventResponse } from '../../events/api/eventsApi';
 import { TicketmasterResultCard } from './TicketmasterResultCard';
 
+import './TicketmasterSearch.css';
 type TicketmasterSearchProps = {
   onSelectReference?: (event: CatalogEventReference) => void;
   onDraftCreated?: (event: EventResponse) => void;
@@ -103,9 +104,10 @@ export function TicketmasterSearch({
   return (
     <section className="catalog-search-section" aria-labelledby="catalog-search-title">
       <header className="catalog-search-header">
-        <h2 id="catalog-search-title">Pesquisar referências Ticketmaster</h2>
+        <span className="catalog-search-kicker" aria-hidden="true">ORGANIZADOR / CRIAÇÃO</span>
+        <h2 id="catalog-search-title">Novo Evento</h2>
         <p className="catalog-search-subtitle">
-          Consulte eventos no catálogo externo para usar como base para novos eventos em rascunho.
+          Comece por uma referência da Ticketmaster. Depois você define data, local, setores e publicação.
         </p>
       </header>
 

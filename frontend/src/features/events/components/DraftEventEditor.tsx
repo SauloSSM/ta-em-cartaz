@@ -11,6 +11,7 @@ import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { SectorManager } from './SectorManager';
 import { PublicationChecklist } from './PublicationChecklist';
 
+import './OrganizerWorkspace.css';
 type DraftEventEditorProps = {
   event: EventResponse;
   onBack?: () => void;
@@ -156,6 +157,7 @@ export function DraftEventEditor({
     <section className="draft-editor-section" aria-labelledby="draft-editor-title">
       <header className="draft-editor-header">
         <div className="draft-editor-title-container">
+          <span className="draft-editor-kicker" aria-hidden="true">ORGANIZADOR / EVENTO</span>
           <h2 id="draft-editor-title">Editor de Evento</h2>
           <span
             className={`event-status-badge ${isDraft ? 'status-draft' : 'status-published'}`}
@@ -176,6 +178,12 @@ export function DraftEventEditor({
           </button>
         ) : null}
       </header>
+
+      <div className="organizer-workflow-rail" aria-hidden="true">
+        <span className="organizer-workflow-rail__item is-active"><b>01</b> Informações</span>
+        <span className="organizer-workflow-rail__item"><b>02</b> Setores</span>
+        <span className="organizer-workflow-rail__item"><b>03</b> Publicação</span>
+      </div>
 
       {statusMessage !== null ? (
         <div className="draft-editor-feedback success" role="status" aria-live="polite">

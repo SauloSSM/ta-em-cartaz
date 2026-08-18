@@ -308,7 +308,7 @@ describe('App session flow', () => {
     // Executa a primeira mutation: criar rascunho a partir do catálogo
     await screen.findByRole('heading', { level: 2, name: 'Meus Eventos' });
     await user.click(screen.getByRole('button', { name: '+ Novo evento do catálogo' }));
-    await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' });
+    await screen.findByRole('heading', { level: 2, name: 'Novo Evento' });
     const searchInput = screen.getByLabelText('Palavra-chave do evento');
     await user.type(searchInput, 'Rock');
     await user.click(screen.getByRole('button', { name: 'Buscar referências' }));
@@ -540,7 +540,7 @@ describe('App session flow', () => {
     await user.click(screen.getByRole('button', { name: '+ Novo evento do catálogo' }));
 
     // 3. Surface S10: Search catalog
-    await screen.findByRole('heading', { level: 2, name: 'Pesquisar referências Ticketmaster' });
+    await screen.findByRole('heading', { level: 2, name: 'Novo Evento' });
     const searchInput = screen.getByLabelText('Palavra-chave do evento');
     await user.type(searchInput, 'Rock');
     await user.click(screen.getByRole('button', { name: 'Buscar referências' }));

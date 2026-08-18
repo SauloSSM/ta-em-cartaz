@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import './OrganizerWorkspace.css';
 type DeleteConfirmDialogProps = {
   isOpen: boolean;
   eventTitle: string;
