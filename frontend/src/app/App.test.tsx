@@ -97,6 +97,58 @@ describe('App session flow', () => {
     expect(document.activeElement).toBe(reveal);
   });
 
+  it('preenche automaticamente as quatro contas demo para avaliação e permite edição manual', async () => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ authenticated: false }));
+    const user = userEvent.setup();
+    render(<App initialAnonymousView="login" />);
+
+    // Cliente 1
+    await user.click(await screen.findByRole('button', { name: 'Cliente 1' }));
+    expect((screen.getByLabelText('E-mail') as HTMLInputElement).value).toBe(
+      'customer.one@demo.elitedevticket.local',
+    );
+    expect((screen.getByLabelText('Senha') as HTMLInputElement).value).toBe('password');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Cliente 1: credenciais preenchidas automaticamente.',
+    );
+
+    // Cliente 2
+    await user.click(screen.getByRole('button', { name: 'Cliente 2' }));
+    expect((screen.getByLabelText('E-mail') as HTMLInputElement).value).toBe(
+      'customer.two@demo.elitedevticket.local',
+    );
+    expect((screen.getByLabelText('Senha') as HTMLInputElement).value).toBe('password');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Cliente 2: credenciais preenchidas automaticamente.',
+    );
+
+    // Organizador
+    await user.click(screen.getByRole('button', { name: 'Organizador' }));
+    expect((screen.getByLabelText('E-mail') as HTMLInputElement).value).toBe(
+      'organizer@demo.elitedevticket.local',
+    );
+    expect((screen.getByLabelText('Senha') as HTMLInputElement).value).toBe('password');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Organizador: credenciais preenchidas automaticamente.',
+    );
+
+    // Portaria
+    await user.click(screen.getByRole('button', { name: 'Portaria' }));
+    expect((screen.getByLabelText('E-mail') as HTMLInputElement).value).toBe(
+      'gate@demo.elitedevticket.local',
+    );
+    expect((screen.getByLabelText('Senha') as HTMLInputElement).value).toBe('password');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Portaria: credenciais preenchidas automaticamente.',
+    );
+
+    // Edição manual subsequente
+    const emailInput = screen.getByLabelText('E-mail') as HTMLInputElement;
+    await user.clear(emailInput);
+    await user.type(emailInput, 'custom@test.com');
+    expect(emailInput.value).toBe('custom@test.com');
+  });
+
   it('expõe estado ocupado e rótulo contextual durante login', async () => {
     document.cookie = 'XSRF-TOKEN=csrf; Path=/';
     let completeLogin!: (response: Response) => void;
