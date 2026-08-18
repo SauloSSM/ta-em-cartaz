@@ -9,11 +9,11 @@ import { HomeHero } from './HomeHero';
 import './PublicEventCatalog.css';
 
 const homeLeftEditorialPanelSvg = new URL(
-  '../../../assets/ta-em-cartaz/home/home-left-editorial-panel.png',
+  '../../../assets/ta-em-cartaz/home/home-left-editorial-panel.svg',
   import.meta.url,
 ).href;
 const homeCulturaVivaPanelSvg = new URL(
-  '../../../assets/ta-em-cartaz/home/home-cultura-viva-panel.png',
+  '../../../assets/ta-em-cartaz/home/home-cultura-viva-panel.svg',
   import.meta.url,
 ).href;
 

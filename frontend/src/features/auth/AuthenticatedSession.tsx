@@ -35,7 +35,7 @@ type AuthenticatedSessionProps = {
   user: SessionUser;
   busy: boolean;
   error?: string;
-  onLogout: () => Promise<void>;
+  onLogout?: () => Promise<void>;
 };
 
 type OrganizerView = 'my-events' | 'catalog' | 'editor' | 'public-catalog' | 'public-detail';
@@ -47,7 +47,7 @@ const roleLabels = {
   GATE: 'Portaria',
 } as const;
 
-export function AuthenticatedSession({ user, busy, error, onLogout }: AuthenticatedSessionProps) {
+export function AuthenticatedSession({ user, busy, error }: AuthenticatedSessionProps) {
   const initialStoredHold = user.role === 'CUSTOMER' ? getActiveHold() : null;
 
   const [organizerView, setOrganizerView] = useState<OrganizerView>('my-events');
@@ -177,12 +177,6 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
 
   const activeEventId = selectedPublicEvent?.id ?? restoredEventId ?? activeReservation?.eventId ?? null;
 
-  const handleLogout = useCallback(async () => {
-    clearActiveHold();
-    clearPurchaseIntention();
-    await onLogout();
-  }, [onLogout]);
-
   const handleReconcile = useCallback(async () => {
     if (!activeReservation || user.role !== 'CUSTOMER') {
       return;
@@ -225,38 +219,9 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
     <div className={`session-view session-view--${user.role.toLowerCase()}`}>
       <section className="session-view__account-strip" aria-labelledby="session-title" aria-busy={busy}>
         <h2 id="session-title" className="session-view__account-title">Sessão atual</h2>
-        <dl className="session-view__account-meta">
-          <div>
-            <dt>E-mail</dt>
-            <dd>{user.email}</dd>
-          </div>
-          <div>
-            <dt>Papel</dt>
-            <dd>{roleLabels[user.role]}</dd>
-          </div>
-        </dl>
-        {error === undefined ? null : <p role="alert">{error}</p>}
-        <button className="session-view__logout" type="button" disabled={busy} onClick={() => void handleLogout()}>
-          {busy ? 'Saindo…' : 'Sair e trocar de conta'}
-        </button>
-      </section>
 
-      {isRestoringIntention && (
-        <div
-          className="edt-alert edt-alert--info"
-          role="status"
-          aria-live="polite"
-          data-testid="restoring-intention-indicator"
-          style={{ margin: '1rem 0' }}
-        >
-          <p>Restaurando sua seleção de ingressos e confirmando disponibilidade com o servidor…</p>
-        </div>
-      )}
-
-      {user.role === 'CUSTOMER' ? (
-        <>
-          {/* Navegação do cliente: Catálogo e Meus Ingressos */}
-          <nav aria-label="Navegação do cliente" className="customer-nav">
+        {user.role === 'CUSTOMER' ? (
+          <nav aria-label="Navegação do cliente" className="customer-nav customer-nav--header">
             <button
               type="button"
               className={`edt-button ${customerView === 'catalog' || customerView === 'detail' ? 'edt-button--primary' : 'edt-button--secondary'}`}
@@ -282,6 +247,36 @@ export function AuthenticatedSession({ user, busy, error, onLogout }: Authentica
               Meus Ingressos
             </button>
           </nav>
+        ) : (
+          <div />
+        )}
+
+        <dl className="session-view__account-meta">
+          <div>
+            <dt>E-mail</dt>
+            <dd>{user.email}</dd>
+          </div>
+          <div>
+            <dt>Papel</dt>
+            <dd>{roleLabels[user.role]}</dd>
+          </div>
+          {error === undefined ? null : <div className="session-view__account-error" role="alert">{error}</div>}
+        </dl>
+      </section>
+
+      {isRestoringIntention && (
+        <div
+          className="edt-alert edt-alert--info"
+          role="status"
+          aria-live="polite"
+          data-testid="restoring-intention-indicator"
+          style={{ margin: '1rem 0' }}
+        >
+          <p>Restaurando sua seleção de ingressos e confirmando disponibilidade com o servidor…</p>
+        </div>
+      )}
+      {user.role === 'CUSTOMER' ? (
+        <>
 
           {/* Banner de acesso persistente "Continuar reserva" quando houver hold ativo nas telas de catálogo e detalhe */}
           {customerView !== 'checkout' && activeReservation && activeReservation.status === 'HOLDING' && (

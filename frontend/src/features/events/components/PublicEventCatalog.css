@@ -15,45 +15,45 @@
 
 .tc-home-search__form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
+  grid-template-columns: minmax(0, 1fr) 46px;
   align-items: center;
   gap: 4px;
   width: 100%;
 }
 
 .tc-home-search .tc-search__wrapper {
-  height: 32px;
+  height: 40px;
   border-color: rgba(16, 16, 15, .62);
   border-radius: 7px;
   background: rgba(255, 248, 240, .72);
 }
 
 .tc-home-search .tc-search__input {
-  height: 30px;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  height: 38px;
+  padding-top: 6px;
+  padding-bottom: 6px;
   padding-left: 34px;
-  font-size: .74rem;
+  font-size: .84rem;
 }
 
 .tc-home-search .tc-search__icon {
   left: 10px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .tc-home-search .tc-search__clear {
-  right: 5px;
-  width: 23px;
-  height: 23px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
   font-size: 11px;
 }
 
 .tc-home-search__submit {
-  width: 38px;
-  min-width: 38px;
-  min-height: 32px;
-  height: 32px;
+  width: 46px;
+  min-width: 46px;
+  min-height: 40px;
+  height: 40px;
   padding: 0;
   border-radius: 6px;
   font-size: 0;
@@ -61,7 +61,7 @@
 
 .tc-home-search__submit > span::after {
   content: '→';
-  font-size: .9rem;
+  font-size: 1.25rem;
   line-height: 1;
 }
 
@@ -74,15 +74,15 @@
    Programming section — left identity / real event list / culture panel.
    -------------------------------------------------------------------------- */
 .tc-cartaz-section {
-  padding: 2px 0 8px;
+  padding: 10px 0 12px;
   background: transparent;
 }
 
 .tc-cartaz-layout {
   display: grid;
-  grid-template-columns: minmax(205px, 21%) minmax(0, 1fr) minmax(205px, 21%);
+  grid-template-columns: minmax(190px, 18%) minmax(0, 1fr) minmax(220px, 21%);
   align-items: start;
-  gap: clamp(10px, 1.1vw, 16px);
+  gap: clamp(14px, 1.4vw, 20px);
 }
 
 .tc-cartaz-layout__editorial,
@@ -99,8 +99,8 @@
 }
 
 .tc-cartaz-layout__editorial-art {
-  margin-top: 4px;
-  transform: scale(1.03);
+  margin-top: 0;
+  transform: scale(1.02);
   transform-origin: top left;
 }
 
@@ -108,17 +108,23 @@
   margin-top: 4px;
 }
 
+.tc-cartaz-layout__editorial-art,
+.tc-cartaz-layout__culture-art {
+  image-rendering: auto;
+}
+
 .tc-cartaz-layout__programming {
   min-width: 0;
+  align-self: stretch;
 }
 
 .tc-cartaz-programming-card {
-  min-height: 154px;
+  min-height: 248px;
   border: 1px solid rgba(63, 61, 57, .18);
   border-radius: 4px;
   background: rgba(255, 248, 240, .38);
   overflow: hidden;
-  padding: 7px 10px;
+  padding: 14px 18px;
 }
 
 .tc-cartaz-events {
@@ -131,11 +137,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
-  padding: 3px 6px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
   border: 1px solid rgba(16,16,15,.5);
   background: var(--brand-yellow);
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 700;
 }
 
@@ -155,7 +161,7 @@
 }
 
 .tc-cartaz-skeleton-row {
-  height: 34px;
+  height: 48px;
   border-bottom: 1px dashed var(--neutral-300);
   background: linear-gradient(90deg, rgba(214,200,183,.34), rgba(255,248,240,.72), rgba(214,200,183,.34));
   background-size: 200% 100%;
@@ -167,26 +173,26 @@
 }
 
 .tc-cartaz-state {
-  min-height: 138px;
+  min-height: 220px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 12px 18px;
+  gap: 8px;
+  padding: 20px 24px;
   text-align: center;
 }
 
 .tc-cartaz-state__icon {
-  width: 23px;
-  height: 23px;
+  width: 32px;
+  height: 32px;
   color: var(--semantic-danger);
 }
 
 .tc-cartaz-state__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.28rem;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -195,15 +201,15 @@
   max-width: 360px;
   margin: 0;
   color: var(--neutral-700);
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   line-height: 1.32;
 }
 
 .tc-cartaz-state__button {
-  min-height: 34px;
+  min-height: 48px;
   margin-top: 4px;
-  padding: 5px 14px;
-  font-size: .62rem;
+  padding: 8px 18px;
+  font-size: .72rem;
 }
 
 /* Keep old hooks/classes harmless for tests and compatibility. */
@@ -215,7 +221,7 @@
 
 @media (max-width: 1020px) {
   .tc-cartaz-layout {
-    grid-template-columns: minmax(170px, 26%) minmax(0, 1fr);
+    grid-template-columns: minmax(180px, 24%) minmax(0, 1fr);
     grid-template-areas:
       'editorial programming'
       'culture programming';
@@ -238,7 +244,7 @@
   }
 
   .tc-cartaz-layout__editorial {
-    width: min(68%, 250px);
+    width: min(78%, 290px);
   }
 
   .tc-cartaz-layout__programming {
@@ -251,8 +257,8 @@
   }
 
   .tc-cartaz-programming-card {
-    min-height: 158px;
-    padding: 7px 9px;
+    min-height: 188px;
+    padding: 10px 12px;
   }
 
   .tc-home-search-fallback {

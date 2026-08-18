@@ -349,7 +349,7 @@ describe('App session flow', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole('button', { name: 'Sair e trocar de conta' }));
+    await user.click(await screen.findByRole('button', { name: 'Sair' }));
     await screen.findByRole('heading', { level: 2, name: 'Entrar com conta provisionada' });
 
     expect(sessionStorage.getItem('edt.purchase-intent.v1')).toBeNull();
@@ -391,9 +391,10 @@ describe('App session flow', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    void user.click(await screen.findByRole('button', { name: 'Sair e trocar de conta' }));
+    void user.click(await screen.findByRole('button', { name: 'Sair' }));
     const busyButton = await screen.findByRole('button', { name: 'Saindo…' });
-    expect(busyButton.closest('section')?.getAttribute('aria-busy')).toBe('true');
+    expect(busyButton.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('heading', { level: 2, name: 'Sessão atual' }).closest('section')?.getAttribute('aria-busy')).toBe('true');
     completeLogout(jsonResponse({ code: 'AUTH_UNAVAILABLE' }, 503));
 
     expect((await screen.findByRole('alert')).textContent).toBe(
@@ -401,9 +402,9 @@ describe('App session flow', () => {
     );
     expect(screen.getAllByText('gate@demo.elitedevticket.local').length).toBeGreaterThan(0);
     expect(sessionStorage.getItem('edt.purchase-intent.v1')).toBe('{"eventId":"future"}');
-    const retry = screen.getByRole('button', { name: 'Sair e trocar de conta' }) as HTMLButtonElement;
+    const retry = screen.getByRole('button', { name: 'Sair' }) as HTMLButtonElement;
     expect(retry.disabled).toBe(false);
-    expect(retry.closest('section')?.getAttribute('aria-busy')).toBe('false');
+    expect(screen.getByRole('heading', { level: 2, name: 'Sessão atual' }).closest('section')?.getAttribute('aria-busy')).toBe('false');
 
     await user.click(retry);
     await screen.findByRole('heading', { level: 2, name: 'Entrar com conta provisionada' });
@@ -444,7 +445,7 @@ describe('App session flow', () => {
     try {
       const user = userEvent.setup();
       render(<App />);
-      await user.click(await screen.findByRole('button', { name: 'Sair e trocar de conta' }));
+      await user.click(await screen.findByRole('button', { name: 'Sair' }));
 
       await screen.findByRole('heading', { level: 2, name: 'Entrar com conta provisionada' });
       expect(sessionStorage.getItem('edt.purchase-intent.v1')).toBe('{"eventId":"future"}');

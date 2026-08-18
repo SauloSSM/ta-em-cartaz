@@ -36,14 +36,14 @@
 .tc-category-card__header {
   position: relative;
   z-index: 1;
-  width: 58%;
+  width: 56%;
   padding: clamp(11px, 1vw, 15px) 14px;
 }
 
 .tc-category-card__title {
   margin: 0 0 2px;
   font-family: var(--font-display);
-  font-size: clamp(1.05rem, 1.35vw, 1.52rem);
+  font-size: clamp(.98rem, 1.18vw, 1.28rem);
   line-height: .96;
   text-transform: uppercase;
 }
@@ -51,9 +51,9 @@
 .tc-category-card__subtitle {
   margin: 0;
   max-width: 18ch;
-  font-size: clamp(.53rem, .65vw, .66rem);
+  font-size: clamp(.56rem, .68vw, .72rem);
   line-height: 1.14;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .01em;
   text-transform: uppercase;
 }
@@ -78,7 +78,7 @@
   }
 
   .tc-category-card__title {
-    font-size: 1.03rem;
+    font-size: .98rem;
   }
 
   .tc-category-card__subtitle {

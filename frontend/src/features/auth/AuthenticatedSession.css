@@ -2,17 +2,19 @@
 .session-view { min-height: 70vh; }
 
 .session-view__account-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
+  justify-content: space-between;
+  column-gap: 18px;
+  row-gap: 10px;
   width: min(1366px, 100%);
-  min-height: 38px;
+  min-height: 52px;
   margin: 0 auto;
   padding: 5px clamp(20px, 3.4vw, 48px);
   border-bottom: 1px solid rgba(16,16,15,.12);
   color: var(--brand-ink);
-  font-size: .58rem;
+  font-size: .62rem;
 }
 
 .session-view__account-title {
@@ -27,48 +29,70 @@
 .session-view__account-meta {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
   margin: 0;
 }
 .session-view__account-meta > div { display: flex; align-items: center; gap: 4px; }
 .session-view__account-meta dt { color: var(--neutral-500); font-size: .48rem; font-weight: 800; text-transform: uppercase; }
 .session-view__account-meta dd { margin: 0; font-weight: 700; }
-.session-view__logout {
-  min-height: 26px;
-  padding: 0 8px;
-  border: 1px solid rgba(16,16,15,.35);
-  border-radius: 0;
-  background: transparent;
-  color: var(--brand-ink);
-  font-size: .52rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
 .customer-nav {
   display: flex;
-  justify-content: center;
+  align-items: center;
   gap: 8px;
-  width: min(1180px, calc(100% - 40px));
-  margin: 18px auto 0;
 }
 .customer-nav .edt-button {
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 38px;
+  padding: 0 16px;
   border-radius: 0;
-  font-size: .6rem;
+  font-size: .66rem;
   text-transform: uppercase;
+}
+
+.customer-nav--header {
+  justify-self: start;
+}
+
+.customer-nav--header .edt-button {
+  min-width: 176px;
+}
+
+.session-view__account-error {
+  color: var(--semantic-danger);
+  font-weight: 700;
 }
 
 .session-view--gate .session-view__account-strip {
   border-bottom-color: rgba(16,16,15,.18);
 }
 
+@media (max-width: 920px) {
+  .session-view__account-strip {
+    grid-template-columns: 1fr;
+    padding-inline: 14px;
+  }
+
+  .customer-nav--header,
+  .session-view__account-meta {
+    justify-self: stretch;
+  }
+
+  .session-view__account-meta {
+    justify-content: space-between;
+  }
+}
+
 @media (max-width: 620px) {
-  .session-view__account-strip { justify-content: space-between; padding-inline: 14px; }
   .session-view__account-meta > div:first-child { display: none; }
-  .session-view__logout { margin-left: auto; }
-  .customer-nav { width: calc(100% - 28px); }
-  .customer-nav .edt-button { flex: 1; padding-inline: 8px; }
+  .customer-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .customer-nav .edt-button {
+    min-width: 0;
+    padding-inline: 8px;
+  }
 }

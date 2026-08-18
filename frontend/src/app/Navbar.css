@@ -10,10 +10,10 @@
 
 .tc-header__inner {
   display: grid;
-  grid-template-columns: auto auto minmax(240px, 1fr) auto;
+  grid-template-columns: auto auto minmax(260px, 1fr) auto;
   align-items: center;
-  gap: clamp(18px, 3vw, 54px);
-  height: 50px;
+  gap: clamp(20px, 2.6vw, 42px);
+  height: 58px;
   max-width: 1366px;
   margin: 0 auto;
   padding: 0 clamp(20px, 3.4vw, 48px);
@@ -23,7 +23,7 @@
   justify-self: start;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 12px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -32,15 +32,15 @@
 
 .tc-header__seal-img {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
 .tc-header__wordmark-img {
   display: block;
   width: auto;
-  height: 22px;
+  height: 27px;
   object-fit: contain;
 }
 
@@ -48,7 +48,7 @@
   justify-self: start;
   display: flex;
   align-items: center;
-  gap: clamp(17px, 2.4vw, 32px);
+  gap: clamp(18px, 2vw, 26px);
   white-space: nowrap;
 }
 
@@ -56,7 +56,7 @@
 .tc-header__nav-label {
   color: var(--brand-ink);
   font-family: var(--font-body);
-  font-size: .78rem;
+  font-size: .9rem;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -75,15 +75,10 @@
   border-bottom-color: var(--brand-ink);
 }
 
-.tc-header__nav-label {
-  display: inline-block;
-  opacity: .92;
-}
-
 .tc-header__search-slot {
   justify-self: end;
-  width: min(100%, 330px);
-  min-height: 32px;
+  width: min(100%, 410px);
+  min-height: 40px;
 }
 
 .tc-header__actions {
@@ -94,13 +89,13 @@
 }
 
 .tc-header__btn-login {
-  min-height: 34px;
-  padding: 5px 13px;
+  min-height: 40px;
+  padding: 8px 18px;
   border: 0;
   background: transparent;
   color: var(--brand-ink);
   font-family: var(--font-body);
-  font-size: .76rem;
+  font-size: .9rem;
   font-weight: 800;
   letter-spacing: .01em;
   text-transform: none;
@@ -206,7 +201,7 @@
     grid-area: search;
     display: block;
     width: 100%;
-    min-height: 32px;
+    min-height: 40px;
   }
 
   .tc-header__seal-img {
@@ -244,4 +239,16 @@
   .tc-mobile-menu {
     inset: 113px 0 0;
   }
+}
+
+.tc-header__btn-login--logout {
+  border: 1px solid rgba(16, 16, 15, .2);
+  border-radius: 8px;
+  background: rgba(255, 248, 240, .66);
+}
+
+.tc-header__btn-login--logout:hover:not(:disabled) {
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  text-decoration: none;
 }

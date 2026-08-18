@@ -85,6 +85,7 @@ export function App({ initialAnonymousView, initialShareToken }: AppProps) {
         onNavigateCatalog={handleSelectCatalog}
         onNavigateLogin={handleSelectLogin}
         onLogout={authenticatedUser ? endSession : undefined}
+        isLoggingOut={state.status === 'logging-out'}
       />
 
       <main id="main-content">

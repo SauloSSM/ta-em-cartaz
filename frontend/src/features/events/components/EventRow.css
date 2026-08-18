@@ -1,10 +1,10 @@
 .tc-event-row {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1.35fr) minmax(0, .92fr) auto;
+  grid-template-columns: 76px minmax(0, 1.7fr) minmax(190px, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 3px 2px;
+  gap: 14px;
+  min-height: 62px;
+  padding: 10px 4px;
   border-bottom: 1px dotted rgba(63, 61, 57, .34);
   color: var(--brand-ink);
 }
@@ -15,10 +15,10 @@
 
 .tc-event-row__date-block {
   display: grid;
-  grid-template-columns: 29px 1fr;
+  grid-template-columns: 38px 1fr;
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: 5px;
+  column-gap: 8px;
 }
 
 .tc-event-row__date-badge {
@@ -27,7 +27,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 29px;
+  min-width: 38px;
   padding: 0;
   border: 0;
   background: transparent !important;
@@ -37,19 +37,19 @@
 }
 
 .tc-event-row__date-day {
-  font-size: 1.03rem;
-  font-weight: 900;
+  font-size: 1.55rem;
+  font-weight: 800;
 }
 
 .tc-event-row__date-month {
   margin-top: 1px;
-  font-size: .46rem;
-  font-weight: 900;
+  font-size: .6rem;
+  font-weight: 800;
   letter-spacing: .04em;
 }
 
 .tc-event-row__weekday-time {
-  font-size: .46rem;
+  font-size: .6rem;
   line-height: 1.04;
   font-weight: 700;
   text-transform: uppercase;
@@ -69,9 +69,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-body);
-  font-size: .76rem;
-  line-height: 1.02;
-  font-weight: 900;
+  font-size: .98rem;
+  line-height: 1.08;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
@@ -85,12 +85,12 @@
 .tc-event-row__status-badge {
   display: inline-block;
   width: fit-content;
-  padding: 1px 5px;
+  padding: 2px 6px;
   border: 0;
   border-radius: 2px;
-  font-size: .45rem;
+  font-size: .56rem;
   line-height: 1.12;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: .02em;
   text-transform: uppercase;
 }
@@ -108,7 +108,7 @@
 
 .tc-event-row__venue {
   min-width: 0;
-  font-size: .53rem;
+  font-size: .68rem;
   line-height: 1.18;
   text-transform: uppercase;
   color: var(--neutral-700);
@@ -126,7 +126,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 7px;
+  gap: 12px;
 }
 
 .tc-event-row__price-box {
@@ -137,7 +137,7 @@
 }
 
 .tc-event-row__price-label {
-  font-size: .42rem;
+  font-size: .56rem;
   line-height: 1;
   font-weight: 700;
   text-transform: uppercase;
@@ -147,18 +147,18 @@
 .tc-event-row__price-value {
   margin-top: 1px;
   font-family: var(--font-body);
-  font-size: .78rem;
+  font-size: 1rem;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .tc-event-row__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 29px;
-  height: 29px;
-  flex: 0 0 29px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   border: 0;
   border-radius: 50%;
   background: var(--brand-ink);
@@ -174,9 +174,9 @@
 
 @media (max-width: 767px) {
   .tc-event-row {
-    grid-template-columns: 52px minmax(0, 1fr) auto;
-    gap: 7px;
-    padding: 7px 1px;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 8px 2px;
   }
 
   .tc-event-row__venue {

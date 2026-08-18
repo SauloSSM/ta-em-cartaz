@@ -12,6 +12,7 @@ export type NavbarProps = {
   onNavigateCatalog: () => void;
   onNavigateLogin: () => void;
   onLogout?: () => void;
+  isLoggingOut?: boolean;
 };
 
 export function Navbar({
@@ -20,6 +21,7 @@ export function Navbar({
   onNavigateCatalog,
   onNavigateLogin,
   onLogout,
+  isLoggingOut = false,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuToggleRef = useRef<HTMLButtonElement>(null);
@@ -98,8 +100,6 @@ export function Navbar({
           >
             Eventos
           </button>
-          <span className="tc-header__nav-label" aria-hidden="true">Cultura</span>
-          <span className="tc-header__nav-label" aria-hidden="true">Perto de você</span>
         </nav>
 
         {/* The public catalog mounts its real search form here via a React portal. */}
@@ -108,20 +108,16 @@ export function Navbar({
         {/* Actions / Auth */}
         <div className="tc-header__actions">
           {user ? (
-            <div className="tc-header__user-badge">
-              <span className="tc-header__role-tag">
-                Minha Conta
-              </span>
-              {onLogout && (
-                <Button
-                  variant="secondary"
-                  className="tc-header__btn-login"
-                  onClick={handleLogoutClick}
-                >
-                  Sair
-                </Button>
-              )}
-            </div>
+            onLogout ? (
+              <Button
+                variant="secondary"
+                className="tc-header__btn-login tc-header__btn-login--logout"
+                onClick={handleLogoutClick}
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? 'Saindo…' : 'Sair'}
+              </Button>
+            ) : null
           ) : (
             <Button
               variant="primary"
@@ -202,8 +198,9 @@ export function Navbar({
                 type="button"
                 className="tc-mobile-menu__link"
                 onClick={handleLogoutClick}
+                disabled={isLoggingOut}
               >
-                Sair ({user.email})
+                {isLoggingOut ? 'Saindo…' : `Sair (${user.email})`}
               </button>
             )}
           </nav>
