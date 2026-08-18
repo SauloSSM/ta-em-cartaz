@@ -173,15 +173,32 @@ function SessionContent({
 
   switch (state.status) {
     case 'loading':
-      return <p role="status">Verificando sessão…</p>;
+      return (
+        <section className="tc-auth-system-state tc-auth-system-state--loading" aria-label="Verificação de sessão">
+          <div className="tc-auth-system-state__card">
+            <span className="tc-auth-system-state__index" aria-hidden="true">ACESSO / TC</span>
+            <span className="tc-auth-system-state__spinner" aria-hidden="true" />
+            <p role="status">Verificando sessão…</p>
+            <small>Preparando sua experiência no Tá em Cartaz.</small>
+          </div>
+        </section>
+      );
     case 'bootstrap-error':
       return (
-        <section aria-labelledby="bootstrap-error-title">
-          <h2 id="bootstrap-error-title">Não foi possível verificar sua sessão</h2>
-          <p role="alert">{state.message}</p>
-          <button type="button" onClick={() => void onRetryBootstrap()}>
-            Tentar novamente
-          </button>
+        <section
+          className="tc-auth-system-state tc-auth-system-state--error"
+          aria-labelledby="bootstrap-error-title"
+        >
+          <div className="tc-auth-system-state__card">
+            <span className="tc-auth-system-state__index" aria-hidden="true">CONEXÃO / ERRO</span>
+            <span className="tc-auth-system-state__symbol" aria-hidden="true">!</span>
+            <h2 id="bootstrap-error-title">Não foi possível verificar sua sessão</h2>
+            <p role="alert">{state.message}</p>
+            <button type="button" onClick={() => void onRetryBootstrap()}>
+              <span>Tentar novamente</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
         </section>
       );
     case 'anonymous':

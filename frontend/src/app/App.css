@@ -10,3 +10,139 @@
   flex: 1;
   width: 100%;
 }
+
+/* --------------------------------------------------------------------------
+   Authentication system states
+   -------------------------------------------------------------------------- */
+.tc-auth-system-state {
+  display: grid;
+  place-items: center;
+  min-height: clamp(440px, 68vh, 680px);
+  padding: 42px var(--page-padding) 68px;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(231,116,164,.18) 0 86px, transparent 87px),
+    radial-gradient(circle at 86% 76%, rgba(236,167,5,.2) 0 110px, transparent 111px);
+}
+
+.tc-auth-system-state__card {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  width: min(520px, 100%);
+  padding: clamp(34px, 6vw, 62px);
+  border: 1.5px solid var(--brand-ink);
+  background: var(--brand-paper-soft);
+  box-shadow: 8px 8px 0 var(--brand-ink);
+  overflow: hidden;
+}
+
+.tc-auth-system-state__card::after {
+  content: '*';
+  position: absolute;
+  right: 17px;
+  top: -10px;
+  color: var(--brand-pink);
+  font-family: var(--font-display);
+  font-size: 5.5rem;
+  line-height: 1;
+  transform: rotate(12deg);
+  pointer-events: none;
+}
+
+.tc-auth-system-state__index {
+  display: inline-flex;
+  margin-bottom: 28px;
+  padding: 4px 7px 3px;
+  border: 1px solid var(--brand-ink);
+  background: var(--brand-yellow);
+  font-size: .55rem;
+  font-weight: 900;
+  letter-spacing: .075em;
+}
+
+.tc-auth-system-state__spinner {
+  width: 58px;
+  height: 58px;
+  margin-bottom: 20px;
+  border: 8px solid var(--brand-paper-deep);
+  border-top-color: var(--brand-ink);
+  border-right-color: var(--brand-pink);
+  border-radius: 50%;
+  animation: tc-auth-spin .8s linear infinite;
+}
+
+.tc-auth-system-state p[role='status'] {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 6vw, 4.1rem);
+  line-height: .95;
+  text-transform: uppercase;
+}
+
+.tc-auth-system-state small {
+  margin-top: 12px;
+  color: var(--neutral-500);
+  font-size: .72rem;
+}
+
+.tc-auth-system-state__symbol {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+  border: 1.5px solid var(--brand-ink);
+  border-radius: 50%;
+  background: var(--brand-pink);
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.tc-auth-system-state--error h2 {
+  max-width: 410px;
+  font-family: var(--font-display);
+  font-size: clamp(2.7rem, 6vw, 4.8rem);
+  line-height: .88;
+  text-transform: uppercase;
+}
+
+.tc-auth-system-state--error p[role='alert'] {
+  margin-top: 16px;
+  padding: 9px 11px;
+  border-left: 5px solid var(--brand-pink);
+  background: rgba(231,116,164,.12);
+  font-size: .77rem;
+  font-weight: 700;
+}
+
+.tc-auth-system-state--error button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 24px;
+  padding: 0 16px;
+  border: 1.5px solid var(--brand-ink);
+  border-radius: 0;
+  background: var(--brand-ink);
+  color: var(--brand-paper-soft);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 var(--brand-pink);
+}
+
+.tc-auth-system-state--error button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 var(--brand-pink);
+}
+
+@keyframes tc-auth-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 560px) {
+  .tc-auth-system-state { min-height: 520px; padding-inline: 14px; }
+  .tc-auth-system-state__card { padding: 32px 22px; box-shadow: 5px 5px 0 var(--brand-ink); }
+  .tc-auth-system-state__card::after { font-size: 4rem; opacity: .55; }
+}

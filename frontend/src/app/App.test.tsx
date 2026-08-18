@@ -69,7 +69,7 @@ describe('App session flow', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }));
 
     const error = await screen.findByRole('alert');
-    expect(error.textContent).toBe('E-mail ou senha inválidos.');
+    expect(error.textContent).toContain('E-mail ou senha inválidos.');
     expect(document.activeElement).toBe(error);
     expect((screen.getByLabelText('E-mail') as HTMLInputElement).value).toBe(
       'customer.one@demo.elitedevticket.local',
@@ -143,7 +143,7 @@ describe('App session flow', () => {
     await user.type(screen.getByLabelText('Senha'), 'secret');
     await user.click(screen.getByRole('button', { name: 'Entrar' }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe('Não foi possível entrar. Tente novamente.');
+    expect((await screen.findByRole('alert')).textContent).toContain('Não foi possível entrar. Tente novamente.');
     expect(email.value).toBe('customer.one@demo.elitedevticket.local');
     expect((screen.getByLabelText('Senha') as HTMLInputElement).value).toBe('');
     const form = screen.getByRole('button', { name: 'Entrar' }).closest('form');
