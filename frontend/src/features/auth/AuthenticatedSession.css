@@ -48,15 +48,19 @@
   }
 }
 
-@media (max-width: 620px) {
-  .customer-nav {
+@media (max-width: 767px) {
+  .customer-nav,
+  .customer-nav--header {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
-  .customer-nav .edt-button {
+  .customer-nav .edt-button,
+  .customer-nav--header .edt-button {
     min-width: 0;
+    width: 100%;
     padding-inline: 8px;
   }
 }
