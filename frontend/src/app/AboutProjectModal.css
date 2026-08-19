@@ -1,0 +1,120 @@
+.tc-about-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 50);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(16, 16, 15, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.tc-about-modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(90vh, 680px);
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid var(--brand-ink);
+  border-radius: 0;
+  background: var(--brand-paper);
+  color: var(--brand-ink);
+  box-shadow: 6px 6px 0 var(--brand-ink);
+}
+
+.tc-about-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.tc-about-modal__label {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid var(--brand-ink);
+  background: var(--brand-yellow);
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tc-about-modal__close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--brand-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.tc-about-modal__close-btn:hover {
+  background: var(--brand-pink);
+}
+
+.tc-about-modal__close-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.tc-about-modal__title-group {
+  margin-bottom: 24px;
+}
+
+.tc-about-modal__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 6vw, 3.4rem);
+  font-weight: 400;
+  line-height: 0.92;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--brand-ink);
+}
+
+.tc-about-modal__underline {
+  display: block;
+  width: 48px;
+  height: 4px;
+  margin-top: 10px;
+  background: var(--brand-pink);
+  border: 1px solid var(--brand-ink);
+}
+
+.tc-about-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tc-about-modal__body p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--brand-ink);
+}
+
+@media (max-width: 576px) {
+  .tc-about-modal {
+    padding: 20px 16px 18px;
+    width: calc(100vw - 24px);
+  }
+
+  .tc-about-modal__title {
+    font-size: 2.2rem;
+  }
+}
