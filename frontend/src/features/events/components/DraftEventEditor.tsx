@@ -19,6 +19,51 @@ type DraftEventEditorProps = {
   onEventDeleted?: (deletedEventId: string) => void;
 };
 
+function toDateTimeLocalValue(isoString?: string): string {
+  if (!isoString || !isoString.trim()) return '';
+  const trimmed = isoString.trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const date = new Date(trimmed);
+  if (isNaN(date.getTime())) {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(trimmed)) {
+      return trimmed.slice(0, 16);
+    }
+    return '';
+  }
+  try {
+    const formatter = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    return formatter.format(date).replace(' ', 'T');
+  } catch {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+}
+
+function fromDateTimeLocalToApi(datetimeLocal?: string): string {
+  if (!datetimeLocal || !datetimeLocal.trim()) return '';
+  const trimmed = datetimeLocal.trim();
+  if (trimmed.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}:00-03:00`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}-03:00`;
+  }
+  return trimmed;
+}
+
 export function DraftEventEditor({
   event,
   onBack,
@@ -36,6 +81,19 @@ export function DraftEventEditor({
     venueName: event.venueName ?? '',
     venueAddress: event.venueAddress ?? '',
     startsAt: event.startsAt ?? '',
+  });
+
+  const [localStartsAt, setLocalStartsAt] = useState<string>(() => {
+    return toDateTimeLocalValue(event.startsAt);
+  });
+
+  const [startsAtError, setStartsAtError] = useState<string | null>(() => {
+    if (!event.startsAt || !event.startsAt.trim()) return null;
+    const parsed = new Date(event.startsAt);
+    if (!isNaN(parsed.getTime()) && parsed.getTime() <= Date.now()) {
+      return 'Escolha uma data e hora futura.';
+    }
+    return null;
   });
 
   const [sectors, setSectors] = useState<TicketSectorResponse[]>([]);
@@ -57,12 +115,40 @@ export function DraftEventEditor({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleStartsAtChange = (val: string) => {
+    setLocalStartsAt(val);
+    if (!val.trim()) {
+      setStartsAtError(null);
+      setFormData((prev) => ({ ...prev, startsAt: '' }));
+      return;
+    }
+    const apiIso = fromDateTimeLocalToApi(val);
+    const parsed = new Date(apiIso);
+    if (!isNaN(parsed.getTime()) && parsed.getTime() <= Date.now()) {
+      setStartsAtError('Escolha uma data e hora futura.');
+    } else {
+      setStartsAtError(null);
+    }
+    setFormData((prev) => ({ ...prev, startsAt: apiIso }));
+  };
+
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setIsSaving(true);
     setErrorMessage(null);
     setStatusMessage(null);
+
+    const apiStartsAt = localStartsAt.trim() ? fromDateTimeLocalToApi(localStartsAt) : undefined;
+    if (isDraft && apiStartsAt) {
+      const parsed = new Date(apiStartsAt);
+      if (!isNaN(parsed.getTime()) && parsed.getTime() <= Date.now()) {
+        setErrorMessage('Escolha uma data e hora futura.');
+        setStartsAtError('Escolha uma data e hora futura.');
+        setIsSaving(false);
+        return;
+      }
+    }
 
     try {
       const payload: UpdateDraftEventRequest = isDraft
@@ -73,7 +159,7 @@ export function DraftEventEditor({
             category: formData.category?.trim() ? formData.category : undefined,
             venueName: formData.venueName?.trim() ? formData.venueName : undefined,
             venueAddress: formData.venueAddress?.trim() ? formData.venueAddress : undefined,
-            startsAt: formData.startsAt?.trim() ? formData.startsAt : undefined,
+            startsAt: apiStartsAt,
           }
         : {
             title: currentEvent.title,
@@ -90,13 +176,29 @@ export function DraftEventEditor({
       startTransition(() => {
         setCurrentEvent(updated);
         setStatusMessage('Alterações salvas com sucesso!');
+        if (updated.startsAt) {
+          setLocalStartsAt(toDateTimeLocalValue(updated.startsAt));
+        }
       });
 
       if (onEventUpdated !== undefined) {
         onEventUpdated(updated);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar alterações no evento.';
+      let msg = err instanceof Error ? err.message : 'Erro ao salvar alterações no evento.';
+      if (
+        msg.includes('STARTS_AT') ||
+        msg.includes('future') ||
+        msg.includes('futuro') ||
+        msg.includes('passado') ||
+        msg.includes('past') ||
+        msg.includes('ISO') ||
+        msg.includes('OffsetDateTime') ||
+        msg.includes('RFC3339')
+      ) {
+        msg = 'Escolha uma data e hora futura.';
+        setStartsAtError('Escolha uma data e hora futura.');
+      }
       setErrorMessage(msg);
     } finally {
       setIsSaving(false);
@@ -284,15 +386,25 @@ export function DraftEventEditor({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="event-starts-at-input">Data e Hora de Início (ISO)</label>
+              <label htmlFor="event-starts-at-input">
+                Data e Hora do Evento <span aria-hidden="true">*</span>
+              </label>
               <input
                 id="event-starts-at-input"
-                type="text"
+                type="datetime-local"
                 disabled={!isDraft || isBusy}
-                value={formData.startsAt}
-                onChange={(e) => handleFieldChange('startsAt', e.target.value)}
-                placeholder="Ex.: 2026-10-15T20:00:00Z"
+                value={localStartsAt}
+                onChange={(e) => handleStartsAtChange(e.target.value)}
+                aria-describedby="event-starts-at-helper"
               />
+              <small id="event-starts-at-helper" className="field-helper-text">
+                Horário de Brasília
+              </small>
+              {startsAtError ? (
+                <span className="field-error-message" role="alert">
+                  {startsAtError}
+                </span>
+              ) : null}
               {!isDraft ? (
                 <span className="field-lock-note">
                   Campo estrutural protegido: não pode ser alterado após a publicação.

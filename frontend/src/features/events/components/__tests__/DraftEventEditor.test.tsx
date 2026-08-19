@@ -188,8 +188,9 @@ describe('DraftEventEditor', () => {
     const venueAddressInput = screen.getByLabelText('Endereço do Local') as HTMLInputElement;
     expect(venueAddressInput.disabled).toBe(true);
 
-    const startsAtInput = screen.getByLabelText('Data e Hora de Início (ISO)') as HTMLInputElement;
+    const startsAtInput = screen.getByLabelText(/Data e Hora do Evento/) as HTMLInputElement;
     expect(startsAtInput.disabled).toBe(true);
+    expect(startsAtInput.type).toBe('datetime-local');
 
     // Structural lock explanations are visible
     const lockNotes = screen.getAllByText('Campo estrutural protegido: não pode ser alterado após a publicação.');
@@ -362,5 +363,82 @@ describe('DraftEventEditor', () => {
         status: 'PUBLISHED',
       }),
     );
+  });
+
+  it('renders datetime-local input with label Data e Hora do Evento and Horário de Brasília helper', () => {
+    render(<DraftEventEditor event={mockDraftEvent} />);
+
+    const startsAtInput = screen.getByLabelText(/Data e Hora do Evento/) as HTMLInputElement;
+    expect(startsAtInput).toBeDefined();
+    expect(startsAtInput.type).toBe('datetime-local');
+    expect(screen.queryByText(/\(ISO\)/i)).toBeNull();
+    expect(screen.getByText('Horário de Brasília')).toBeDefined();
+  });
+
+  it('converts datetime-local value to ISO with Brasília timezone on save', async () => {
+    const user = userEvent.setup();
+    const handleUpdate = vi.fn();
+
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((url: string | URL | Request, init?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+      if (urlString.includes('/sectors')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ sectors: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      if (init?.method === 'PUT') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ...mockDraftEvent,
+              startsAt: '2026-10-15T20:00:00-03:00',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(mockDraftEvent), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<DraftEventEditor event={mockDraftEvent} onEventUpdated={handleUpdate} />);
+
+    const startsAtInput = screen.getByLabelText(/Data e Hora do Evento/);
+    await user.clear(startsAtInput);
+    await user.type(startsAtInput, '2026-10-15T20:00');
+
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/events/${mockDraftEvent.id}`,
+      expect.objectContaining({
+        method: 'PUT',
+        body: expect.stringContaining('2026-10-15T20:00:00-03:00'),
+      }),
+    );
+  });
+
+  it('shows friendly validation message when choosing a past date', async () => {
+    const user = userEvent.setup();
+
+    render(<DraftEventEditor event={mockDraftEvent} />);
+
+    const startsAtInput = screen.getByLabelText(/Data e Hora do Evento/);
+    await user.clear(startsAtInput);
+    await user.type(startsAtInput, '2026-01-01T10:00');
+
+    expect(await screen.findByText('Escolha uma data e hora futura.')).toBeDefined();
+
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(await screen.findAllByText('Escolha uma data e hora futura.')).toBeDefined();
   });
 });

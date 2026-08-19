@@ -309,13 +309,17 @@
 
 .field-lock-note,
 .field-hint,
-.field-error {
+.field-error,
+.field-helper-text,
+.field-error-message {
   font-size: .56rem;
   line-height: 1.35;
 }
 .field-lock-note { color: var(--neutral-500); }
-.field-hint { color: var(--neutral-500); }
-.field-error { color: var(--semantic-danger); font-weight: 800; }
+.field-hint,
+.field-helper-text { color: var(--neutral-500); }
+.field-error,
+.field-error-message { color: var(--semantic-danger); font-weight: 800; }
 
 .draft-editor-timestamps {
   display: flex;
