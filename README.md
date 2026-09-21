@@ -820,10 +820,4 @@ AI-implemented
 Test-protected
 Domain-driven
 MVP-first
-```
-## Study roadmap
-
-- Review reservation concurrency
-- Revisit exception handling
-- Improve integration tests
-- Study Spring Security flow
+``
